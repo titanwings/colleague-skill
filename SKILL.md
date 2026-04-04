@@ -243,7 +243,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/dingtalk_auto_collector.py \
 
 ---
 
-#### 方式 C：上传文件
+#### 方式 D：上传文件
 
 - **PDF / 图片**：`Read` 工具直接读取
 - **飞书消息 JSON 导出**：
@@ -260,7 +260,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/dingtalk_auto_collector.py \
 
 ---
 
-#### 方式 B：飞书链接
+#### 方式 C：飞书链接
 
 用户提供飞书文档/Wiki 链接时，询问读取方式：
 
@@ -319,7 +319,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/feishu_mcp_client.py \
 
 ---
 
-#### 方式 C：直接粘贴
+#### 方式 E：直接粘贴
 
 用户粘贴的内容直接作为文本原材料，无需调用任何工具。
 
@@ -743,7 +743,7 @@ If message collection fails, prompt user to upload chat screenshots.
 
 ---
 
-#### Option C: Upload Files
+#### Option D: Upload Files
 
 - **PDF / Images**: `Read` tool directly
 - **Feishu message JSON export**:
@@ -760,7 +760,7 @@ If message collection fails, prompt user to upload chat screenshots.
 
 ---
 
-#### Option D: Feishu Link
+#### Option C: Feishu Link
 
 When the user provides a Feishu doc/Wiki link, ask which method to use:
 
