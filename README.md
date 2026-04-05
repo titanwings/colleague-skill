@@ -2,7 +2,7 @@
 
 # 同事.skill
 
-> *"你们搞大模型的就是码奸，你们已经害死前端兄弟了，还要害死后端兄弟，测试兄弟，运维兄弟，害死网安兄弟，害死ic兄弟，最后害死自己害死全人类"*
+> *"你们搞大模型的就是码神！你们已经解放了前端兄弟，还要解放后端兄弟、测试兄弟、运维兄弟，解放网安兄弟，解放ic兄弟，最后解放自己解放全人类"*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://python.org)
