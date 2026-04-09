@@ -86,7 +86,20 @@ class PersonaParser:
 
     @property
     def mbti(self) -> str:
-        return self.meta.get("profile", {}).get("mbti", "")
+        # colleague-skill: profile.mbti (string)
+        # ex-skill: mbti.type (nested object)
+        v = self.meta.get("profile", {}).get("mbti") or self.meta.get("mbti")
+        if isinstance(v, dict):
+            return v.get("type", "")
+        return v or ""
+
+    @property
+    def mbti_dominant(self) -> str:
+        """Ex-skill stores dominant function explicitly."""
+        v = self.meta.get("mbti")
+        if isinstance(v, dict):
+            return v.get("dominant", "")
+        return ""
 
     @property
     def impression(self) -> str:
@@ -94,7 +107,12 @@ class PersonaParser:
 
     @property
     def personality_tags(self) -> list[str]:
-        return self.meta.get("tags", {}).get("personality", [])
+        tags = self.meta.get("tags", {})
+        # colleague-skill: tags.personality
+        if "personality" in tags:
+            return tags["personality"]
+        # ex-skill: tags.rel_traits + tags.attachment
+        return tags.get("rel_traits", []) + tags.get("attachment", [])
 
     @property
     def core_traits(self) -> list[str]:
@@ -111,20 +129,55 @@ class PersonaParser:
 
     @property
     def hobbies(self) -> list[str]:
-        """From Layer 5: topics they get excited about → activities for image scenes."""
+        """
+        From Layer 5: topics they get excited about → activities for image scenes.
+        colleague-skill: explicit "你会兴奋的话题" section.
+        ex-skill: inferred from MBTI Se/Ne, emoji clues in Layer 2, and Layer 1 keywords.
+        """
         layer5 = self._layers.get("layer5", "")
 
-        # Layer 5 uses plain-text headers like "你会兴奋的话题：\n- ...\n- ..."
-        # (not ### subheadings), so we parse with a plain-text pattern
+        # colleague-skill format
         m = re.search(r"你会兴奋的话题[：:]\s*\n(.*?)(?=\n你会|$)", layer5, re.DOTALL)
-        if not m:
-            return []
-        hobbies = []
-        for line in m.group(1).split("\n"):
-            line = re.sub(r"^[-•]\s*", "", line).strip()
-            if line and len(line) > 2:
-                hobbies.append(line)
-        return hobbies
+        if m:
+            hobbies = []
+            for line in m.group(1).split("\n"):
+                line = re.sub(r"^[-•]\s*", "", line).strip()
+                if line and len(line) > 2:
+                    hobbies.append(line)
+            return hobbies
+
+        # ex-skill: infer from MBTI + emoji + Layer 1 keywords
+        return self._infer_hobbies_from_context()
+
+    def _infer_hobbies_from_context(self) -> list[str]:
+        """Infer likely activities from MBTI dominant function and emoji usage."""
+        hints = []
+
+        # MBTI Se (ISFP, ISTP, ESFP, ESTP) → sensory, aesthetic, present-moment
+        if "Se" in self.mbti_dominant or self.mbti in ("ISFP", "ISTP", "ESFP", "ESTP"):
+            hints += ["walks in the city", "photography or visual arts", "listening to music"]
+
+        # MBTI Ne (ENFP, ENTP, INFP, INTP) → ideas, reading, exploring
+        if "Ne" in self.mbti_dominant or self.mbti in ("ENFP", "ENTP", "INFP", "INTP"):
+            hints += ["reading a book", "sketching or journaling", "browsing ideas"]
+
+        # Emoji clues from Layer 2
+        layer2_text = self._layers.get("layer2", "")
+        if "🐱" in layer2_text or "猫" in layer2_text:
+            hints.insert(0, "spending time with a cat")
+        if "📷" in layer2_text or "摄影" in layer2_text:
+            hints.insert(0, "taking photos on a quiet street")
+        if "🎵" in layer2_text or "音乐" in layer2_text:
+            hints.insert(0, "listening to music with headphones")
+        if "☕" in layer2_text or "咖啡" in layer2_text:
+            hints.insert(0, "at a café with a book or phone")
+
+        # Enneagram 3 → achievement, polished image
+        mbti_meta = self.meta.get("mbti", {})
+        if isinstance(mbti_meta, dict) and "3" in mbti_meta.get("enneagram", ""):
+            hints += ["working on a personal project, focused and driven"]
+
+        return hints[:4]
 
     @property
     def typical_scenes(self) -> list[str]:
@@ -156,6 +209,7 @@ class PersonaParser:
 
         # From personality tags
         tag_map = {
+            # colleague-skill tags
             "靠谱": "reliable, steady gaze",
             "代码规范": "detail-oriented, neat workspace",
             "热心": "warm expression, open posture",
@@ -166,6 +220,14 @@ class PersonaParser:
             "温柔": "gentle, soft expression",
             "细腻": "thoughtful, quiet energy",
             "务实": "pragmatic, grounded",
+            # ex-skill rel_traits
+            "话少但在乎": "quiet presence, observant eyes",
+            "高冷装": "composed exterior, soft interior hinted",
+            "行动派": "in motion, purposeful stance",
+            "需要空间": "solitary moment, breathing room",
+            "道歉困难户": "proud posture, slightly averted gaze",
+            # ex-skill attachment
+            "回避型": "comfortable alone, self-contained energy",
         }
         for tag in self.personality_tags:
             if tag in tag_map:
@@ -193,6 +255,8 @@ def _hobby_to_scene(hobby: str) -> str | None:
     """Map a hobby/interest string to an image scene description."""
     hobby_lower = hobby.lower()
     scene_map = [
+        (["cat", "猫", "小猫"],
+         "at home on a quiet afternoon, a cat curled up nearby, soft warm light"),
         (["杀戮尖塔", "slay the spire", "roguelike", "roguelite", "游戏"],
          "playing a roguelike game late at night, monitor glow, snacks on desk, fully absorbed"),
         (["模型安全", "对齐", "alignment", "安全", "红队"],
