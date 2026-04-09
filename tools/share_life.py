@@ -329,9 +329,9 @@ def build_image_prompt(parser: PersonaParser, scene: str) -> str:
     if visual_kw:
         prompt_parts.append(f"Visual character cues: {visual_kw}.")
     prompt_parts.append(
-        "Style: warm cinematic, soft natural lighting, anime-influenced illustration, "
-        "detailed lived-in environment, character in a natural relaxed pose, "
-        "feels like a real moment, no text overlays, no watermarks, high quality."
+        "Style: photorealistic, warm cinematic photography, soft natural lighting, "
+        "shot on film, detailed lived-in environment, character in a natural relaxed pose, "
+        "feels like a candid real moment, no text overlays, no watermarks, high quality."
     )
 
     return " ".join(prompt_parts)
