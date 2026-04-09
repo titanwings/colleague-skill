@@ -26,8 +26,10 @@ from pathlib import Path
 
 # ─── Config ──────────────────────────────────────────────────────────────────
 
-NANOBANANA_API_KEY = os.environ.get("NANOBANANA_API_KEY", "")   # Fill in later
-NANOBANANA_API_URL = "https://banana2api.com/v1/generate"       # Placeholder
+NANOBANANA_API_KEY = os.environ.get("NANOBANANA_API_KEY", "")
+NANOBANANA_API_URL = os.environ.get("NANOBANANA_API_URL", "http://35.220.164.252:3888/v1/images/generations")
+NANOBANANA_MODEL = os.environ.get("NANOBANANA_MODEL", "doubao-seedream-5-0-260128")
+NANOBANANA_SIZE = "1920x1920"  # minimum 3686400 pixels required
 
 JOBS_DIR = Path(tempfile.gettempdir()) / "colleague_skill_jobs"
 JOBS_DIR.mkdir(exist_ok=True)
@@ -63,14 +65,14 @@ def _worker(job_id: str, prompt: str, chat_id: str):
         resp = requests.post(
             NANOBANANA_API_URL,
             headers={"Authorization": f"Bearer {NANOBANANA_API_KEY}"},
-            json={"prompt": prompt, "width": 1024, "height": 1024},
+            json={"model": NANOBANANA_MODEL, "prompt": prompt, "n": 1, "size": NANOBANANA_SIZE},
             timeout=60,
         )
         resp.raise_for_status()
         data = resp.json()
 
-        # NanoBanana returns image URL in data["url"] (adjust if API differs)
-        image_url = data.get("url") or data.get("image_url")
+        # Doubao returns data[0].url
+        image_url = (data.get("data") or [{}])[0].get("url")
         if not image_url:
             raise ValueError(f"No image URL in response: {data}")
 
