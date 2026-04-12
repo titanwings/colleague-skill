@@ -6,6 +6,7 @@
 
 用法：
     python version_manager.py --action list --slug zhangsan --base-dir ~/.openclaw/...
+    python version_manager.py --action backup --slug zhangsan --base-dir ~/.openclaw/...
     python version_manager.py --action rollback --slug zhangsan --version v2 --base-dir ~/.openclaw/...
 """
 
@@ -92,6 +93,34 @@ def rollback(skill_dir: Path, target_version: str) -> bool:
     return True
 
 
+def backup_current_version(skill_dir: Path) -> bool:
+    """将当前版本存档到 versions/ 目录"""
+    meta_path = skill_dir / "meta.json"
+    if not meta_path.exists():
+        print(f"错误：找不到 meta.json，无法确定当前版本号", file=sys.stderr)
+        return False
+
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    current_version = meta.get("version", "v1")
+
+    version_dir = skill_dir / "versions" / current_version
+    version_dir.mkdir(parents=True, exist_ok=True)
+
+    backed_up = []
+    for fname in ("SKILL.md", "work.md", "persona.md"):
+        src = skill_dir / fname
+        if src.exists():
+            shutil.copy2(src, version_dir / fname)
+            backed_up.append(fname)
+
+    if backed_up:
+        print(f"已存档版本 {current_version}，文件：{', '.join(backed_up)}")
+    else:
+        print(f"警告：{current_version} 无可存档的文件")
+
+    return True
+
+
 def cleanup_old_versions(skill_dir: Path, max_versions: int = MAX_VERSIONS):
     """清理超出限制的旧版本"""
     versions_dir = skill_dir / "versions"
@@ -113,7 +142,7 @@ def cleanup_old_versions(skill_dir: Path, max_versions: int = MAX_VERSIONS):
 
 def main():
     parser = argparse.ArgumentParser(description="Skill 版本管理器")
-    parser.add_argument("--action", required=True, choices=["list", "rollback", "cleanup"])
+    parser.add_argument("--action", required=True, choices=["list", "backup", "rollback", "cleanup"])
     parser.add_argument("--slug", required=True, help="同事 slug")
     parser.add_argument("--version", help="目标版本号（rollback 时使用）")
     parser.add_argument(
@@ -138,6 +167,9 @@ def main():
             print(f"{args.slug} 的历史版本：\n")
             for v in versions:
                 print(f"  {v['version']}  存档时间: {v['archived_at']}  文件: {', '.join(v['files'])}")
+
+    elif args.action == "backup":
+        backup_current_version(skill_dir)
 
     elif args.action == "rollback":
         if not args.version:
