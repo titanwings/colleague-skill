@@ -35,15 +35,19 @@ and get an **AI Skill that actually works like them**
 
 ---
 
-> 🆕 **2025.04.07 Update** — The community's enthusiasm for dot-skill remixes has been incredible! I've built a community gallery — PRs welcome!
+> 🆕 **2026.04.13 Update** — **dot-skill Roadmap is live!** colleague.skill is evolving into **dot-skill** — distill anyone, not just colleagues. Multimodal output, skill ecosystems, and more on the way.
+>
+> 👉 **[Read the full Roadmap](ROADMAP.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+>
+> We've also cleaned up Issues, added Milestones, and set up a [public project board](https://github.com/users/titanwings/projects/1). Community contributions welcome — check `good-first-issue` labels!
+
+> 🆕 **2026.04.07 Update** — The community's enthusiasm for dot-skill remixes has been incredible! I've built a community gallery — PRs welcome!
 >
 > Share any skill or meta-skill, and drive traffic directly to your own GitHub repo. No middleman.
 >
-> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)**
 >
 > Now listed: 户晨风.skill · 峰哥亡命天涯.skill · 罗翔.skill and more
->
-> ⏳ PRs are manually reviewed for now — may be a bit slow, thanks for your patience!/ PRs are manually reviewed for now — may be a bit slow, thanks for your patience!
 
 ---
 
