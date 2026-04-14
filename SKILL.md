@@ -1,6 +1,6 @@
 ---
 name: create-colleague
-description: "Distill a colleague into an AI Skill. Auto-collect Feishu/DingTalk data, generate Work Skill + Persona, with continuous evolution. | 把同事蒸馏成 AI Skill，自动采集飞书/钉钉数据，生成 Work + Persona，支持持续进化。"
+description: "Distill a colleague into an AI Skill. Auto-collect Feishu/DingTalk/Confluence data, generate Work Skill + Persona, with continuous evolution. | 把同事蒸馏成 AI Skill，自动采集飞书/钉钉/Confluence数据，生成 Work + Persona，支持持续进化。"
 argument-hint: "[colleague-name-or-slug]"
 version: "1.0.0"
 user-invocable: true
@@ -45,6 +45,7 @@ allowed-tools: Read, Write, Edit, Bash
 | 飞书文档（浏览器登录态） | `Bash` → `python3 ${CLAUDE_SKILL_DIR}/tools/feishu_browser.py` |
 | 飞书文档（MCP App Token） | `Bash` → `python3 ${CLAUDE_SKILL_DIR}/tools/feishu_mcp_client.py` |
 | 钉钉全自动采集 | `Bash` → `python3 ${CLAUDE_SKILL_DIR}/tools/dingtalk_auto_collector.py` |
+| Confluence 自动采集 | `Bash` → `python3 ${CLAUDE_SKILL_DIR}/tools/confluence_auto_collector.py` |
 | 解析邮件 .eml/.mbox | `Bash` → `python3 ${CLAUDE_SKILL_DIR}/tools/email_parser.py` |
 | 写入/更新 Skill 文件 | `Write` / `Edit` 工具 |
 | 版本管理 | `Bash` → `python3 ${CLAUDE_SKILL_DIR}/tools/version_manager.py` |
@@ -82,6 +83,10 @@ allowed-tools: Read, Write, Edit, Bash
   [B] 钉钉自动采集
       输入姓名，自动拉取文档 + 多维表格
       消息记录通过浏览器采集（钉钉 API 不支持历史消息）
+
+  [B2] Confluence 自动采集
+       输入姓名，自动拉取该用户创建/编辑的页面 + 评论
+       支持 Cloud 和 Server/Data Center
 
   [C] 飞书链接
       直接给文档/Wiki 链接（浏览器登录态 或 MCP）
@@ -240,6 +245,46 @@ python3 ${CLAUDE_SKILL_DIR}/tools/dingtalk_auto_collector.py \
 - `knowledge/{slug}/messages.txt`
 
 如消息采集失败，提示用户截图聊天记录后上传。
+
+---
+
+#### 方式 B2：Confluence 自动采集
+
+首次使用需配置：
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/confluence_auto_collector.py --setup
+```
+
+然后输入姓名，一键采集：
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/confluence_auto_collector.py \
+  --name "{name}" \
+  --output-dir ./knowledge/{slug} \
+  --doc-limit 50 \
+  --comment-limit 200
+```
+
+可选：按 Space 过滤：
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/confluence_auto_collector.py \
+  --name "{name}" \
+  --space-key DEV \
+  --output-dir ./knowledge/{slug}
+```
+
+采集内容：
+- 该用户创建/编辑的 Confluence 页面（技术文档、设计文档、Wiki 等）
+- 该用户发表的评论/回复（Code Review 意见、讨论等）
+
+采集完成后 `Read` 读取：
+- `knowledge/{slug}/docs.txt` → 页面内容
+- `knowledge/{slug}/messages.txt` → 评论内容
+- `knowledge/{slug}/collection_summary.json` → 采集摘要
+
+如采集失败，常见问题：
+- 认证失败：API Token 过期或无效，重新运行 --setup
+- 权限不足：确认账号有对应 Space 的读取权限
+- 用户未找到：尝试使用 Confluence 中显示的完整姓名或用户名
 
 ---
 
@@ -545,6 +590,7 @@ This Skill runs in the Claude Code environment with the following tools:
 | Feishu docs (browser session) | `Bash` → `python3 ${CLAUDE_SKILL_DIR}/tools/feishu_browser.py` |
 | Feishu docs (MCP App Token) | `Bash` → `python3 ${CLAUDE_SKILL_DIR}/tools/feishu_mcp_client.py` |
 | DingTalk auto-collect | `Bash` → `python3 ${CLAUDE_SKILL_DIR}/tools/dingtalk_auto_collector.py` |
+| Confluence auto-collect | `Bash` → `python3 ${CLAUDE_SKILL_DIR}/tools/confluence_auto_collector.py` |
 | Parse email .eml/.mbox | `Bash` → `python3 ${CLAUDE_SKILL_DIR}/tools/email_parser.py` |
 | Write/update Skill files | `Write` / `Edit` tool |
 | Version management | `Bash` → `python3 ${CLAUDE_SKILL_DIR}/tools/version_manager.py` |
@@ -582,6 +628,10 @@ How would you like to provide source materials?
   [B] DingTalk Auto-Collect
       Enter name, auto-pull docs + spreadsheets
       Messages collected via browser (DingTalk API doesn't support message history)
+
+  [B2] Confluence Auto-Collect
+       Enter name, auto-pull pages created/edited by the user + comments
+       Supports Cloud and Server/Data Center
 
   [C] Feishu Link
       Provide doc/Wiki link (browser session or MCP)
@@ -740,6 +790,46 @@ After collection, `Read`:
 - `knowledge/{slug}/messages.txt`
 
 If message collection fails, prompt user to upload chat screenshots.
+
+---
+
+#### Option B2: Confluence Auto-Collect
+
+First-time setup:
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/confluence_auto_collector.py --setup
+```
+
+Then enter the name:
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/confluence_auto_collector.py \
+  --name "{name}" \
+  --output-dir ./knowledge/{slug} \
+  --doc-limit 50 \
+  --comment-limit 200
+```
+
+Optional: filter by Space:
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/confluence_auto_collector.py \
+  --name "{name}" \
+  --space-key DEV \
+  --output-dir ./knowledge/{slug}
+```
+
+Collected content:
+- Confluence pages created/edited by the user (technical docs, design docs, wikis, etc.)
+- Comments/replies by the user (code review feedback, discussions, etc.)
+
+After collection, `Read`:
+- `knowledge/{slug}/docs.txt` → page content
+- `knowledge/{slug}/messages.txt` → comment content
+- `knowledge/{slug}/collection_summary.json` → collection summary
+
+If collection fails, common issues:
+- Auth failure: API Token expired or invalid, re-run --setup
+- Permission denied: confirm the account has read access to the target Space
+- User not found: try the exact display name or username shown in Confluence
 
 ---
 
