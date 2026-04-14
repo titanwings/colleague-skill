@@ -21,7 +21,7 @@ Anyone can become a `.skill`.
 
 *Last updated: 2026-04-13*
 
-[**中文**](docs/lang/ROADMAP_ZH.md) · [**Español**](docs/lang/ROADMAP_ES.md) · [**Deutsch**](docs/lang/ROADMAP_DE.md) · [**日本語**](docs/lang/ROADMAP_JA.md) · [**Русский**](docs/lang/ROADMAP_RU.md) · [**Português**](docs/lang/ROADMAP_PT.md)
+[**中文**](docs/lang/ROADMAP_ZH.md) · [**Español**](docs/lang/ROADMAP_ES.md) · [**Deutsch**](docs/lang/ROADMAP_DE.md) · [**日本語**](docs/lang/ROADMAP_JA.md) · [**Русский**](docs/lang/ROADMAP_RU.md) · [**Português**](docs/lang/ROADMAP_PT.md) · [**한국어**](docs/lang/ROADMAP_KO.md)
 
 </div>
 

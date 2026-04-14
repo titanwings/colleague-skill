@@ -27,7 +27,7 @@
 ＋あなたの主観的な人物描写を提供するだけで<br>
 **本当にその人のように働くAI Skill**が生成されます
 
-[データソース](#対応データソース) · [インストール](#インストール) · [使い方](#使い方) · [デモ](#デモ) · [詳細インストール](../../INSTALL.md) · [**中文**](README_ZH.md) · [**English**](../../README.md) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[データソース](#対応データソース) · [インストール](#インストール) · [使い方](#使い方) · [デモ](#デモ) · [詳細インストール](../../INSTALL.md) · [**中文**](README_ZH.md) · [**English**](../../README.md) · [**한국어**](README_KO.md) · [💬 Discord](https://discord.gg/aRjmJBdK)
 
 </div>
 
