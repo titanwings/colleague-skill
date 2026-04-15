@@ -31,6 +31,7 @@ import sys
 import time
 import argparse
 import platform
+from getpass import getpass
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
@@ -79,7 +80,7 @@ def setup_config() -> None:
     print()
 
     app_key = input("AppKey (ding_xxx): ").strip()
-    app_secret = input("AppSecret: ").strip()
+    app_secret = getpass("AppSecret: ").strip()
 
     config = {"app_key": app_key, "app_secret": app_secret}
     save_config(config)

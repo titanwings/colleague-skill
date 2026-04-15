@@ -45,6 +45,7 @@ import json
 import sys
 import time
 import argparse
+from getpass import getpass
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
@@ -107,12 +108,12 @@ def setup_config() -> None:
     print()
 
     app_id = input("App ID (cli_xxx): ").strip()
-    app_secret = input("App Secret: ").strip()
+    app_secret = getpass("App Secret: ").strip()
 
     config = {"app_id": app_id, "app_secret": app_secret}
 
     print("\n是否配置 user_access_token？（用于私聊消息采集，可跳过）")
-    user_token = input("user_access_token (留空跳过): ").strip()
+    user_token = getpass("user_access_token (留空跳过): ").strip()
     if user_token:
         config["user_access_token"] = user_token
     p2p_chat_id = input("私聊 chat_id (留空跳过): ").strip()
