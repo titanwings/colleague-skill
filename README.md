@@ -144,6 +144,21 @@ Once created, invoke the colleague Skill with `/{slug}`.
 | `/colleague-rollback {slug} {version}` | Rollback to a previous version |
 | `/delete-colleague {slug}` | Delete |
 
+### Reviewer Commands
+
+| Command | Description |
+|---------|-------------|
+| `/create-pr-reviewer` | Create a review-only clone for PR/code review |
+| `/create-design-reviewer` | Create a review-only clone for RFC/design/architecture review |
+| `/list-pr-reviewers` | List generated PR reviewers |
+| `/list-design-reviewers` | List generated design reviewers |
+| `/reviewer-rollback pr {slug} {version}` | Roll back a PR reviewer |
+| `/reviewer-rollback design {slug} {version}` | Roll back a design reviewer |
+| `/delete-pr-reviewer {slug}` | Delete a PR reviewer |
+| `/delete-design-reviewer {slug}` | Delete a design reviewer |
+
+Reviewer clones are review-only. They emulate how a colleague evaluates code or design material, but they do not replace the full colleague Skill or act as a general worker/persona clone.
+
 ---
 
 ## Demo

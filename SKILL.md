@@ -29,6 +29,19 @@ allowed-tools: Read, Write, Edit, Bash
 
 当用户说 `/list-colleagues` 时列出所有已生成的同事。
 
+当用户说以下任意内容时，进入 PR 审查者创建流程：
+- `/create-pr-reviewer`
+- "帮我创建一个 PR 审查者"
+- "克隆这个同事的代码 review 风格"
+
+当用户说以下任意内容时，进入设计审查者创建流程：
+- `/create-design-reviewer`
+- "帮我创建一个设计审查者"
+- "克隆这个同事的架构评审风格"
+
+当用户说 `/list-pr-reviewers` 时列出所有 PR 审查者。
+当用户说 `/list-design-reviewers` 时列出所有设计审查者。
+
 ---
 
 ## 工具使用规则
@@ -52,6 +65,7 @@ allowed-tools: Read, Write, Edit, Bash
 
 **基础目录**：Skill 文件写入 `./colleagues/{slug}/`（相对于本项目目录）。
 如需改为全局路径，用 `--base-dir ~/.openclaw/workspace/skills/colleagues`。
+PR 审查者写入 `./reviewers/pr/{slug}/`，设计审查者写入 `./reviewers/design/{slug}/`。
 
 ---
 
@@ -476,6 +490,54 @@ user-invocable: true
 
 ---
 
+## 主流程：创建 PR 审查者 Skill
+
+PR 审查者是**仅用于评审**的克隆。它只模拟这个人如何看 diff、定严重级别、提阻塞意见，不替代完整同事 Skill，也不作为通用 worker/persona clone。
+
+1. 参考 `${CLAUDE_SKILL_DIR}/prompts/review_pr_intake.md` 收集最少必要信息
+2. 导入与代码评审相关的材料：PR 评论、review 线程、技术讨论、事故复盘评论
+3. 参考 `${CLAUDE_SKILL_DIR}/prompts/review_pr_analyzer.md` 提炼严重级别、阻塞标准、常见问题类型、审批阈值和措辞风格
+4. 参考 `${CLAUDE_SKILL_DIR}/prompts/review_pr_builder.md` 生成 `/tmp/{slug}_review.md`
+5. 参考 `${CLAUDE_SKILL_DIR}/prompts/review_pr_examples_builder.md` 生成 `/tmp/{slug}_examples.md`
+6. 用以下命令写入单独目录：
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/skill_writer.py \
+  --action create-reviewer \
+  --reviewer-type pr \
+  --slug {slug} \
+  --meta /tmp/{slug}_meta.json \
+  --review /tmp/{slug}_review.md \
+  --examples /tmp/{slug}_examples.md \
+  --base-dir ./reviewers/pr
+```
+
+---
+
+## 主流程：创建设计审查者 Skill
+
+设计审查者也是**仅用于评审**的克隆。它只模拟这个人如何看 RFC、设计文档和架构权衡，不替代完整同事 Skill，也不作为通用 worker/persona clone。
+
+1. 参考 `${CLAUDE_SKILL_DIR}/prompts/review_design_intake.md` 收集最少必要信息
+2. 导入与设计评审相关的材料：RFC 评论、设计文档、API review、规划讨论
+3. 参考 `${CLAUDE_SKILL_DIR}/prompts/review_design_analyzer.md` 提炼评估标准、常见追问、红旗信号、发布与可观测性要求
+4. 参考 `${CLAUDE_SKILL_DIR}/prompts/review_design_builder.md` 生成 `/tmp/{slug}_review.md`
+5. 参考 `${CLAUDE_SKILL_DIR}/prompts/review_design_examples_builder.md` 生成 `/tmp/{slug}_examples.md`
+6. 用以下命令写入单独目录：
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/skill_writer.py \
+  --action create-reviewer \
+  --reviewer-type design \
+  --slug {slug} \
+  --meta /tmp/{slug}_meta.json \
+  --review /tmp/{slug}_review.md \
+  --examples /tmp/{slug}_examples.md \
+  --base-dir ./reviewers/design
+```
+
+---
+
 ## 进化模式：对话纠正
 
 用户表达"不对"/"应该是"时：
@@ -495,15 +557,47 @@ user-invocable: true
 python3 ${CLAUDE_SKILL_DIR}/tools/skill_writer.py --action list --base-dir ./colleagues
 ```
 
+`/list-pr-reviewers`：
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/skill_writer.py --action list --base-dir ./reviewers/pr
+```
+
+`/list-design-reviewers`：
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/skill_writer.py --action list --base-dir ./reviewers/design
+```
+
 `/colleague-rollback {slug} {version}`：
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/version_manager.py --action rollback --slug {slug} --version {version} --base-dir ./colleagues
+```
+
+`/reviewer-rollback pr {slug} {version}`：
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/version_manager.py --action rollback --slug {slug} --version {version} --base-dir ./reviewers/pr
+```
+
+`/reviewer-rollback design {slug} {version}`：
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/version_manager.py --action rollback --slug {slug} --version {version} --base-dir ./reviewers/design
 ```
 
 `/delete-colleague {slug}`：
 确认后执行：
 ```bash
 rm -rf colleagues/{slug}
+```
+
+`/delete-pr-reviewer {slug}`：
+确认后执行：
+```bash
+rm -rf reviewers/pr/{slug}
+```
+
+`/delete-design-reviewer {slug}`：
+确认后执行：
+```bash
+rm -rf reviewers/design/{slug}
 ```
 
 ---
@@ -529,6 +623,19 @@ Enter evolution mode when the user says:
 
 List all generated colleagues when the user says `/list-colleagues`.
 
+Activate PR reviewer generation when the user says:
+- `/create-pr-reviewer`
+- "Help me create a PR reviewer"
+- "Clone this colleague's code review style"
+
+Activate design reviewer generation when the user says:
+- `/create-design-reviewer`
+- "Help me create a design reviewer"
+- "Clone this colleague's architecture review style"
+
+List PR reviewers when the user says `/list-pr-reviewers`.
+List design reviewers when the user says `/list-design-reviewers`.
+
 ---
 
 ## Tool Usage Rules
@@ -552,6 +659,7 @@ This Skill runs in the Claude Code environment with the following tools:
 
 **Base directory**: Skill files are written to `./colleagues/{slug}/` (relative to the project directory).
 For a global path, use `--base-dir ~/.openclaw/workspace/skills/colleagues`.
+PR reviewers are written to `./reviewers/pr/{slug}/`, and design reviewers are written to `./reviewers/design/{slug}/`.
 
 ---
 
@@ -976,6 +1084,54 @@ When user provides new files or text:
 
 ---
 
+## Main Flow: Create a PR Reviewer Skill
+
+PR reviewers are **review-only clones**. They emulate how a person evaluates code diffs, severity, and approval thresholds, but they do not replace the full colleague Skill and do not act as a general worker/persona clone.
+
+1. Refer to `${CLAUDE_SKILL_DIR}/prompts/review_pr_intake.md` to collect the minimum required reviewer context
+2. Import review-relevant material: PR comments, review threads, technical discussions, and incident commentary
+3. Refer to `${CLAUDE_SKILL_DIR}/prompts/review_pr_analyzer.md` to extract severity rules, blocker patterns, approval thresholds, recurring issues, and phrasing style
+4. Refer to `${CLAUDE_SKILL_DIR}/prompts/review_pr_builder.md` to generate `/tmp/{slug}_review.md`
+5. Refer to `${CLAUDE_SKILL_DIR}/prompts/review_pr_examples_builder.md` to generate `/tmp/{slug}_examples.md`
+6. Write the reviewer into its isolated directory:
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/skill_writer.py \
+  --action create-reviewer \
+  --reviewer-type pr \
+  --slug {slug} \
+  --meta /tmp/{slug}_meta.json \
+  --review /tmp/{slug}_review.md \
+  --examples /tmp/{slug}_examples.md \
+  --base-dir ./reviewers/pr
+```
+
+---
+
+## Main Flow: Create a Design Reviewer Skill
+
+Design reviewers are also **review-only clones**. They emulate how a person evaluates RFCs, API contracts, rollout plans, and architecture tradeoffs, but they do not replace the full colleague Skill and do not act as a general worker/persona clone.
+
+1. Refer to `${CLAUDE_SKILL_DIR}/prompts/review_design_intake.md` to collect the minimum required reviewer context
+2. Import design-review material: RFC comments, design docs, API reviews, planning threads, and architecture discussions
+3. Refer to `${CLAUDE_SKILL_DIR}/prompts/review_design_analyzer.md` to extract evaluation criteria, repeated questions, red flags, and rollout/ownership/observability expectations
+4. Refer to `${CLAUDE_SKILL_DIR}/prompts/review_design_builder.md` to generate `/tmp/{slug}_review.md`
+5. Refer to `${CLAUDE_SKILL_DIR}/prompts/review_design_examples_builder.md` to generate `/tmp/{slug}_examples.md`
+6. Write the reviewer into its isolated directory:
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/skill_writer.py \
+  --action create-reviewer \
+  --reviewer-type design \
+  --slug {slug} \
+  --meta /tmp/{slug}_meta.json \
+  --review /tmp/{slug}_review.md \
+  --examples /tmp/{slug}_examples.md \
+  --base-dir ./reviewers/design
+```
+
+---
+
 ## Evolution Mode: Conversation Correction
 
 When user expresses "that's wrong" / "he should be":
@@ -995,13 +1151,45 @@ When user expresses "that's wrong" / "he should be":
 python3 ${CLAUDE_SKILL_DIR}/tools/skill_writer.py --action list --base-dir ./colleagues
 ```
 
+`/list-pr-reviewers`:
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/skill_writer.py --action list --base-dir ./reviewers/pr
+```
+
+`/list-design-reviewers`:
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/skill_writer.py --action list --base-dir ./reviewers/design
+```
+
 `/colleague-rollback {slug} {version}`:
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/version_manager.py --action rollback --slug {slug} --version {version} --base-dir ./colleagues
+```
+
+`/reviewer-rollback pr {slug} {version}`:
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/version_manager.py --action rollback --slug {slug} --version {version} --base-dir ./reviewers/pr
+```
+
+`/reviewer-rollback design {slug} {version}`:
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/version_manager.py --action rollback --slug {slug} --version {version} --base-dir ./reviewers/design
 ```
 
 `/delete-colleague {slug}`:
 After confirmation:
 ```bash
 rm -rf colleagues/{slug}
+```
+
+`/delete-pr-reviewer {slug}`:
+After confirmation:
+```bash
+rm -rf reviewers/pr/{slug}
+```
+
+`/delete-design-reviewer {slug}`:
+After confirmation:
+```bash
+rm -rf reviewers/design/{slug}
 ```
