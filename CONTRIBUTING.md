@@ -91,6 +91,7 @@ Don't hit live APIs in CI. Mock with `unittest.mock` or the `responses` library.
 
 - **Never commit secrets, tokens, or personal data.** If you accidentally do, rotate the credential immediately and let a maintainer know.
 - Config files that hold credentials should be written to the user's home (e.g. `~/.colleague-skill/`) with permission `0600`.
+- **Always use `getpass.getpass()` for secret prompts** (tokens, passwords, app secrets) in `--setup` flows. Plain `input()` echoes characters to the terminal and leaves them in shell scrollback. Non-secret values (names, emails, URLs) can remain as `input()`.
 - If you find a security issue, **do not open a public issue.** Email the maintainer or DM on Discord.
 
 ---
