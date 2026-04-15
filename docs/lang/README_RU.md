@@ -1,4 +1,4 @@
-<div align="center">
+<div align="center"> 
 
 # коллега.skill
 
@@ -35,7 +35,7 @@
 
 > 🆕 **Обновление 2026.04.14** — **Группа WeChat создана!** Присоединяйтесь к сообществу dot-skill — делитесь навыками, обсуждайте функции, обменивайтесь советами.
 >
-> <img src="../assets/wechat-group-qr.png" alt="QR-код группы WeChat dot-skill" width="240">
+> <img src="../assets/wechat-group-qr-2.png" alt="QR-код группы WeChat dot-skill" width="240">
 >
 > QR обновляется каждые 7 дней — если истёк, пишите мне в Discord.
 

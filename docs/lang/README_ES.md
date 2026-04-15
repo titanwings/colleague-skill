@@ -1,4 +1,4 @@
-<div align="center">
+<div align="center"> 
 
 # colega.skill
 
@@ -35,7 +35,7 @@ y obtén un **AI Skill que realmente trabaja como ellos**
 
 > 🆕 **Actualización 2026.04.14** — **¡Grupo de WeChat activo!** Únete a la comunidad dot-skill — comparte skills, discute funciones e intercambia consejos.
 >
-> <img src="../assets/wechat-group-qr.png" alt="Código QR del grupo de WeChat dot-skill" width="240">
+> <img src="../assets/wechat-group-qr-2.png" alt="Código QR del grupo de WeChat dot-skill" width="240">
 >
 > El QR se actualiza cada 7 días — si expira, contáctame en Discord.
 

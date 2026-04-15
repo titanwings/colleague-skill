@@ -1,4 +1,4 @@
-<div align="center">
+<div align="center"> 
 
 # 同事.skill
 
@@ -37,7 +37,7 @@
 
 > 🆕 **2026.04.14 更新** — **微信交流群建好啦！** 欢迎进群一起玩 dot-skill，分享 skill、聊聊功能、互相交流～
 >
-> <img src="../assets/wechat-group-qr.png" alt="dot-skill 微信群二维码" width="240">
+> <img src="../assets/wechat-group-qr-2.png" alt="dot-skill 微信群二维码" width="240">
 >
 > 二维码 7 天内有效，过期了就来 Discord 找我重新发。
 
