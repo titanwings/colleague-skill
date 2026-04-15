@@ -37,7 +37,7 @@ and get an **AI Skill that actually works like them**
 
 > 🆕 **2026.04.14 Update** — **WeChat group is live!** Come hang out with the dot-skill community — share skills, discuss features, trade tips.
 >
-> <img src="docs/assets/wechat-group-qr.png" alt="dot-skill WeChat group QR" width="240">
+> <img src="docs/assets/wechat-group-qr-2.png" alt="dot-skill WeChat group QR" width="240">
 >
 > QR refreshes every 7 days — if expired, ping me on Discord.
 
