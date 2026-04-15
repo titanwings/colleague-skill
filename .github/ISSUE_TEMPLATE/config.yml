@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discord community
+    url: https://discord.gg/aRjmJBdK
+    about: Chat, ask quick questions, and share skills. / 聊天、快速提问、分享 skill。
+  - name: 🖼️ Skill gallery
+    url: https://titanwings.github.io/colleague-skill-site/
+    about: Browse or submit a community skill. / 浏览或提交社区 skill。
