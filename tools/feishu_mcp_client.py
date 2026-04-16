@@ -55,7 +55,9 @@ def load_config() -> dict:
 
 def save_config(config: dict) -> None:
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(CONFIG_PATH.parent, 0o700)
     CONFIG_PATH.write_text(json.dumps(config, indent=2))
+    os.chmod(CONFIG_PATH, 0o600)
     print(f"配置已保存到 {CONFIG_PATH}")
 
 
