@@ -23,7 +23,7 @@ Your predecessor handed over, trying to condense three years into three pages?<b
 
 <br>
 
-Provide source materials (Feishu messages, DingTalk docs, Slack messages, emails, screenshots)<br>
+Provide source materials (Feishu messages, DingTalk docs, Slack messages, Confluence pages, emails, screenshots)<br>
 plus your subjective description of the person<br>
 and get an **AI Skill that actually works like them**
 
@@ -68,6 +68,7 @@ Created by [@titanwings](https://github.com/titanwings) | Powered by Shanghai AI
 | Feishu (auto) | ✅ API | ✅ | ✅ | Just enter a name, fully automatic |
 | DingTalk (auto) | ⚠️ Browser | ✅ | ✅ | DingTalk API doesn't support message history |
 | Slack (auto) | ✅ API | — | — | Requires admin to install Bot; free plan limited to 90 days |
+| Confluence (auto) | ✅ Comments | ✅ Pages/Wiki | — | Supports Cloud + Server/DC; requires API Token or PAT |
 | WeChat chat history | ✅ SQLite | — | — | Currently unstable, recommend using open-source tools below |
 | PDF | — | ✅ | — | Manual upload |
 | Images / Screenshots | ✅ | — | — | Manual upload |
@@ -117,7 +118,7 @@ git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/sk
 pip3 install -r requirements.txt
 ```
 
-> Feishu/DingTalk/Slack auto-collection requires App credentials. See [INSTALL.md](INSTALL.md) for details.
+> Feishu/DingTalk/Slack/Confluence auto-collection requires App credentials. See [INSTALL.md](INSTALL.md) for details.
 
 ---
 
@@ -222,6 +223,7 @@ create-colleague/
 │   ├── feishu_mcp_client.py      # Feishu MCP method
 │   ├── dingtalk_auto_collector.py # DingTalk auto-collector
 │   ├── slack_auto_collector.py   # Slack auto-collector
+│   ├── confluence_auto_collector.py # Confluence auto-collector
 │   ├── email_parser.py           # Email parser
 │   ├── skill_writer.py           # Skill file management
 │   └── version_manager.py        # Version archive & rollback
