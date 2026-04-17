@@ -91,16 +91,23 @@ Created by [@titanwings](https://github.com/titanwings) | Powered by Shanghai AI
 ```bash
 # 현재 프로젝트에 설치 (git 저장소 루트에서 실행)
 mkdir -p .claude/skills
-git clone https://github.com/titanwings/colleague-skill .claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill .claude/skills/dot-skill
 
 # 또는 전역 설치 (모든 프로젝트에서 사용 가능)
-git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-skill
 ```
 
 ### OpenClaw
 
 ```bash
-git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/dot-skill
+```
+
+### Hermes
+
+```bash
+python3 tools/install_hermes_skill.py --force
+hermes skills list | rg dot-skill
 ```
 
 ### 의존성 (선택 사항)
@@ -115,26 +122,38 @@ pip3 install -r requirements.txt
 
 ## 사용법
 
-Claude Code에서 다음 명령을 입력하세요:
+Claude Code 또는 Hermes에서 다음 명령을 입력하세요:
 
 ```
-/create-colleague
+/dot-skill
 ```
 
-프롬프트에 따라 별칭, 회사/레벨(예: `ByteDance L2-1 백엔드 엔지니어`), 성격 태그를 입력하고 데이터 소스를 선택하면 됩니다. 모든 항목은 건너뛸 수 있고, 설명만으로도 스킬을 생성할 수 있습니다.
+통합 엔트리포인트는 먼저 `colleague`, `relationship`, `celebrity` 중 하나를 고르게 합니다.
 
-생성이 끝나면 `/{slug}`로 동료 스킬을 호출하세요.
+그 다음 별칭, 기본 정보, 성격 태그, 데이터 소스를 입력합니다. 모든 항목은 건너뛸 수 있습니다.
+
+생성이 끝나면 `/{slug}`로 생성된 스킬을 호출하세요.
 
 ### 명령어
 
 | 명령어 | 설명 |
 |--------|------|
-| `/list-colleagues` | 생성된 모든 동료 스킬 목록 보기 |
+| `/dot-skill` | 통합 진입점 |
 | `/{slug}` | 전체 스킬 호출 (Persona + Work) |
 | `/{slug}-work` | 업무 역량만 사용 |
 | `/{slug}-persona` | Persona만 사용 |
-| `/colleague-rollback {slug} {version}` | 이전 버전으로 롤백 |
-| `/delete-colleague {slug}` | 삭제 |
+| `python3 tools/skill_writer.py --action list ...` | 생성된 스킬 목록 보기 |
+| `python3 tools/version_manager.py --action rollback ...` | 버전 롤백 |
+| `rm -rf ...` | 생성 디렉터리 삭제 |
+
+### Celebrity Research Toolchain
+
+```bash
+bash tools/research/download_subtitles.sh "<video-url>" "./tmp/subtitles"
+python3 tools/research/srt_to_transcript.py "./tmp/subtitles/example.srt"
+python3 tools/research/merge_research.py "./skills/celebrity/<slug>"
+python3 tools/research/quality_check.py "./skills/celebrity/<slug>/SKILL.md"
+```
 
 ---
 
@@ -198,7 +217,7 @@ Claude Code에서 다음 명령을 입력하세요:
 이 프로젝트는 [AgentSkills](https://agentskills.io) 오픈 표준을 따릅니다. 저장소 전체가 하나의 skill 디렉터리로 구성되어 있습니다.
 
 ```
-create-colleague/
+dot-skill/
 ├── SKILL.md              # Skill 진입점 (공식 frontmatter)
 ├── prompts/              # 프롬프트 템플릿
 │   ├── intake.md         #   대화형 정보 수집
@@ -217,7 +236,7 @@ create-colleague/
 │   ├── email_parser.py           # 이메일 파서
 │   ├── skill_writer.py           # Skill 파일 관리
 │   └── version_manager.py        # 버전 아카이브 및 롤백
-├── colleagues/           # 생성된 colleague 스킬들 (gitignored)
+├── skills/               # 생성된 dot-skill 산출물들 (gitignored)
 ├── docs/PRD.md
 ├── requirements.txt
 └── LICENSE

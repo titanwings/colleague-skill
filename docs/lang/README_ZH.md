@@ -61,7 +61,7 @@
 
 Created by [@titanwings](https://github.com/titanwings) | Powered by Shanghai AI Lab · AI Safety Center
 
-> **April 4th Update：** 新增了两个示例同事——一个做安全的工程师和一个有趣的 HR，在 `colleagues/` 目录下，欢迎体验！
+> **April 4th Update：** 新增了两个示例同事——一个做安全的工程师和一个有趣的 HR，在 `skills/colleague/` 目录下，欢迎体验！
 
 
 ## 支持的数据来源
@@ -104,16 +104,23 @@ Created by [@titanwings](https://github.com/titanwings) | Powered by Shanghai AI
 ```bash
 # 安装到当前项目（在 git 仓库根目录执行）
 mkdir -p .claude/skills
-git clone https://github.com/titanwings/colleague-skill .claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill .claude/skills/dot-skill
 
 # 或安装到全局（所有项目都能用）
-git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-skill
 ```
 
 ### OpenClaw
 
 ```bash
-git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/dot-skill
+```
+
+### Hermes
+
+```bash
+python3 tools/install_hermes_skill.py --force
+hermes skills list | rg dot-skill
 ```
 
 ### 依赖（可选）
@@ -128,26 +135,40 @@ pip3 install -r requirements.txt
 
 ## 使用
 
-在 Claude Code 中输入：
+在 Claude Code / Hermes 中输入：
 
 ```
-/create-colleague
+/dot-skill
 ```
 
-按提示输入同事姓名、公司职级（如 `字节 2-1 算法工程师`）、性格标签，然后选择数据来源。所有字段均可跳过，仅凭描述也能生成。
+统一入口会先让你选择 `colleague`、`relationship`、`celebrity` 三种 family 之一。
 
-完成后用 `/{slug}` 调用该同事 Skill。
+然后按提示输入姓名、基础信息、性格标签，再选择数据来源。所有字段均可跳过，仅凭描述也能生成。
+
+完成后用 `/{slug}` 调用生成好的 Skill。
 
 ### 管理命令
 
 | 命令 | 说明 |
 |------|------|
-| `/list-colleagues` | 列出所有同事 Skill |
+| `/dot-skill` | 统一主入口 |
 | `/{slug}` | 调用完整 Skill（Persona + Work） |
 | `/{slug}-work` | 仅工作能力 |
 | `/{slug}-persona` | 仅人物性格 |
-| `/colleague-rollback {slug} {version}` | 回滚到历史版本 |
-| `/delete-colleague {slug}` | 删除 |
+| `python3 tools/skill_writer.py --action list ...` | 列出三类 Skill |
+| `python3 tools/version_manager.py --action rollback ...` | 回滚历史版本 |
+| `rm -rf ...` | 删除生成目录 |
+
+在 Hermes 里，把 `/dot-skill` 当作唯一稳定的 slash 入口，不要依赖旧的 family 别名。
+
+### Celebrity Research Toolchain
+
+```bash
+bash tools/research/download_subtitles.sh "<video-url>" "./tmp/subtitles"
+python3 tools/research/srt_to_transcript.py "./tmp/subtitles/example.srt"
+python3 tools/research/merge_research.py "./skills/celebrity/<slug>"
+python3 tools/research/quality_check.py "./skills/celebrity/<slug>/SKILL.md"
+```
 
 ---
 
@@ -209,7 +230,7 @@ pip3 install -r requirements.txt
 本项目遵循 [AgentSkills](https://agentskills.io) 开放标准，整个 repo 就是一个 skill 目录：
 
 ```
-create-colleague/
+dot-skill/
 ├── SKILL.md              # skill 入口（官方 frontmatter）
 ├── prompts/              # Prompt 模板
 │   ├── intake.md         #   对话式信息录入
@@ -228,7 +249,7 @@ create-colleague/
 │   ├── email_parser.py           # 邮件解析
 │   ├── skill_writer.py           # Skill 文件管理
 │   └── version_manager.py        # 版本存档与回滚
-├── colleagues/           # 生成的同事 Skill（gitignored）
+├── skills/               # 生成的 dot-skill 产物（gitignored）
 ├── docs/PRD.md
 ├── requirements.txt
 └── LICENSE
@@ -270,4 +291,3 @@ MIT License © [titanwings](https://github.com/titanwings)
 
 
 </div>
-

@@ -1,6 +1,6 @@
 <div align="center"> 
 
-# colleague.skill
+# dot-skill
 
 > *"You AI guys are traitors to the codebase — you've already killed frontend, now you're coming for backend, QA, ops, infosec, chip design, and eventually yourselves and all of humanity"*
 
@@ -61,7 +61,7 @@ Created by [@titanwings](https://github.com/titanwings) | Powered by Shanghai AI
 
 ## Supported Data Sources
 
-> This is still a beta version of colleague.skill — more sources coming soon, stay tuned!
+> This is still a beta version of dot-skill — more sources and families are still being hardened.
 
 | Source | Messages | Docs / Wiki | Spreadsheets | Notes |
 |--------|:--------:|:-----------:|:------------:|-------|
@@ -99,16 +99,23 @@ These are independent open-source projects — this project does not include the
 ```bash
 # Install to current project (run at git repo root)
 mkdir -p .claude/skills
-git clone https://github.com/titanwings/colleague-skill .claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill .claude/skills/dot-skill
 
 # Or install globally (available in all projects)
-git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-skill
 ```
 
 ### OpenClaw
 
 ```bash
-git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/dot-skill
+```
+
+### Hermes
+
+```bash
+python3 tools/install_hermes_skill.py --force
+hermes skills list | rg dot-skill
 ```
 
 ### Dependencies (optional)
@@ -123,26 +130,40 @@ pip3 install -r requirements.txt
 
 ## Usage
 
-In Claude Code, type:
+In Claude Code or Hermes, type:
 
 ```
-/create-colleague
+/dot-skill
 ```
 
-Follow the prompts: enter an alias, company/level (e.g. `ByteDance L2-1 backend engineer`), personality tags, then choose a data source. All fields can be skipped — even a description alone can generate a Skill.
+The unified entry first asks which family you want to distill: `colleague`, `relationship`, or `celebrity`.
 
-Once created, invoke the colleague Skill with `/{slug}`.
+Then follow the prompts: enter an alias, basic profile, personality tags, then choose a data source. All fields can be skipped — even a description alone can generate a Skill.
+
+Once created, invoke the generated Skill with `/{slug}`.
 
 ### Commands
 
 | Command | Description |
 |---------|-------------|
-| `/list-colleagues` | List all colleague Skills |
+| `/dot-skill` | Canonical unified entrypoint |
 | `/{slug}` | Invoke full Skill (Persona + Work) |
 | `/{slug}-work` | Work capabilities only |
 | `/{slug}-persona` | Persona only |
-| `/colleague-rollback {slug} {version}` | Rollback to a previous version |
-| `/delete-colleague {slug}` | Delete |
+| `python3 tools/skill_writer.py --action list ...` | List generated Skills across the three families |
+| `python3 tools/version_manager.py --action rollback ...` | Roll back a Skill version |
+| `rm -rf ...` | Delete a generated Skill directory |
+
+For Hermes, treat `/dot-skill` as the only guaranteed slash entrypoint.
+
+### Celebrity Research Toolchain
+
+```bash
+bash tools/research/download_subtitles.sh "<video-url>" "./tmp/subtitles"
+python3 tools/research/srt_to_transcript.py "./tmp/subtitles/example.srt"
+python3 tools/research/merge_research.py "./skills/celebrity/<slug>"
+python3 tools/research/quality_check.py "./skills/celebrity/<slug>/SKILL.md"
+```
 
 ---
 
@@ -206,7 +227,7 @@ Execution: `Receive task → Persona decides attitude → Work Skill executes �
 This project follows the [AgentSkills](https://agentskills.io) open standard. The entire repo is a skill directory:
 
 ```
-create-colleague/
+dot-skill/
 ├── SKILL.md              # Skill entry point (official frontmatter)
 ├── prompts/              # Prompt templates
 │   ├── intake.md         #   Dialogue-based info collection
@@ -225,7 +246,7 @@ create-colleague/
 │   ├── email_parser.py           # Email parser
 │   ├── skill_writer.py           # Skill file management
 │   └── version_manager.py        # Version archive & rollback
-├── colleagues/           # Generated colleague Skills (gitignored)
+├── skills/               # Generated dot-skill outputs (gitignored)
 ├── docs/PRD.md
 ├── requirements.txt
 └── LICENSE

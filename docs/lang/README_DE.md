@@ -85,16 +85,23 @@ Created by [@titanwings](https://github.com/titanwings) | Powered by Shanghai AI
 ```bash
 # Im aktuellen Projekt installieren (im Git-Repo-Stammverzeichnis ausführen)
 mkdir -p .claude/skills
-git clone https://github.com/titanwings/colleague-skill .claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill .claude/skills/dot-skill
 
 # Oder global installieren (in allen Projekten verfügbar)
-git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-skill
 ```
 
 ### OpenClaw
 
 ```bash
-git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/dot-skill
+```
+
+### Hermes
+
+```bash
+python3 tools/install_hermes_skill.py --force
+hermes skills list | rg dot-skill
 ```
 
 ### Abhängigkeiten (optional)
@@ -107,26 +114,38 @@ pip3 install -r requirements.txt
 
 ## Nutzung
 
-In Claude Code eingeben:
+In Claude Code oder Hermes eingeben:
 
 ```
-/create-colleague
+/dot-skill
 ```
 
-Folge den Anweisungen: Gib einen Alias ein, Firma/Level (z.B. `SAP Senior Developer`), Persönlichkeits-Tags, dann wähle eine Datenquelle. Alle Felder können übersprungen werden — selbst eine Beschreibung allein kann einen Skill generieren.
+Der einheitliche Einstieg fragt zuerst nach `colleague`, `relationship` oder `celebrity`.
 
-Nach der Erstellung rufst du den Kollegen-Skill mit `/{slug}` auf.
+Danach folgen Alias, Basisprofil, Persönlichkeits-Tags und Datenquelle. Alle Felder können übersprungen werden.
+
+Nach der Erstellung rufst du den generierten Skill mit `/{slug}` auf.
 
 ### Befehle
 
 | Befehl | Beschreibung |
 |--------|--------------|
-| `/list-colleagues` | Alle Kollegen-Skills auflisten |
+| `/dot-skill` | Einheitlicher Einstiegspunkt |
 | `/{slug}` | Vollständigen Skill aufrufen (Persona + Work) |
 | `/{slug}-work` | Nur Arbeitsfähigkeiten |
 | `/{slug}-persona` | Nur Persönlichkeit |
-| `/colleague-rollback {slug} {version}` | Auf eine frühere Version zurücksetzen |
-| `/delete-colleague {slug}` | Löschen |
+| `python3 tools/skill_writer.py --action list ...` | Generierte Skills auflisten |
+| `python3 tools/version_manager.py --action rollback ...` | Version zurücksetzen |
+| `rm -rf ...` | Generiertes Verzeichnis löschen |
+
+### Celebrity Research Toolchain
+
+```bash
+bash tools/research/download_subtitles.sh "<video-url>" "./tmp/subtitles"
+python3 tools/research/srt_to_transcript.py "./tmp/subtitles/example.srt"
+python3 tools/research/merge_research.py "./skills/celebrity/<slug>"
+python3 tools/research/quality_check.py "./skills/celebrity/<slug>/SKILL.md"
+```
 
 ---
 

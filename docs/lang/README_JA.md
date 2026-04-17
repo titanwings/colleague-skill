@@ -86,16 +86,23 @@ Created by [@titanwings](https://github.com/titanwings) | Powered by Shanghai AI
 ```bash
 # 現在のプロジェクトにインストール（gitリポジトリのルートで実行）
 mkdir -p .claude/skills
-git clone https://github.com/titanwings/colleague-skill .claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill .claude/skills/dot-skill
 
 # またはグローバルにインストール（すべてのプロジェクトで利用可能）
-git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-skill
 ```
 
 ### OpenClaw
 
 ```bash
-git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/dot-skill
+```
+
+### Hermes
+
+```bash
+python3 tools/install_hermes_skill.py --force
+hermes skills list | rg dot-skill
 ```
 
 ### 依存関係（オプション）
@@ -108,26 +115,38 @@ pip3 install -r requirements.txt
 
 ## 使い方
 
-Claude Codeで入力：
+Claude Code または Hermes で入力：
 
 ```
-/create-colleague
+/dot-skill
 ```
 
-プロンプトに従って：ニックネーム、会社/レベル（例：`楽天 シニアエンジニア`）、性格タグを入力し、データソースを選択。すべてのフィールドはスキップ可能——説明だけでもSkillを生成できます。
+統一エントリでは最初に `colleague`、`relationship`、`celebrity` のいずれかを選びます。
 
-作成後、`/{slug}`で同僚Skillを呼び出します。
+その後、ニックネーム、基本情報、性格タグ、データソースを入力します。すべてスキップ可能です。
+
+作成後、`/{slug}`で生成された Skill を呼び出します。
 
 ### コマンド
 
 | コマンド | 説明 |
 |---------|------|
-| `/list-colleagues` | すべての同僚Skillを一覧表示 |
+| `/dot-skill` | 統一エントリポイント |
 | `/{slug}` | フルSkillを呼び出し（Persona + Work） |
 | `/{slug}-work` | 仕事能力のみ |
 | `/{slug}-persona` | 人物性格のみ |
-| `/colleague-rollback {slug} {version}` | 以前のバージョンにロールバック |
-| `/delete-colleague {slug}` | 削除 |
+| `python3 tools/skill_writer.py --action list ...` | 生成済み Skill の一覧 |
+| `python3 tools/version_manager.py --action rollback ...` | バージョンのロールバック |
+| `rm -rf ...` | 生成ディレクトリの削除 |
+
+### Celebrity Research Toolchain
+
+```bash
+bash tools/research/download_subtitles.sh "<video-url>" "./tmp/subtitles"
+python3 tools/research/srt_to_transcript.py "./tmp/subtitles/example.srt"
+python3 tools/research/merge_research.py "./skills/celebrity/<slug>"
+python3 tools/research/quality_check.py "./skills/celebrity/<slug>/SKILL.md"
+```
 
 ---
 

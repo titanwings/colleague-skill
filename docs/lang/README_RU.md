@@ -86,16 +86,23 @@ Created by [@titanwings](https://github.com/titanwings) | Powered by Shanghai AI
 ```bash
 # Установить в текущий проект (выполнить в корне git-репозитория)
 mkdir -p .claude/skills
-git clone https://github.com/titanwings/colleague-skill .claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill .claude/skills/dot-skill
 
 # Или установить глобально (доступно во всех проектах)
-git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-skill
 ```
 
 ### OpenClaw
 
 ```bash
-git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/dot-skill
+```
+
+### Hermes
+
+```bash
+python3 tools/install_hermes_skill.py --force
+hermes skills list | rg dot-skill
 ```
 
 ### Зависимости (опционально)
@@ -108,26 +115,38 @@ pip3 install -r requirements.txt
 
 ## Использование
 
-В Claude Code введи:
+В Claude Code или Hermes введи:
 
 ```
-/create-colleague
+/dot-skill
 ```
 
-Следуй инструкциям: введи имя, компания/уровень (например, `Яндекс Senior разработчик`), теги личности, затем выбери источник данных. Все поля можно пропустить — даже одного описания достаточно для генерации Skill.
+Сначала единый вход попросит выбрать `colleague`, `relationship` или `celebrity`.
 
-После создания вызывай Skill коллеги через `/{slug}`.
+Дальше введи имя, базовый профиль, теги личности и источник данных. Все поля можно пропустить.
+
+После создания вызывай сгенерированный Skill через `/{slug}`.
 
 ### Команды
 
 | Команда | Описание |
 |---------|----------|
-| `/list-colleagues` | Показать все Skill'ы коллег |
+| `/dot-skill` | Единая точка входа |
 | `/{slug}` | Вызвать полный Skill (Persona + Work) |
 | `/{slug}-work` | Только рабочие навыки |
 | `/{slug}-persona` | Только личность |
-| `/colleague-rollback {slug} {version}` | Откатить к предыдущей версии |
-| `/delete-colleague {slug}` | Удалить |
+| `python3 tools/skill_writer.py --action list ...` | Показать сгенерированные Skill |
+| `python3 tools/version_manager.py --action rollback ...` | Откатить версию |
+| `rm -rf ...` | Удалить сгенерированную директорию |
+
+### Celebrity Research Toolchain
+
+```bash
+bash tools/research/download_subtitles.sh "<video-url>" "./tmp/subtitles"
+python3 tools/research/srt_to_transcript.py "./tmp/subtitles/example.srt"
+python3 tools/research/merge_research.py "./skills/celebrity/<slug>"
+python3 tools/research/quality_check.py "./skills/celebrity/<slug>/SKILL.md"
+```
 
 ---
 
