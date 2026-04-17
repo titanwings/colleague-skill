@@ -35,7 +35,7 @@
 
 ---
 
-> 🆕 **2026.04.14 更新** — **微信交流群建好啦！** 欢迎进群一起玩 dot-skill，分享 skill、聊聊功能、互相交流～
+> 🆕 **2026.04.17 更新** — **微信交流4群建好啦！** 欢迎进群一起玩 dot-skill，分享 skill、聊聊功能、互相交流～
 >
 > <img src="../assets/wechat-group-qr-3.png" alt="dot-skill 微信群二维码" width="240">
 >

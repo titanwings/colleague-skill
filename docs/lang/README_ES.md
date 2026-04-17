@@ -33,7 +33,7 @@ y obtén un **AI Skill que realmente trabaja como ellos**
 
 ---
 
-> 🆕 **Actualización 2026.04.14** — **¡Grupo de WeChat activo!** Únete a la comunidad dot-skill — comparte skills, discute funciones e intercambia consejos.
+> 🆕 **Actualización 2026.04.17** — **¡Grupo 4 de WeChat activo!** Únete a la comunidad dot-skill — comparte skills, discute funciones e intercambia consejos.
 >
 > <img src="../assets/wechat-group-qr-3.png" alt="Código QR del grupo de WeChat dot-skill" width="240">
 >

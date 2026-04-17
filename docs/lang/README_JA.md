@@ -33,7 +33,7 @@
 
 ---
 
-> 🆕 **2026.04.14 更新** — **WeChat グループ開設！** dot-skill コミュニティで一緒に遊びましょう — skill をシェアしたり、機能を議論したり、Tips を交換したり。
+> 🆕 **2026.04.17 更新** — **WeChat グループ 4 開設！** dot-skill コミュニティで一緒に遊びましょう — skill をシェアしたり、機能を議論したり、Tips を交換したり。
 >
 > <img src="../assets/wechat-group-qr-3.png" alt="dot-skill WeChat グループ QR" width="240">
 >

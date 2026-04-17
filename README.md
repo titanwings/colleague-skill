@@ -35,7 +35,7 @@ and get an **AI Skill that actually works like them**
 
 ---
 
-> 🆕 **2026.04.16 Update** — **WeChat group 3 is live!** Come hang out with the dot-skill community — share skills, discuss features, trade tips.
+> 🆕 **2026.04.17 Update** — **WeChat group 4 is live!** Come hang out with the dot-skill community — share skills, discuss features, trade tips.
 >
 > <img src="docs/assets/wechat-group-qr-3.png" alt="dot-skill WeChat group QR" width="240">
 >
