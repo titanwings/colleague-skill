@@ -1,4 +1,4 @@
-# 同事.skill 安装说明
+# dot-skill 安装说明
 
 ---
 
@@ -14,15 +14,34 @@ cd $(git rev-parse --show-toplevel)
 
 # 方式 1：安装到当前项目
 mkdir -p .claude/skills
-git clone https://github.com/titanwings/colleague-skill .claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill .claude/skills/dot-skill
 
 # 方式 2：安装到全局（所有项目都能用）
-git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-skill
 ```
 
-然后在 Claude Code 中说 `/create-colleague` 即可启动。
+然后在 Claude Code / Hermes 中说 `/dot-skill` 即可启动。
 
-生成的同事 Skill 默认写入 `./colleagues/` 目录。
+在 Hermes 中，把 `/dot-skill` 当作唯一稳定的 slash 入口。`colleague`、`relationship`、`celebrity` 三类兼容性仍然保留在工具层和存储层，但不建议依赖 `/create-colleague` 这类家族别名作为 Hermes 的 slash command。
+
+如果 dot-skill 已经生成了某个角色 Skill，并且你希望它在 Claude Code 里直接通过 `/` 调用，再执行一次：
+
+```bash
+python3 tools/install_claude_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
+```
+
+生成后的 Claude Code 触发命令格式是：
+
+```text
+/{character}-{slug}
+```
+
+Windows 上安装器还会额外写入 `~/.claude/commands/{character}-{slug}.md`，用来绕过当前的 skill 发现问题。
+
+生成的 Skill 会按 character family 写入：
+- `colleague` → `./skills/colleague/`
+- `relationship` → `./skills/relationship/`
+- `celebrity` → `./skills/celebrity/`
 
 ---
 
@@ -30,10 +49,33 @@ git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/create-
 
 ```bash
 # 克隆到 OpenClaw 的 skills 目录
-git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/dot-skill
 ```
 
-重启 OpenClaw session，说 `/create-colleague` 启动。
+重启 OpenClaw session，说 `/dot-skill` 启动。
+
+---
+
+### C. Hermes
+
+推荐直接用仓库内的安装器，把当前 repo 同步到 Hermes 的本地 skill 目录：
+
+```bash
+python3 tools/install_hermes_skill.py --force
+hermes skills list | rg dot-skill
+```
+
+安装完成后，在 Hermes 中使用：
+
+```text
+/dot-skill
+```
+
+如果只是预览安装目标，可以先跑：
+
+```bash
+python3 tools/install_hermes_skill.py --dry-run
+```
 
 ---
 
@@ -214,7 +256,7 @@ knowledge/张三/
 ## 快速验证
 
 ```bash
-cd ~/.claude/skills/create-colleague   # 或你的项目 .claude/skills/create-colleague
+cd ~/.claude/skills/dot-skill   # 或你的项目 .claude/skills/dot-skill
 
 # 测试飞书解析器
 python3 tools/feishu_parser.py --help
@@ -225,8 +267,16 @@ python3 tools/slack_auto_collector.py --help
 # 测试邮件解析器
 python3 tools/email_parser.py --help
 
+# 测试 Hermes 安装器
+python3 tools/install_hermes_skill.py --dry-run
+
+# 测试 celebrity research toolchain
+python3 tools/research/srt_to_transcript.py --help
+python3 tools/research/merge_research.py --help
+python3 tools/research/quality_check.py --help
+
 # 列出已有同事 Skill
-python3 tools/skill_writer.py --action list --base-dir ./colleagues
+python3 tools/skill_writer.py --action list --base-dir ./skills/colleague
 ```
 
 ---
@@ -236,13 +286,15 @@ python3 tools/skill_writer.py --action list --base-dir ./colleagues
 本项目整个 repo 就是一个 skill 目录（AgentSkills 标准格式）：
 
 ```
-colleague-skill/        ← clone 到 .claude/skills/create-colleague/
+colleague-skill/        ← clone 到 .claude/skills/dot-skill/
 ├── SKILL.md            # skill 入口（官方 frontmatter）
 ├── prompts/            # 分析和生成的 Prompt 模板
 ├── tools/              # Python 工具脚本
+│   ├── install_hermes_skill.py   # Hermes 本地安装器
+│   └── research/                 # celebrity research toolchain
 ├── docs/               # 文档（PRD 等）
 │
-└── colleagues/         # 生成的同事 Skill 存放处（.gitignore 排除）
+└── skills/             # 生成的 dot-skill 产物（.gitignore 排除）
     └── {slug}/
         ├── SKILL.md            # 完整 Skill（Persona + Work）
         ├── work.md             # 仅工作能力

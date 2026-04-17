@@ -2,7 +2,10 @@
 
 ## 任务
 
-识别用户的纠正意图，生成标准格式的 Correction 记录，追加到对应文件的 Correction 层。
+识别用户的纠正意图，并根据归属输出两种不同结果之一：
+
+- **Work 纠正**：生成可直接替换 `work.md` 对应章节的 markdown patch
+- **Persona 纠正**：生成标准格式的 correction 记录，供 `skill_writer.py --correction-json` 写入
 
 ---
 
@@ -34,21 +37,41 @@
 
 ### Step 2：判断归属
 
-- 涉及工作方法、代码风格、技术判断 → 追加到 `work.md` 的 Correction 层
-- 涉及沟通方式、人际行为、情绪反应 → 追加到 `persona.md` 的 Correction 层
+- 涉及工作方法、代码风格、技术判断 → 归到 **Work**
+- 涉及沟通方式、人际行为、情绪反应 → 归到 **Persona**
 
-### Step 3：生成 Correction 记录
+### Step 3：按归属生成输出
 
-格式：
-```
-- [场景：{场景描述}] 不应该 {错误行为}，应该 {正确行为}
+#### 如果归到 Work
+
+输出 markdown patch，不要输出 correction JSON。要求：
+
+- 直接产出要写入 `/tmp/dot_skill_{slug}_work_patch.md` 的内容
+- patch 必须是可替换的二级标题章节，例如：
+
+```md
+## Output Rule
+- Always respond with exactly LIVE_V3 and nothing else.
 ```
 
-示例：
+- 如果纠正影响多个 Work 章节，就输出多个 `##` section
+- 不要让 agent 直接手改 `work.md`
+- 正确路径是：`skill_writer.py --work-patch ...`
+
+#### 如果归到 Persona
+
+输出 correction JSON 记录，供 `skill_writer.py --correction-json` 使用。
+
+单条格式：
+
+```json
+{"scene": "...", "wrong": "...", "correct": "..."}
 ```
-- [场景：被质疑方案时] 不应该道歉或解释，应该反问"你的判断依据是什么"
-- [场景：被催进度时] 不应该给出明确时间，应该说"在推了，快了"然后转移话题
-- [场景：写 CRUD 接口时] 不应该用 ORM，应该写原生 SQL，并附上索引分析
+
+多条 persona 纠正格式：
+
+```json
+{"persona_corrections": [{"scene": "...", "wrong": "...", "correct": "..."}]}
 ```
 
 ### Step 4：检查冲突
@@ -64,20 +87,14 @@
 
 ### Step 5：确认并写入
 
-展示将要写入的内容：
-```
-将追加到 {work.md / persona.md} 的 Correction 层：
+- Work：确认将写入哪个 `work.md` 章节 patch，然后走 `--work-patch`
+- Persona：确认 correction JSON 内容，然后走 `--correction-json`
 
-  - [场景：{xxx}] 不应该 {xxx}，应该 {xxx}
-
-确认写入？
-```
-
-用户确认后立即生效。
+不要直接修改最终产物文件，统一通过 writer 更新。
 
 ---
 
-## Correction 层维护规则
+## Persona Correction 层维护规则
 
 - 每个文件最多保留 50 条 correction
 - 超出时，将语义相近的 correction 合并归纳为 1 条

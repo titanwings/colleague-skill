@@ -1,6 +1,6 @@
 <div align="center">
 
-# colleague.skill
+# dot-skill
 
 > *"You AI guys are traitors to the codebase — you've already killed frontend, now you're coming for backend, QA, ops, infosec, chip design, and eventually yourselves and all of humanity"*
 
@@ -61,7 +61,7 @@ Created by [@titanwings](https://github.com/titanwings) | Powered by Shanghai AI
 
 ## Supported Data Sources
 
-> This is still a beta version of colleague.skill — more sources coming soon, stay tuned!
+> This is still a beta version of dot-skill — more sources and character families are still being hardened.
 
 | Source | Messages | Docs / Wiki | Spreadsheets | Notes |
 |--------|:--------:|:-----------:|:------------:|-------|
@@ -99,17 +99,42 @@ These are independent open-source projects — this project does not include the
 ```bash
 # Install to current project (run at git repo root)
 mkdir -p .claude/skills
-git clone https://github.com/titanwings/colleague-skill .claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill .claude/skills/dot-skill
 
 # Or install globally (available in all projects)
-git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-skill
 ```
 
 ### OpenClaw
 
 ```bash
-git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/create-colleague
+git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/dot-skill
 ```
+
+### Hermes
+
+```bash
+python3 tools/install_hermes_skill.py --force
+hermes skills list | rg dot-skill
+```
+
+Use `/dot-skill` inside Hermes after installation.
+
+### Generated Role Skills in Claude Code
+
+When dot-skill creates a generated role skill, publish it into Claude Code with:
+
+```bash
+python3 tools/install_claude_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
+```
+
+The installed slash command will be:
+
+```text
+/celebrity-zhou-qimo
+```
+
+On Windows, the installer also writes a slash-command shim under `~/.claude/commands/` to avoid the current skill discovery issue.
 
 ### Dependencies (optional)
 
@@ -126,23 +151,58 @@ pip3 install -r requirements.txt
 In Claude Code, type:
 
 ```
-/create-colleague
+/dot-skill
 ```
 
-Follow the prompts: enter an alias, company/level (e.g. `ByteDance L2-1 backend engineer`), personality tags, then choose a data source. All fields can be skipped — even a description alone can generate a Skill.
+The unified entry first asks which character family you want to distill: `colleague`, `relationship`, or `celebrity`.
 
-Once created, invoke the colleague Skill with `/{slug}`.
+Then follow the prompts: enter an alias, basic profile, personality tags, then choose a data source. All fields can be skipped — even a description alone can generate a Skill.
+
+Once created, invoke the generated Skill with `/{slug}`.
+
+### dot-skill groundwork
+
+The tool layer now exposes a dot-skill engine schema built around `kind`, `character`, and `preset`.
+
+- the engine is modeled as a `meta-skill`
+- `character` now resolves into three top-level families: `colleague`, `relationship`, and `celebrity`
+- `preset` selects the prompt bundle used to render that character family
+- `colleague` remains fully backward-compatible
+- canonical storage now uses `./skills/{character}` for all three families, including `./skills/colleague`
+- legacy `./colleagues` directories are still readable for backward compatibility
+- `celebrity` also exposes a research toolchain for subtitles, transcript cleanup, research merging, and draft quality checks
 
 ### Commands
 
 | Command | Description |
 |---------|-------------|
-| `/list-colleagues` | List all colleague Skills |
+| `/dot-skill` | Canonical unified entrypoint |
 | `/{slug}` | Invoke full Skill (Persona + Work) |
 | `/{slug}-work` | Work capabilities only |
 | `/{slug}-persona` | Persona only |
-| `/colleague-rollback {slug} {version}` | Rollback to a previous version |
-| `/delete-colleague {slug}` | Delete |
+| `python3 tools/skill_writer.py --action list ...` | List generated Skills across the three character families |
+| `python3 tools/version_manager.py --action rollback ...` | Roll back a Skill version |
+| `rm -rf ...` | Delete a generated Skill directory |
+
+For Hermes specifically, treat `/dot-skill` as the only guaranteed slash entrypoint. The three character families remain compatible in the tool layer and storage layout, but Hermes may not route family-specific legacy aliases as slash commands.
+
+### Celebrity Research Toolchain
+
+The `celebrity` family now includes a research-first toolchain inspired by ideas explored in `alchaincyf/nuwa-skill`:
+
+```bash
+# Download subtitles from a supported video URL
+bash tools/research/download_subtitles.sh "<video-url>" "./tmp/subtitles"
+
+# Convert subtitles into a clean transcript
+python3 tools/research/srt_to_transcript.py "./tmp/subtitles/example.srt"
+
+# Merge raw research notes into a summary
+python3 tools/research/merge_research.py "./skills/celebrity/<slug>"
+
+# Run quality checks against a generated draft
+python3 tools/research/quality_check.py "./skills/celebrity/<slug>/SKILL.md"
+```
 
 ---
 
@@ -198,6 +258,17 @@ Execution: `Receive task → Persona decides attitude → Work Skill executes �
 - **Append files** → auto-analyze delta → merge into relevant sections, never overwrite existing conclusions
 - **Conversation correction** → say "he wouldn't do that, he should be xxx" → writes to Correction layer, takes effect immediately
 - **Version control** → auto-archive on every update, rollback to any previous version
+- **Celebrity research pipeline** → subtitles → transcript cleanup → merged research summary → draft quality check
+
+### Character-aware writer examples
+
+```bash
+python3 tools/skill_writer.py --action create --character colleague --name "Eulalie"
+python3 tools/skill_writer.py --action create --character relationship --name "Mireille"
+python3 tools/skill_writer.py --action create --character celebrity --name "Sappho"
+python3 tools/skill_writer.py --action create --character celebrity --name "周奇墨" --install-claude-skill
+python3 tools/skill_writer.py --action list --character relationship
+```
 
 ---
 
@@ -206,7 +277,7 @@ Execution: `Receive task → Persona decides attitude → Work Skill executes �
 This project follows the [AgentSkills](https://agentskills.io) open standard. The entire repo is a skill directory:
 
 ```
-create-colleague/
+dot-skill/
 ├── SKILL.md              # Skill entry point (official frontmatter)
 ├── prompts/              # Prompt templates
 │   ├── intake.md         #   Dialogue-based info collection
@@ -223,9 +294,15 @@ create-colleague/
 │   ├── dingtalk_auto_collector.py # DingTalk auto-collector
 │   ├── slack_auto_collector.py   # Slack auto-collector
 │   ├── email_parser.py           # Email parser
+│   ├── install_claude_generated_skill.py  # Claude Code generated-skill installer
+│   ├── install_hermes_skill.py   # Hermes local installer
+│   ├── research/                 # Celebrity research toolchain
 │   ├── skill_writer.py           # Skill file management
 │   └── version_manager.py        # Version archive & rollback
-├── colleagues/           # Generated colleague Skills (gitignored)
+├── skills/
+│   ├── colleague/        # Generated colleague Skills (gitignored)
+│   ├── relationship/     # Generated relationship Skills (gitignored)
+│   └── celebrity/        # Generated celebrity Skills (gitignored)
 ├── docs/PRD.md
 ├── requirements.txt
 └── LICENSE
