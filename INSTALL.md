@@ -22,21 +22,36 @@ git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-ski
 
 然后在 Claude Code / Hermes 中说 `/dot-skill` 即可启动。
 
+兼容宿主：
+- Claude Code
+- OpenClaw
+- Hermes
+- Codex
+
+在支持 slash command 的宿主里，统一使用 `/dot-skill`。
 在 Hermes 中，把 `/dot-skill` 当作唯一稳定的 slash 入口。`colleague`、`relationship`、`celebrity` 三类兼容性仍然保留在工具层和存储层，但不建议依赖 `/create-colleague` 这类家族别名作为 Hermes 的 slash command。
 
-如果 dot-skill 已经生成了某个角色 Skill，并且你希望它在 Claude Code 里直接通过 `/` 调用，再执行一次：
+如果 dot-skill 已经生成了某个角色 Skill，并且你希望它在某个宿主里直接可用，再执行对应安装器：
 
 ```bash
 python3 tools/install_claude_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
+python3 tools/install_openclaw_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
+python3 tools/install_codex_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
 ```
 
-生成后的 Claude Code 触发命令格式是：
+在 Claude Code / OpenClaw 这类 slash 驱动宿主里，触发命令格式是：
 
 ```text
 /{character}-{slug}
 ```
 
-Windows 上安装器还会额外写入 `~/.claude/commands/{character}-{slug}.md`，用来绕过当前的 skill 发现问题。
+在 Codex 中，对应的本地 skill 名称是：
+
+```text
+{character}-{slug}
+```
+
+Windows 上 Claude 安装器还会额外写入 `~/.claude/commands/{character}-{slug}.md`，用来绕过当前的 skill 发现问题。
 
 生成的 Skill 会按 character family 写入：
 - `colleague` → `./skills/colleague/`
@@ -48,7 +63,12 @@ Windows 上安装器还会额外写入 `~/.claude/commands/{character}-{slug}.md
 ### B. OpenClaw
 
 ```bash
-# 克隆到 OpenClaw 的 skills 目录
+python3 tools/install_openclaw_skill.py --force
+```
+
+或者继续使用 clone 方式：
+
+```bash
 git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/dot-skill
 ```
 
@@ -76,6 +96,24 @@ hermes skills list | rg dot-skill
 ```bash
 python3 tools/install_hermes_skill.py --dry-run
 ```
+
+---
+
+### D. Codex
+
+推荐直接用仓库内的安装器，把当前 repo 同步到 Codex 的本地 skill 目录：
+
+```bash
+python3 tools/install_codex_skill.py --force
+```
+
+或者继续使用 clone 方式：
+
+```bash
+git clone https://github.com/titanwings/colleague-skill ~/.codex/skills/dot-skill
+```
+
+Codex 没有固定 slash 入口。安装完成后，它会把 `dot-skill` 当作本地 skill 发现；生成后的角色 Skill 会以 `{character}-{slug}` 的技能名安装在 `~/.codex/skills/` 下。
 
 ---
 
@@ -270,6 +308,10 @@ python3 tools/email_parser.py --help
 # 测试 Hermes 安装器
 python3 tools/install_hermes_skill.py --dry-run
 
+# 测试 OpenClaw / Codex 安装器
+python3 tools/install_openclaw_skill.py --dry-run
+python3 tools/install_codex_skill.py --dry-run
+
 # 测试 celebrity research toolchain
 python3 tools/research/srt_to_transcript.py --help
 python3 tools/research/merge_research.py --help
@@ -291,6 +333,10 @@ colleague-skill/        ← clone 到 .claude/skills/dot-skill/
 ├── prompts/            # 分析和生成的 Prompt 模板
 ├── tools/              # Python 工具脚本
 │   ├── install_hermes_skill.py   # Hermes 本地安装器
+│   ├── install_openclaw_skill.py # OpenClaw 本地安装器
+│   ├── install_codex_skill.py    # Codex 本地安装器
+│   ├── install_openclaw_generated_skill.py # OpenClaw 角色 Skill 安装器
+│   ├── install_codex_generated_skill.py    # Codex 角色 Skill 安装器
 │   └── research/                 # celebrity research toolchain
 ├── docs/               # 文档（PRD 等）
 │

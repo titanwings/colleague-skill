@@ -12,11 +12,11 @@ allowed-tools: Read, Write, Edit, Bash
 
 > **Execution Root / 执行根目录**: Run all `Bash` commands from the directory that contains this `SKILL.md`. All `tools/...` and `prompts/...` paths below are relative to the skill root.
 >
-> **Critical rule / 关键规则**: Do **not** prepend commands with guessed `cd ~/.hermes/...`, `cd ~/.claude/...`, or hard-coded `/Users/.../dot-skill` paths. The current working directory is already the correct skill root. Run `python3 tools/...` directly.
+> **Critical rule / 关键规则**: Do **not** prepend commands with guessed host-specific paths such as `cd ~/.hermes/...`, `cd ~/.claude/...`, `cd ~/.openclaw/...`, `cd ~/.codex/...`, or hard-coded `/Users/.../dot-skill` paths. The current working directory is already the correct skill root. Run `python3 tools/...` directly.
 >
 > 所有 `Bash` 命令都必须在当前 `SKILL.md` 所在目录执行。下文出现的 `tools/...` 和 `prompts/...` 均为相对于 skill 根目录的相对路径。
 
-# dot-skill 创建器（Claude Code 版）
+# dot-skill 创建器（兼容宿主版）
 
 ## 触发条件
 
@@ -27,8 +27,14 @@ allowed-tools: Read, Write, Edit, Bash
 - "新建一个 skill"
 - "给我做一个 XX 的 skill"
 
-注意：在 Hermes 中，稳定入口只保证 `/dot-skill`。
-`colleague`、`relationship`、`celebrity` 的兼容语义保留在工具层和 preset 层，但不保证每个兼容名称都能作为 Hermes slash command 被路由。
+兼容宿主：
+- Claude Code
+- OpenClaw
+- Hermes
+- Codex
+
+统一主入口是 `dot-skill`。在支持 slash command 的宿主中，使用 `/dot-skill`。
+对 Hermes 而言，只保证 `/dot-skill` 这一条 slash 入口稳定；`colleague`、`relationship`、`celebrity` 的兼容语义保留在工具层和 preset 层，但不保证每个兼容名称都能作为 Hermes slash command 被路由。
 
 当用户对已有 Skill 说以下内容时，进入进化模式：
 - "我有新文件" / "追加"
@@ -44,7 +50,7 @@ allowed-tools: Read, Write, Edit, Bash
 
 ## 工具使用规则
 
-本 Skill 运行在 Claude Code 环境，使用以下工具：
+本 Skill 运行在任意兼容宿主中，只要求宿主能够读取本地文件并执行 Bash / Python 命令。使用以下工具约定：
 
 | 任务 | 使用工具 |
 |------|---------|
@@ -600,7 +606,6 @@ Persona 摘要：
      --meta /tmp/dot_skill_{slug}_meta.json \
      --work /tmp/dot_skill_{slug}_work.md \
      --persona /tmp/dot_skill_{slug}_persona.md \
-     --install-claude-skill \
      --base-dir {resolved_base_dir}
    ```
 5. 该命令会统一生成：
@@ -611,7 +616,11 @@ Persona 摘要：
    - `persona_skill.md`
    - `manifest.json`
    - `meta.json`
-   - Claude Code 安装后的触发命令：`/{character}-{slug}`（Windows 上会额外写入 `~/.claude/commands/{character}-{slug}.md` 作为 slash shim）
+   - 如需把生成后的角色 Skill 安装到宿主：
+     - Claude Code：追加 `--install-claude-skill`
+     - OpenClaw：追加 `--install-openclaw-skill`
+     - Codex：追加 `--install-codex-skill`
+     - Claude Code on Windows：可再追加 `--install-claude-command-shim`
 6. 如果当前是 `celebrity`，创建完成后必须再跑一次质量检查：
    ```bash
    python3 tools/research/quality_check.py "{resolved_base_dir}/{slug}/SKILL.md" --profile {research_profile}
@@ -651,7 +660,6 @@ Persona 摘要：
      --slug {slug} \
      --work-patch /tmp/dot_skill_{slug}_work_patch.md \
      --persona-patch /tmp/dot_skill_{slug}_persona_patch.md \
-     --install-claude-skill \
      --base-dir {resolved_base_dir}
    ```
 8. 如果当前是 `celebrity`，更新后再次执行 quality check
@@ -674,7 +682,6 @@ Persona 摘要：
        --character {character} \
        --slug {slug} \
        --work-patch /tmp/dot_skill_{slug}_work_patch.md \
-       --install-claude-skill \
        --base-dir {resolved_base_dir}
      ```
 4. 如果属于 Persona：
@@ -688,7 +695,6 @@ Persona 摘要：
        --character {character} \
        --slug {slug} \
        --correction-json /tmp/dot_skill_{slug}_correction.json \
-       --install-claude-skill \
        --base-dir {resolved_base_dir}
      ```
 5. 如果当前是 `celebrity`，更新后再次执行 quality check
@@ -735,7 +741,7 @@ rm -rf skills/celebrity/{slug}
 
 # English Version
 
-# dot-skill Creator (Claude Code Edition)
+# dot-skill Creator (Compatible Host Edition)
 
 ## Trigger Conditions
 
@@ -746,8 +752,14 @@ Activate when the user says any of the following:
 - "Create a new skill"
 - "Make a skill for XX"
 
-Note: under Hermes, the only guaranteed slash entrypoint is `/dot-skill`.
-Compatibility semantics for `colleague`, `relationship`, and `celebrity` are preserved in the tool layer and preset layer, but Hermes does not guarantee that every compatibility name will be routed as a slash command.
+Compatible hosts:
+- Claude Code
+- OpenClaw
+- Hermes
+- Codex
+
+The canonical entrypoint is `dot-skill`. In hosts that expose slash commands, use `/dot-skill`.
+Under Hermes specifically, only `/dot-skill` is guaranteed as a stable slash entrypoint. Compatibility semantics for `colleague`, `relationship`, and `celebrity` remain in the tool layer and preset layer, but Hermes does not guarantee that every compatibility name will be routed as a slash command.
 
 Enter evolution mode when the user says:
 - "I have new files" / "append"
@@ -763,7 +775,7 @@ When the user asks to see generated skills, use the list commands in "Management
 
 ## Tool Usage Rules
 
-This Skill runs in the Claude Code environment with the following tools:
+This Skill runs in any compatible host that can read local files and execute Bash / Python commands. Use the following tool conventions:
 
 | Task | Tool |
 |------|------|
@@ -1320,7 +1332,6 @@ After user confirmation, do not hand-build a `skills/colleague/{slug}`-style tre
      --meta /tmp/dot_skill_{slug}_meta.json \
      --work /tmp/dot_skill_{slug}_work.md \
      --persona /tmp/dot_skill_{slug}_persona.md \
-     --install-claude-skill \
      --base-dir {resolved_base_dir}
    ```
 5. This command will generate:
@@ -1331,7 +1342,11 @@ After user confirmation, do not hand-build a `skills/colleague/{slug}`-style tre
    - `persona_skill.md`
    - `manifest.json`
    - `meta.json`
-   - Claude Code trigger after installation: `/{character}-{slug}` (on Windows it also writes `~/.claude/commands/{character}-{slug}.md` as a slash shim)
+   - To install the generated role skill into a host, append the relevant flag:
+     - Claude Code: `--install-claude-skill`
+     - OpenClaw: `--install-openclaw-skill`
+     - Codex: `--install-codex-skill`
+     - Claude Code on Windows: optionally add `--install-claude-command-shim`
 6. If the current family is `celebrity`, run a quality check after creation:
    ```bash
    python3 tools/research/quality_check.py "{resolved_base_dir}/{slug}/SKILL.md" --profile {research_profile}
@@ -1371,7 +1386,6 @@ When user provides new files or text:
      --slug {slug} \
      --work-patch /tmp/dot_skill_{slug}_work_patch.md \
      --persona-patch /tmp/dot_skill_{slug}_persona_patch.md \
-     --install-claude-skill \
      --base-dir {resolved_base_dir}
    ```
 8. If the current family is `celebrity`, run the quality check again after the update
@@ -1394,7 +1408,6 @@ When user expresses "that's wrong" / "he should be":
        --character {character} \
        --slug {slug} \
        --work-patch /tmp/dot_skill_{slug}_work_patch.md \
-       --install-claude-skill \
        --base-dir {resolved_base_dir}
      ```
 4. If it belongs to Persona:
@@ -1408,7 +1421,6 @@ When user expresses "that's wrong" / "he should be":
        --character {character} \
        --slug {slug} \
        --correction-json /tmp/dot_skill_{slug}_correction.json \
-       --install-claude-skill \
        --base-dir {resolved_base_dir}
      ```
 5. If the current family is `celebrity`, run the quality check again after the update

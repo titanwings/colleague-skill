@@ -66,6 +66,18 @@ class SkillWriterTest(unittest.TestCase):
             self.assertEqual(manifest["character"], "colleague")
             self.assertEqual(manifest["preset"], "dot.colleague.v1")
             self.assertEqual(manifest["install"]["slash_commands"]["default"], "colleague-zhangsan")
+            self.assertEqual(
+                manifest["install"]["compatible_runtimes"],
+                ["claude-code", "openclaw", "hermes", "codex"],
+            )
+            self.assertEqual(
+                manifest["install"]["installers"]["openclaw"],
+                "tools/install_openclaw_generated_skill.py",
+            )
+            self.assertEqual(
+                manifest["install"]["installers"]["codex"],
+                "tools/install_codex_generated_skill.py",
+            )
             self.assertIn("name: colleague_zhangsan", combined_skill)
             self.assertIn("## PART A: Work", combined_skill)
             self.assertIn("name: colleague_zhangsan_work", work_skill)

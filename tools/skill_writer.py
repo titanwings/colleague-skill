@@ -431,6 +431,69 @@ def resolve_base_dir(base_dir_arg: str | None, character: str) -> Path:
     return resolve_storage_root(character, base_dir_arg)
 
 
+def install_generated_hosts(
+    skill_dir: Path,
+    args: argparse.Namespace,
+    install_claude_skill: bool,
+) -> list[str]:
+    """Install a generated skill into the selected host discovery directories."""
+    output_lines: list[str] = []
+
+    if install_claude_skill:
+        from install_claude_generated_skill import (
+            install_generated_skill,
+            should_install_command_shim,
+        )
+
+        install_result = install_generated_skill(
+            skill_dir,
+            Path(args.claude_skills_dir).expanduser()
+            if args.claude_skills_dir
+            else Path.home() / ".claude" / "skills",
+            commands_dir=(
+                Path(args.claude_commands_dir).expanduser()
+                if args.claude_commands_dir
+                else Path.home() / ".claude" / "commands"
+            ),
+            force=True,
+            install_command_shim=(
+                args.install_claude_command_shim or should_install_command_shim()
+            ),
+        )
+        output_lines.append(f"  Claude skill: {install_result['skill_dir']}")
+        output_lines.append(f"  Claude trigger: /{install_result['command_name']}")
+        if install_result["command_shim_installed"] and install_result["command_path"] is not None:
+            output_lines.append(f"  Claude command shim: {install_result['command_path']}")
+
+    if args.install_openclaw_skill:
+        from install_openclaw_generated_skill import install_generated_skill
+
+        install_result = install_generated_skill(
+            skill_dir,
+            Path(args.openclaw_skills_dir).expanduser()
+            if args.openclaw_skills_dir
+            else Path.home() / ".openclaw" / "workspace" / "skills",
+            force=True,
+        )
+        output_lines.append(f"  OpenClaw skill: {install_result['skill_dir']}")
+        output_lines.append(f"  OpenClaw trigger: /{install_result['command_name']}")
+
+    if args.install_codex_skill:
+        from install_codex_generated_skill import install_generated_skill
+
+        install_result = install_generated_skill(
+            skill_dir,
+            Path(args.codex_skills_dir).expanduser()
+            if args.codex_skills_dir
+            else Path.home() / ".codex" / "skills",
+            force=True,
+        )
+        output_lines.append(f"  Codex skill: {install_result['skill_dir']}")
+        output_lines.append(f"  Codex skill name: {install_result['command_name']}")
+
+    return output_lines
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="dot-skill artifact writer")
     parser.add_argument("--action", required=True, choices=["create", "update", "list"])
@@ -466,6 +529,18 @@ def main() -> None:
     )
     parser.add_argument("--claude-skills-dir", help="Override the Claude Code skills directory")
     parser.add_argument("--claude-commands-dir", help="Override the Claude Code commands directory")
+    parser.add_argument(
+        "--install-openclaw-skill",
+        action="store_true",
+        help="Install the generated combined skill into OpenClaw after create/update",
+    )
+    parser.add_argument("--openclaw-skills-dir", help="Override the OpenClaw skills directory")
+    parser.add_argument(
+        "--install-codex-skill",
+        action="store_true",
+        help="Install the generated combined skill into Codex after create/update",
+    )
+    parser.add_argument("--codex-skills-dir", help="Override the Codex skills directory")
 
     args = parser.parse_args()
     requested_character = normalize_character(args.character or args.type)
@@ -525,33 +600,12 @@ def main() -> None:
         print(f"  Character: {meta['character']}")
         print(f"  Research Profile: {meta['research_profile']}")
         print(f"  Preset: {meta.get('preset', 'auto')}")
-        if install_claude_skill:
-            from install_claude_generated_skill import (
-                install_generated_skill,
-                should_install_command_shim,
-            )
-
-            install_result = install_generated_skill(
-                skill_dir,
-                Path(args.claude_skills_dir).expanduser()
-                if args.claude_skills_dir
-                else Path.home() / ".claude" / "skills",
-                commands_dir=(
-                    Path(args.claude_commands_dir).expanduser()
-                    if args.claude_commands_dir
-                    else Path.home() / ".claude" / "commands"
-                ),
-                force=True,
-                install_command_shim=(
-                    args.install_claude_command_shim or should_install_command_shim()
-                ),
-            )
-            print(f"  Claude skill: {install_result['skill_dir']}")
-            print(f"  Trigger: /{install_result['command_name']}")
-            if install_result["command_shim_installed"] and install_result["command_path"] is not None:
-                print(f"  Command shim: {install_result['command_path']}")
+        install_lines = install_generated_hosts(skill_dir, args, install_claude_skill)
+        if install_lines:
+            for line in install_lines:
+                print(line)
         else:
-            print("  Claude install: skipped")
+            print("  Host installs: skipped")
         return
 
     slug = args.slug
@@ -575,31 +629,10 @@ def main() -> None:
 
     new_version = update_skill(skill_dir, work_patch, persona_patch, correction)
     print(f"Updated skill to {new_version}: {skill_dir}")
-    if install_claude_skill:
-        from install_claude_generated_skill import (
-            install_generated_skill,
-            should_install_command_shim,
-        )
-
-        install_result = install_generated_skill(
-            skill_dir,
-            Path(args.claude_skills_dir).expanduser()
-            if args.claude_skills_dir
-            else Path.home() / ".claude" / "skills",
-            commands_dir=(
-                Path(args.claude_commands_dir).expanduser()
-                if args.claude_commands_dir
-                else Path.home() / ".claude" / "commands"
-            ),
-            force=True,
-            install_command_shim=(
-                args.install_claude_command_shim or should_install_command_shim()
-            ),
-        )
-        print(f"  Claude skill: {install_result['skill_dir']}")
-        print(f"  Trigger: /{install_result['command_name']}")
-        if install_result["command_shim_installed"] and install_result["command_path"] is not None:
-            print(f"  Command shim: {install_result['command_path']}")
+    install_lines = install_generated_hosts(skill_dir, args, install_claude_skill)
+    if install_lines:
+        for line in install_lines:
+            print(line)
 
 
 if __name__ == "__main__":

@@ -284,8 +284,13 @@ def build_manifest(meta: dict) -> dict:
             "knowledge_dirs": meta["engine"].get("knowledge_dirs", []),
         },
         "install": {
-            "compatible_runtimes": ["claude-code"],
+            "compatible_runtimes": ["claude-code", "openclaw", "hermes", "codex"],
             "min_schema_version": SCHEMA_VERSION,
+            "installers": {
+                "claude-code": "tools/install_claude_generated_skill.py",
+                "openclaw": "tools/install_openclaw_generated_skill.py",
+                "codex": "tools/install_codex_generated_skill.py",
+            },
             "slash_commands": {
                 "default": artifacts["combined_command"],
                 "work": artifacts["work_command"],

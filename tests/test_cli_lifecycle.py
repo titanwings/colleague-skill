@@ -305,7 +305,7 @@ class CliLifecycleTest(unittest.TestCase):
                     )
                     self.assertIn("OVERALL PASS", quality.stdout)
 
-    def test_cli_can_install_generated_skill_into_claude_paths(self) -> None:
+    def test_cli_can_install_generated_skill_into_supported_host_paths(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
             base_dir = root / "skills" / "celebrity"
@@ -327,6 +327,8 @@ class CliLifecycleTest(unittest.TestCase):
 
             claude_skills_dir = root / ".claude" / "skills"
             claude_commands_dir = root / ".claude" / "commands"
+            openclaw_skills_dir = root / ".openclaw" / "workspace" / "skills"
+            codex_skills_dir = root / ".codex" / "skills"
 
             create = self.run_cmd(
                 PYTHON,
@@ -353,11 +355,21 @@ class CliLifecycleTest(unittest.TestCase):
                 str(claude_skills_dir),
                 "--claude-commands-dir",
                 str(claude_commands_dir),
+                "--install-openclaw-skill",
+                "--openclaw-skills-dir",
+                str(openclaw_skills_dir),
+                "--install-codex-skill",
+                "--codex-skills-dir",
+                str(codex_skills_dir),
             )
 
-            self.assertIn("Trigger: /celebrity-zhou-qimo", create.stdout)
+            self.assertIn("Claude trigger: /celebrity-zhou-qimo", create.stdout)
+            self.assertIn("OpenClaw trigger: /celebrity-zhou-qimo", create.stdout)
+            self.assertIn("Codex skill name: celebrity-zhou-qimo", create.stdout)
             self.assertTrue((claude_skills_dir / "celebrity-zhou-qimo" / "SKILL.md").exists())
             self.assertTrue((claude_commands_dir / "celebrity-zhou-qimo.md").exists())
+            self.assertTrue((openclaw_skills_dir / "celebrity-zhou-qimo" / "SKILL.md").exists())
+            self.assertTrue((codex_skills_dir / "celebrity-zhou-qimo" / "SKILL.md").exists())
 
 
 if __name__ == "__main__":

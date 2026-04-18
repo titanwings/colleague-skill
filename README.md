@@ -111,6 +111,12 @@ git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-ski
 git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/dot-skill
 ```
 
+Or install the current repo directly:
+
+```bash
+python3 tools/install_openclaw_skill.py --force
+```
+
 ### Hermes
 
 ```bash
@@ -120,21 +126,41 @@ hermes skills list | rg dot-skill
 
 Use `/dot-skill` inside Hermes after installation.
 
-### Generated Role Skills in Claude Code
+### Codex
 
-When dot-skill creates a generated role skill, publish it into Claude Code with:
+```bash
+git clone https://github.com/titanwings/colleague-skill ~/.codex/skills/dot-skill
+```
+
+Or install the current repo directly:
+
+```bash
+python3 tools/install_codex_skill.py --force
+```
+
+### Generated Role Skills in Compatible Hosts
+
+When dot-skill creates a generated role skill, publish it into the host you want:
 
 ```bash
 python3 tools/install_claude_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
+python3 tools/install_openclaw_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
+python3 tools/install_codex_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
 ```
 
-The installed slash command will be:
+For slash-driven hosts such as Claude Code and OpenClaw, the installed trigger is:
 
 ```text
 /celebrity-zhou-qimo
 ```
 
 On Windows, the installer also writes a slash-command shim under `~/.claude/commands/` to avoid the current skill discovery issue.
+
+For Codex, the installed local skill name is:
+
+```text
+celebrity-zhou-qimo
+```
 
 ### Dependencies (optional)
 
@@ -148,17 +174,19 @@ pip3 install -r requirements.txt
 
 ## Usage
 
-In Claude Code, type:
+In slash-driven hosts such as Claude Code, OpenClaw, or Hermes, type:
 
 ```
 /dot-skill
 ```
 
+In Codex, install the skill under `~/.codex/skills/` and refer to it by skill name or let Codex auto-select it from local skills.
+
 The unified entry first asks which character family you want to distill: `colleague`, `relationship`, or `celebrity`.
 
 Then follow the prompts: enter an alias, basic profile, personality tags, then choose a data source. All fields can be skipped — even a description alone can generate a Skill.
 
-Once created, invoke the generated Skill with `/{slug}`.
+Once created, invoke the generated Skill with `/{character}-{slug}` in slash-driven hosts, or use the same installed skill name in Codex.
 
 ### dot-skill groundwork
 
@@ -176,13 +204,15 @@ The tool layer now exposes a dot-skill engine schema built around `kind`, `chara
 
 | Command | Description |
 |---------|-------------|
-| `/dot-skill` | Canonical unified entrypoint |
-| `/{slug}` | Invoke full Skill (Persona + Work) |
-| `/{slug}-work` | Work capabilities only |
-| `/{slug}-persona` | Persona only |
+| `/dot-skill` | Canonical unified entrypoint in slash-driven hosts |
+| `/{character}-{slug}` | Invoke full Skill (Persona + Work) |
+| `/{character}-{slug}-work` | Work capabilities only |
+| `/{character}-{slug}-persona` | Persona only |
 | `python3 tools/skill_writer.py --action list ...` | List generated Skills across the three character families |
 | `python3 tools/version_manager.py --action rollback ...` | Roll back a Skill version |
 | `rm -rf ...` | Delete a generated Skill directory |
+
+Compatible hosts today: Claude Code, OpenClaw, Hermes, and Codex.
 
 For Hermes specifically, treat `/dot-skill` as the only guaranteed slash entrypoint. The three character families remain compatible in the tool layer and storage layout, but Hermes may not route family-specific legacy aliases as slash commands.
 
