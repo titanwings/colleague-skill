@@ -38,6 +38,7 @@ import sys
 import json
 import argparse
 import subprocess
+from getpass import getpass
 from pathlib import Path
 from typing import Optional
 
@@ -64,7 +65,7 @@ def setup_config() -> None:
     print("请前往飞书开放平台（open.feishu.cn）创建企业自建应用，获取以下信息：\n")
 
     app_id = input("App ID (cli_xxx): ").strip()
-    app_secret = input("App Secret: ").strip()
+    app_secret = getpass("App Secret: ").strip()
 
     print("\n配置方式选择：")
     print("  [1] App Token（应用权限，需要在飞书后台开通对应权限）")
@@ -79,7 +80,7 @@ def setup_config() -> None:
 
     if mode == "2":
         print("\n获取 User Token：飞书开放平台 → OAuth 2.0 → 获取 user_access_token")
-        user_token = input("User Access Token (u-xxx)：").strip()
+        user_token = getpass("User Access Token (u-xxx)：").strip()
         config["user_token"] = user_token
         print("注意：User Token 有效期约 2 小时，过期后需要重新配置")
 

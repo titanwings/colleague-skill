@@ -36,6 +36,7 @@ import json
 import sys
 import time
 import argparse
+from getpass import getpass
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
@@ -128,7 +129,7 @@ def setup_config() -> None:
     print("步骤 3：Install to Workspace → 复制 Bot User OAuth Token（xoxb-...）")
     print("步骤 4：将 Bot 加入目标频道（/invite @your-bot-name）\n")
 
-    token = input("Bot User OAuth Token (xoxb-...): ").strip()
+    token = getpass("Bot User OAuth Token (xoxb-...): ").strip()
     if not token.startswith("xoxb-"):
         print("警告：Token 格式不对，应以 xoxb- 开头", file=sys.stderr)
 
