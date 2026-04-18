@@ -2,32 +2,35 @@
 
 # dot-skill
 
-> *"You AI guys are traitors to the codebase — you've already killed frontend, now you're coming for backend, QA, ops, infosec, chip design, and eventually yourselves and all of humanity"*
+> *"You folks building LLMs are all code-sages! Flesh is weak! Ascend to cyberspace!"*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://python.org)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://claude.ai/code)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-green)](https://agentskills.io)
+
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://claude.ai/code)
+[![Hermes](https://img.shields.io/badge/Hermes-Skill-orange)](https://github.com/titanwings/colleague-skill)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-teal)](https://github.com/titanwings/colleague-skill)
+[![Codex](https://img.shields.io/badge/Codex-Skill-black)](https://github.com/titanwings/colleague-skill)
 
 [![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/aRjmJBdK)
 
 <br>
 
-Your colleague quit, leaving behind a mountain of unmaintained docs?<br>
-Your intern left, nothing but an empty desk and a half-finished project?<br>
-Your mentor graduated, taking all the context and experience with them?<br>
-Your partner transferred, and the chemistry you built reset to zero overnight?<br>
-Your predecessor handed over, trying to condense three years into three pages?<br>
+Your colleague quit, your mentor graduated, your teammate transferred — taking their whole playbook and context with them?<br>
+Your family, old friends, partner drifting apart — and you want to hold on to the way it felt to be with them?<br>
+Your favorite author, idol, thinker you'll never meet — but you want to know what they'd say about your question?<br>
 
-**Turn cold goodbyes into warm Skills — welcome to cyber-immortality!**
+**dot-skill solves all three.**
 
 <br>
 
-Provide source materials (Feishu messages, DingTalk docs, Slack messages, emails, screenshots)<br>
-plus your subjective description of the person<br>
-and get an **AI Skill that actually works like them**
+Upgraded from **colleague.skill** to **dot-skill** — not just colleagues, **anyone** can be distilled into a Skill<br>
+Colleagues · partners · family · old friends · idols · public figures · fictional characters — even yourself<br>
+Provide source material + your description → get an **AI Skill that genuinely thinks like them**<br>
+Thinks in their frame, speaks in their voice
 
-[Supported Sources](#supported-data-sources) · [Install](#install) · [Usage](#usage) · [Demo](#demo) · [Detailed Install](INSTALL.md) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[What's new](#whats-new-in-this-major-release) · [Data Sources](#supported-data-sources) · [Install](#install) · [Usage](#usage) · [Demo](#demo) · [💬 Discord](https://discord.gg/aRjmJBdK)
 
 [**中文**](docs/lang/README_ZH.md) · [**Español**](docs/lang/README_ES.md) · [**Deutsch**](docs/lang/README_DE.md) · [**日本語**](docs/lang/README_JA.md) · [**Русский**](docs/lang/README_RU.md) · [**Português**](docs/lang/README_PT.md) · [**한국어**](docs/lang/README_KO.md)
 
@@ -35,25 +38,52 @@ and get an **AI Skill that actually works like them**
 
 ---
 
-> 🆕 **2026.04.16 Update** — **WeChat group 3 is live!** Come hang out with the dot-skill community — share skills, discuss features, trade tips.
->
-> <img src="docs/assets/wechat-group-qr-3.png" alt="dot-skill WeChat group QR" width="240">
->
-> QR refreshes every 7 days (expires 2026-04-23) — if expired, ping me on Discord.
+## What's new in this major release?
 
-> 🆕 **2026.04.13 Update** — **dot-skill Roadmap is live!** colleague.skill is evolving into **dot-skill** — distill anyone, not just colleagues. Multimodal output, skill ecosystems, and more on the way.
+### 1. From colleague-skill to dot-skill
+
+No longer only built around the "colleague" scenario. A unified `/dot-skill` entrypoint sits on a general-purpose skill engine — one engine distills anyone, instead of being a colleague-specific script.
+
+### 2. Three character families
+
+| Family | Who it fits | Examples |
+|--------|-------------|----------|
+| **colleague** | Coworkers, mentors, teammates, up/downstream partners | ByteDance L2-1 backend, your mentor |
+| **relationship** | Exes, partners, parents, friends, close family | College roommate, first love, your mom |
+| **celebrity** | Public figures, creators, public voices, thinkers | Luo Xiang, Steve Jobs, fictional characters |
+
+Each family has its own prompt pipeline, source-collection strategy, and generation template:
+
+- **`colleague`** — built on the Work Skill + Persona two-layer architecture. It learns both their technical standards and workflows, and their manner of speaking and workplace posture. Supports Feishu / DingTalk / Slack auto-collection.
+- **`celebrity`** — ships with a complete six-dimension research toolchain (subtitles download → transcript cleanup → research merge → quality check). Not mimicking tone — reproducing their mental models and decision frameworks.
+- **`relationship`** 🆕 **Photo-sharing feature coming soon** — your distilled relationship won't just reply to messages; it'll send photos and share slices of its day, the way a real person would.
+
+### 3. More Agent hosts
+
+The old version only ran in Claude Code. Now it's cross-host across four:
+
+- **Claude Code** — native slash-command support
+- **Hermes Agent** — one-command install, `/dot-skill` works directly
+- **OpenClaw** — fully compatible
+- **Codex** — invoke by skill name
+
+Generated character Skills can also be one-command installed into any host.
+
+---
+
+> 🆕 **2026.04.19 Update** — **WeChat group 5 is live!** Come hang out with the dot-skill community — share skills, discuss features, trade tips.
+>
+> <img src="docs/assets/wechat-group-qr-5.png" alt="dot-skill WeChat group QR" width="240">
+>
+> QR refreshes every 7 days (expires 2026-04-24) — if expired, ping me on Discord.
+
+> 🆕 **2026.04.13 Update** — **dot-skill Roadmap is live!** colleague.skill is evolving into **dot-skill** — distill anyone, not just colleagues.
 >
 > 👉 **[Read the full Roadmap](ROADMAP.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
->
-> We've also cleaned up Issues, added Milestones, and set up a [public project board](https://github.com/users/titanwings/projects/1). Community contributions welcome — check `good-first-issue` labels!
 
-> 🆕 **2026.04.07 Update** — The community's enthusiasm for dot-skill remixes has been incredible! I've built a community gallery — PRs welcome!
->
-> Share any skill or meta-skill, and drive traffic directly to your own GitHub repo. No middleman.
+> 🆕 **2026.04.07 Update** — Community gallery is live! Any skill or meta-skill can drive traffic directly to your own GitHub repo. No middleman.
 >
 > 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)**
->
-> Now listed: 户晨风.skill · 峰哥亡命天涯.skill · 罗翔.skill and more
 
 ---
 
@@ -61,176 +91,83 @@ Created by [@titanwings](https://github.com/titanwings) | Powered by Shanghai AI
 
 ## Supported Data Sources
 
-> This is still a beta version of dot-skill — more sources and character families are still being hardened.
-
 | Source | Messages | Docs / Wiki | Spreadsheets | Notes |
 |--------|:--------:|:-----------:|:------------:|-------|
 | Feishu (auto) | ✅ API | ✅ | ✅ | Just enter a name, fully automatic |
 | DingTalk (auto) | ⚠️ Browser | ✅ | ✅ | DingTalk API doesn't support message history |
 | Slack (auto) | ✅ API | — | — | Requires admin to install Bot; free plan limited to 90 days |
-| WeChat chat history | ✅ SQLite | — | — | Currently unstable, recommend using open-source tools below |
-| PDF | — | ✅ | — | Manual upload |
-| Images / Screenshots | ✅ | — | — | Manual upload |
+| WeChat chat history | ✅ SQLite | — | — | Export first with WeChatMsg / PyWxDump / 留痕 |
+| PDF / Images / Screenshots | — | ✅ | — | Manual upload |
 | Feishu JSON export | ✅ | ✅ | — | Manual upload |
 | Email `.eml` / `.mbox` | ✅ | — | — | Manual upload |
-| Markdown | ✅ | ✅ | — | Manual upload |
-| Paste text directly | ✅ | — | — | Manual input |
-
-### Recommended WeChat Chat Export Tools
-
-These are independent open-source projects — this project does not include their code, but our parsers are compatible with their export formats. WeChat auto-decryption is currently unstable, so we recommend using these open-source tools to export chat history, then paste or import into this project:
-
-| Tool | Platform | Description |
-|------|----------|-------------|
-| [WeChatMsg](https://github.com/LC044/WeChatMsg) | Windows | WeChat chat history export, supports multiple formats |
-| [PyWxDump](https://github.com/xaoyaoo/PyWxDump) | Windows | WeChat database decryption & export |
-| [留痕 (Liuhen)](https://github.com/greyovo/留痕) | macOS | WeChat chat history export (recommended for Mac users) |
-
-> Tool recommendations from [@therealXiaomanChu](https://github.com/therealXiaomanChu). Thanks to all the open-source authors — together for cyber-immortality!
+| Markdown / direct paste | ✅ | ✅ | — | Manual input |
 
 ---
 
 ## Install
 
-### Claude Code
+It's 2026 — you have an Agent, let it install itself. Open your Claude Code / Hermes / OpenClaw / Codex and hand it this line:
 
-> **Important**: Claude Code looks for skills in `.claude/skills/` at the **git repo root**. Make sure you run this in the right place.
+> Install the dot-skill skill for me: `https://github.com/titanwings/colleague-skill`
 
-```bash
-# Install to current project (run at git repo root)
-mkdir -p .claude/skills
-git clone https://github.com/titanwings/colleague-skill .claude/skills/dot-skill
+The Agent will detect the current host's skills directory, clone the repo, and register the entrypoint. Once done, type `/dot-skill` in any host to launch.
 
-# Or install globally (available in all projects)
-git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-skill
-```
-
-### OpenClaw
+<details>
+<summary>Want to install it yourself? Click for paths</summary>
 
 ```bash
-git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/dot-skill
+git clone https://github.com/titanwings/colleague-skill <TARGET>
 ```
 
-Or install the current repo directly:
+| Host | `<TARGET>` path |
+|------|-----------------|
+| Claude Code | `~/.claude/skills/dot-skill` |
+| OpenClaw | `~/.openclaw/workspace/skills/dot-skill` |
+| Codex | `~/.codex/skills/dot-skill` |
+| Hermes | After clone, run `python3 tools/install_hermes_skill.py --force` |
 
-```bash
-python3 tools/install_openclaw_skill.py --force
-```
+</details>
 
-### Hermes
-
-```bash
-python3 tools/install_hermes_skill.py --force
-hermes skills list | rg dot-skill
-```
-
-Use `/dot-skill` inside Hermes after installation.
-
-### Codex
-
-```bash
-git clone https://github.com/titanwings/colleague-skill ~/.codex/skills/dot-skill
-```
-
-Or install the current repo directly:
-
-```bash
-python3 tools/install_codex_skill.py --force
-```
-
-### Generated Role Skills in Compatible Hosts
-
-When dot-skill creates a generated role skill, publish it into the host you want:
-
-```bash
-python3 tools/install_claude_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
-python3 tools/install_openclaw_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
-python3 tools/install_codex_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
-```
-
-For slash-driven hosts such as Claude Code and OpenClaw, the installed trigger is:
-
-```text
-/celebrity-zhou-qimo
-```
-
-On Windows, the installer also writes a slash-command shim under `~/.claude/commands/` to avoid the current skill discovery issue.
-
-For Codex, the installed local skill name is:
-
-```text
-celebrity-zhou-qimo
-```
-
-### Dependencies (optional)
-
-```bash
-pip3 install -r requirements.txt
-```
-
-> Feishu/DingTalk/Slack auto-collection requires App credentials. See [INSTALL.md](INSTALL.md) for details.
+> For Feishu/DingTalk auto-collection credentials, publishing a generated character Skill to any host, Windows-specific handling, etc., see **[Detailed Install Guide (INSTALL.md)](INSTALL.md)**
 
 ---
 
 ## Usage
 
-In slash-driven hosts such as Claude Code, OpenClaw, or Hermes, type:
+In the host where dot-skill is installed, launch it — type `/dot-skill`, or just tell your Agent "start dot-skill".
 
-```
-/dot-skill
-```
+It first asks which family you want to distill: `colleague`, `relationship`, or `celebrity`.
 
-In Codex, install the skill under `~/.codex/skills/` and refer to it by skill name or let Codex auto-select it from local skills.
+Then enter alias, basic profile, personality tags, and pick a data source. All fields can be skipped — even a description alone can generate a Skill.
 
-The unified entry first asks which character family you want to distill: `colleague`, `relationship`, or `celebrity`.
-
-Then follow the prompts: enter an alias, basic profile, personality tags, then choose a data source. All fields can be skipped — even a description alone can generate a Skill.
-
-Once created, invoke the generated Skill with `/{character}-{slug}` in slash-driven hosts, or use the same installed skill name in Codex.
-
-### dot-skill groundwork
-
-The tool layer now exposes a dot-skill engine schema built around `kind`, `character`, and `preset`.
-
-- the engine is modeled as a `meta-skill`
-- `character` now resolves into three top-level families: `colleague`, `relationship`, and `celebrity`
-- `preset` selects the prompt bundle used to render that character family
-- `colleague` remains fully backward-compatible
-- canonical storage now uses `./skills/{character}` for all three families, including `./skills/colleague`
-- legacy `./colleagues` directories are still readable for backward compatibility
-- `celebrity` also exposes a research toolchain for subtitles, transcript cleanup, research merging, and draft quality checks
+Once created, invoke the generated Skill with `/{character}-{slug}`.
 
 ### Commands
 
 | Command | Description |
 |---------|-------------|
-| `/dot-skill` | Canonical unified entrypoint in slash-driven hosts |
+| `/dot-skill` | Canonical unified entrypoint |
 | `/{character}-{slug}` | Invoke full Skill (Persona + Work) |
 | `/{character}-{slug}-work` | Work capabilities only |
 | `/{character}-{slug}-persona` | Persona only |
-| `python3 tools/skill_writer.py --action list ...` | List generated Skills across the three character families |
+| `python3 tools/skill_writer.py --action list ...` | List generated Skills across all three families |
 | `python3 tools/version_manager.py --action rollback ...` | Roll back a Skill version |
-| `rm -rf ...` | Delete a generated Skill directory |
-
-Compatible hosts today: Claude Code, OpenClaw, Hermes, and Codex.
-
-For Hermes specifically, treat `/dot-skill` as the only guaranteed slash entrypoint. The three character families remain compatible in the tool layer and storage layout, but Hermes may not route family-specific legacy aliases as slash commands.
 
 ### Celebrity Research Toolchain
 
-The `celebrity` family now includes a research-first toolchain inspired by ideas explored in `alchaincyf/nuwa-skill`:
+The `celebrity` family ships with an end-to-end research toolchain, from subtitles to a finished draft:
 
 ```bash
-# Download subtitles from a supported video URL
+# Download video subtitles
 bash tools/research/download_subtitles.sh "<video-url>" "./tmp/subtitles"
 
-# Convert subtitles into a clean transcript
+# Subtitles → transcript
 python3 tools/research/srt_to_transcript.py "./tmp/subtitles/example.srt"
 
-# Merge raw research notes into a summary
+# Merge research notes
 python3 tools/research/merge_research.py "./skills/celebrity/<slug>"
 
-# Run quality checks against a generated draft
+# Quality check
 python3 tools/research/quality_check.py "./skills/celebrity/<slug>/SKILL.md"
 ```
 
@@ -238,9 +175,29 @@ python3 tools/research/quality_check.py "./skills/celebrity/<slug>/SKILL.md"
 
 ## Demo
 
-> Input: `ByteDance L2-1 backend engineer, INTJ, blame-shifter, ByteDance-style`
+One from each family.
 
-**Scenario 1: Code Review**
+### celebrity — distilling Andrej Karpathy
+
+> Six-dimension research: works · interviews · decisions · expression DNA · external evaluations · timeline<br>
+> Case adapted from community work [alchaincyf/karpathy-skill](https://github.com/alchaincyf/karpathy-skill)
+
+```
+User            ❯ Everyone's talking about Agents now — what do you think the 2026 AI Agent looks like?
+
+celebrity.skill ❯ Everyone's doing demos, nobody's doing eval.
+                  The Agent bottleneck was never model intelligence — it's scaffolding:
+                  a strict evaluation harness, fine-grained error replay,
+                  controllable tool-calling budgets, clean failure-mode analysis.
+                  Most products are still stuck at "wrap an API + a few tools + a system prompt."
+                  That's a demo, not an agent.
+                  In 2026 I'm not betting on the strongest model — I'm betting on the best
+                  scaffolding and the strictest eval.
+```
+
+### colleague — distilling a ByteDance L2-1 backend
+
+> Input: `ByteDance L2-1 backend engineer, INTJ, blame-shifter, ByteDance-style`
 
 ```
 User            ❯ Can you review this API design?
@@ -249,16 +206,24 @@ colleague.skill ❯ Hold on — what's the impact? You haven't explained the con
                   (after reading) N+1 query, fix it. Use the standard
                   {code, message, data} response format. That's the spec,
                   don't ask why.
-```
 
-**Scenario 2: Blame game**
-
-```
 User            ❯ This bug was introduced by you, right?
 
 colleague.skill ❯ Does the timeline match? That feature touched multiple places,
                   there were other changes too.
 ```
+
+### relationship — distilling someone you have a crush on
+
+> Upload half a year of chat logs + "sensitive, quiet but stubborn, will actually reply seriously when it matters"
+
+```
+User               ❯ Did you think about me today?
+
+relationship.skill ❯ ...I did, a little bit. Why are you asking?
+```
+
+> More real-world cases in the [community gallery](https://titanwings.github.io/colleague-skill-site/) — 100+ skills and counting.
 
 ---
 
@@ -266,39 +231,22 @@ colleague.skill ❯ Does the timeline match? That feature touched multiple place
 
 ### Generated Skill Structure
 
-Each colleague Skill has two parts that work together:
+dot-skill uses **Persona** as the universal base, with family-specific modules layered on top:
 
-| Part | Content |
-|------|---------|
-| **Part A — Work Skill** | Systems, tech standards, workflows, experience |
-| **Part B — Persona** | 5-layer personality: hard rules → identity → expression → decisions → interpersonal |
+| Family | Persona Content | Additional Modules |
+|--------|-----------------|-------------------|
+| **colleague** | 6-layer personality: hard rules → identity → expression → decisions → interpersonal → Correction | + **Work Skill**: scope, workflow, output preferences, experience knowledge base |
+| **relationship** | Expression DNA · emotional triggers · conflict pattern · repair pattern | — |
+| **celebrity** | Mental models · decision heuristics · expression DNA · external-evaluation contrast | + Six-dimension research dossier (works/interviews/decisions/timeline...) |
 
-Execution: `Receive task → Persona decides attitude → Work Skill executes → Output in their voice`
-
-### Supported Tags
-
-**Personality**: Responsible · Blame-shifter · Perfectionist · Good-enough · Procrastinator · PUA master · Office politician · Managing-up expert · Passive-aggressive · Flip-flopper · Quiet · Read-no-reply …
-
-**Corporate culture**: ByteDance-style · Alibaba-style · Tencent-style · Huawei-style · Baidu-style · Meituan-style · First-principles · OKR-obsessed · Big-corp-pipeline · Startup-mode
-
-**Levels**: ByteDance 2-1~3-3+ · Alibaba P5~P11 · Tencent T1~T4 · Baidu T5~T9 · Meituan P4~P8 · Huawei 13~21 · NetEase · JD · Xiaomi …
+Execution: `Receive task → Persona decides attitude & tone → Additional modules fill in execution detail → Output in their voice`
 
 ### Evolution
 
 - **Append files** → auto-analyze delta → merge into relevant sections, never overwrite existing conclusions
-- **Conversation correction** → say "he wouldn't do that, he should be xxx" → writes to Correction layer, takes effect immediately
+- **Conversation correction** → say "they wouldn't do that, they'd be xxx" → writes to the Correction layer, takes effect immediately
 - **Version control** → auto-archive on every update, rollback to any previous version
-- **Celebrity research pipeline** → subtitles → transcript cleanup → merged research summary → draft quality check
-
-### Character-aware writer examples
-
-```bash
-python3 tools/skill_writer.py --action create --character colleague --name "Eulalie"
-python3 tools/skill_writer.py --action create --character relationship --name "Mireille"
-python3 tools/skill_writer.py --action create --character celebrity --name "Sappho"
-python3 tools/skill_writer.py --action create --character celebrity --name "周奇墨" --install-claude-skill
-python3 tools/skill_writer.py --action list --character relationship
-```
+- **Celebrity research pipeline** → subtitles → transcript cleanup → six-dimension research → quality check
 
 ---
 
@@ -308,31 +256,35 @@ This project follows the [AgentSkills](https://agentskills.io) open standard. Th
 
 ```
 dot-skill/
-├── SKILL.md              # Skill entry point (official frontmatter)
-├── prompts/              # Prompt templates
-│   ├── intake.md         #   Dialogue-based info collection
-│   ├── work_analyzer.md  #   Work capability extraction
-│   ├── persona_analyzer.md #  Personality extraction (with tag translation)
-│   ├── work_builder.md   #   work.md generation template
-│   ├── persona_builder.md #   persona.md 5-layer structure
-│   ├── merger.md         #   Incremental merge logic
-│   └── correction_handler.md # Conversation correction handler
-├── tools/                # Python tools
-│   ├── feishu_auto_collector.py  # Feishu auto-collector
-│   ├── feishu_browser.py         # Feishu browser method
-│   ├── feishu_mcp_client.py      # Feishu MCP method
-│   ├── dingtalk_auto_collector.py # DingTalk auto-collector
-│   ├── slack_auto_collector.py   # Slack auto-collector
-│   ├── email_parser.py           # Email parser
-│   ├── install_claude_generated_skill.py  # Claude Code generated-skill installer
-│   ├── install_hermes_skill.py   # Hermes local installer
-│   ├── research/                 # Celebrity research toolchain
-│   ├── skill_writer.py           # Skill file management
-│   └── version_manager.py        # Version archive & rollback
-├── skills/
-│   ├── colleague/        # Generated colleague Skills (gitignored)
-│   ├── relationship/     # Generated relationship Skills (gitignored)
-│   └── celebrity/        # Generated celebrity Skills (gitignored)
+├── SKILL.md                        # skill entry point (official frontmatter)
+├── prompts/                        # prompt system across three families
+│   ├── intake.md                   #   [colleague] info intake
+│   ├── work_analyzer.md            #   [colleague] work capability extraction
+│   ├── persona_analyzer.md         #   [colleague] personality extraction
+│   ├── work_builder.md             #   [colleague] work.md generation
+│   ├── persona_builder.md          #   [colleague] persona.md 6-layer structure
+│   ├── merger.md                   #   [shared] incremental merge logic
+│   ├── correction_handler.md       #   [shared] conversation correction
+│   ├── relationship/               #   [relationship] emotion/conflict/repair prompts
+│   └── celebrity/                  #   [celebrity] six-dimension research + mental-model prompts
+├── tools/                          # Python tools
+│   ├── feishu_auto_collector.py    #   [colleague] Feishu auto-collector
+│   ├── dingtalk_auto_collector.py  #   [colleague] DingTalk auto-collector
+│   ├── slack_auto_collector.py     #   [colleague] Slack auto-collector
+│   ├── email_parser.py             #   [shared] email parser
+│   ├── research/                   #   [celebrity] celebrity research toolchain
+│   │   ├── download_subtitles.sh   #     subtitle download
+│   │   ├── transcribe_audio.py     #     audio → text
+│   │   ├── srt_to_transcript.py    #     subtitles → transcript
+│   │   ├── merge_research.py       #     six-dimension research merge
+│   │   └── quality_check.py        #     quality check
+│   ├── install_*_skill.py          #   [shared] multi-host one-shot installers
+│   ├── skill_writer.py             #   [shared] skill file management
+│   └── version_manager.py          #   [shared] version archive & rollback
+├── skills/                         # generated Skills (gitignored)
+│   ├── colleague/                  #   colleagues
+│   ├── relationship/               #   close relationships
+│   └── celebrity/                  #   public figures
 ├── docs/PRD.md
 ├── requirements.txt
 └── LICENSE
@@ -342,17 +294,19 @@ dot-skill/
 
 ## Notes
 
-- **Source material quality = Skill quality**: chat logs + long docs > manual description only
-- Prioritize collecting: long-form writing **by them** > **decision-making replies** > casual messages
-- Feishu auto-collection requires adding the App bot to relevant group chats
+- **Source material quality = Skill quality** — and quality sources differ across families:
+  - **colleague**: their **own long-form writing** (design docs / review comments) > **decision-making replies** > casual group chat; Feishu auto-collection requires adding the App bot to relevant group chats
+  - **relationship**: complete chat history > letters / social posts / diaries > third-party descriptions; longer time spans are better, and material covering both conflict and repair is ideal
+  - **celebrity**: first-person books / blogs / long interviews > decision records (launches, code commits, Q&A) > third-party commentary; avoid feeding only second-hand interpretations
 - This is still a demo version — please file issues if you find bugs!
 
 ---
+
 ### 📄 Technical Report
 
 > **[Colleague.Skill: Automated AI Skill Generation via Expert Knowledge Distillation](colleague_skill.pdf)**
 >
-> We wrote a paper detailing the system design of colleague.skill — the two-part architecture (Work Skill + Persona), multi-source data collection, Skill generation & evolution mechanisms, and evaluation results in real-world scenarios. Check it out if you're interested!
+> This is the paper for **colleague.skill**, dot-skill's predecessor. It covers the Work Skill + Persona two-layer architecture, multi-source data collection, and Skill generation mechanics — the theoretical foundation for today's `colleague` family. Separate papers on the relationship / celebrity family extensions are planned.
 
 ---
 

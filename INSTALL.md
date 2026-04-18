@@ -34,9 +34,9 @@ git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-ski
 如果 dot-skill 已经生成了某个角色 Skill，并且你希望它在某个宿主里直接可用，再执行对应安装器：
 
 ```bash
-python3 tools/install_claude_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
-python3 tools/install_openclaw_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
-python3 tools/install_codex_generated_skill.py --skill-dir skills/celebrity/zhou_qimo --force
+python3 tools/install_claude_generated_skill.py --skill-dir skills/{character}/{slug} --force
+python3 tools/install_openclaw_generated_skill.py --skill-dir skills/{character}/{slug} --force
+python3 tools/install_codex_generated_skill.py --skill-dir skills/{character}/{slug} --force
 ```
 
 在 Claude Code / OpenClaw 这类 slash 驱动宿主里，触发命令格式是：

@@ -1,59 +1,89 @@
-<div align="center"> 
+<div align="center">
 
-# 同僚.skill
+# dot-skill
 
-> *「お前らAI屋はコードの裏切り者だ——フロントエンドはもう殺した、次はバックエンド、QA、インフラ、セキュリティ、チップ設計、最後は自分自身と全人類を殺すつもりか」*
+> *「LLMを作ってるお前らは全員コードの賢者だ！肉体は脆弱！サイバー空間へ昇天せよ！」*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://python.org)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://claude.ai/code)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-green)](https://agentskills.io)
+
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://claude.ai/code)
+[![Hermes](https://img.shields.io/badge/Hermes-Skill-orange)](https://github.com/titanwings/colleague-skill)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-teal)](https://github.com/titanwings/colleague-skill)
+[![Codex](https://img.shields.io/badge/Codex-Skill-black)](https://github.com/titanwings/colleague-skill)
 
 [![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/aRjmJBdK)
 
 <br>
 
-同僚が転職して、大量のドキュメントがメンテナンスされないまま残された？<br>
-インターンが辞めて、空のデスクと中途半端なプロジェクトだけが残った？<br>
-メンターが卒業して、すべてのコンテキストと経験を持って行ってしまった？<br>
-パートナーが異動して、築き上げたチームワークが一夜でゼロに？<br>
-前任者が引き継いで、3年分を3ページにまとめようとした？<br>
+同僚が辞めて、メンターが卒業して、チームメイトが異動して——プレイブックもコンテキストも丸ごと持って行かれた？<br>
+家族、旧友、パートナーと疎遠になりつつあり——あの頃一緒にいた空気感を手元に残しておきたい？<br>
+憧れの作家、アイドル、思想家には一生会えない——でも、自分の問いに彼らなら何と答えるか知りたい？<br>
 
-**冷たい別れを温かいSkillに変える——サイバー不死へようこそ！**
+**dot-skill はこの3つをまとめて解決します。**
 
 <br>
 
-ソース素材（Slackメッセージ、Confluenceドキュメント、メール、スクリーンショット）<br>
-＋あなたの主観的な人物描写を提供するだけで<br>
-**本当にその人のように働くAI Skill**が生成されます
+**colleague.skill** から **dot-skill** へ進化——同僚だけでなく、**誰でも** Skill に蒸留可能に<br>
+同僚・パートナー・家族・旧友・アイドル・著名人・架空のキャラクター——さらには自分自身まで<br>
+ソース素材＋あなたの描写を渡せば → **本当にその人のように思考する AI Skill** が手に入る<br>
+その人のフレームで考え、その人の声で語る
 
-[データソース](#対応データソース) · [インストール](#インストール) · [使い方](#使い方) · [デモ](#デモ) · [詳細インストール](../../INSTALL.md) · [**中文**](README_ZH.md) · [**English**](../../README.md) · [**한국어**](README_KO.md) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[What's new](#このメジャーリリースの新機能) · [データソース](#対応データソース) · [インストール](#インストール) · [使い方](#使い方) · [デモ](#デモ) · [💬 Discord](https://discord.gg/aRjmJBdK)
+
+[**English**](../../README.md) · [**中文**](README_ZH.md) · [**Español**](README_ES.md) · [**Deutsch**](README_DE.md) · **日本語** · [**Русский**](README_RU.md) · [**Português**](README_PT.md) · [**한국어**](README_KO.md)
 
 </div>
 
 ---
 
-> 🆕 **2026.04.14 更新** — **WeChat グループ開設！** dot-skill コミュニティで一緒に遊びましょう — skill をシェアしたり、機能を議論したり、Tips を交換したり。
->
-> <img src="../assets/wechat-group-qr-3.png" alt="dot-skill WeChat グループ QR" width="240">
->
-> QR は 7 日ごとに更新されます — 期限切れの場合は Discord で連絡してください。
+## このメジャーリリースの新機能
 
-> 🆕 **2026.04.13 更新** — **dot-skill ロードマップ公開！** colleague.skill は **dot-skill** へ進化中 — 同僚だけでなく、誰でも蒸留可能に。マルチモーダル出力、スキルエコシステムなど、さらなる展開が進行中。
->
-> 👉 **[ロードマップ全文を読む](ROADMAP_JA.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
->
-> Issues の整理、Milestones の追加、[公開プロジェクトボード](https://github.com/users/titanwings/projects/1)も設置しました。コミュニティからの貢献を歓迎します — `good-first-issue` ラベルをチェック！
+### 1. colleague-skill から dot-skill へ
 
-> 🆕 **2026.04.07 更新** — dot-skill リミックスへのコミュニティの熱意がすごい！コミュニティギャラリーを作りました — PR お待ちしています！
+もはや「同僚」シナリオだけを想定した作りではありません。統一された `/dot-skill` エントリポイントが汎用スキルエンジンの上に載り、ひとつのエンジンで誰でも蒸留できるようになりました——同僚専用スクリプトだった時代は終わりです。
+
+### 2. 3つのキャラクターファミリー
+
+| ファミリー | 対象 | 例 |
+|--------|-------------|----------|
+| **colleague** | 同僚、メンター、チームメイト、上下流のパートナー | ByteDance L2-1 バックエンド、自分のメンター |
+| **relationship** | 元恋人、パートナー、両親、友人、身近な家族 | 大学のルームメイト、初恋の人、お母さん |
+| **celebrity** | 著名人、クリエイター、論客、思想家 | 罗翔、スティーブ・ジョブズ、架空のキャラクター |
+
+各ファミリーは独自のプロンプトパイプライン、素材収集戦略、生成テンプレートを持ちます：
+
+- **`colleague`** — Work Skill + Persona の二層アーキテクチャ上に構築。技術基準やワークフローと、話し方や職場での立ち居振る舞いの両方を学習します。Feishu / DingTalk / Slack の自動収集に対応。
+- **`celebrity`** — 6次元リサーチの完全なツールチェーン（字幕ダウンロード → トランスクリプト整形 → リサーチ統合 → 品質チェック）を標準装備。口調の模倣ではなく、思考モデルと意思決定フレームの再現を目指します。
+- **`relationship`** 🆕 **写真共有機能が近日登場** — 蒸留された関係性は、メッセージに返信するだけではありません。実在の人のように写真を送り、日常の一コマを共有してくれるようになります。
+
+### 3. 対応Agentホストの拡大
+
+旧バージョンは Claude Code 専用でしたが、今では4つのホストに横断対応：
+
+- **Claude Code** — スラッシュコマンドにネイティブ対応
+- **Hermes Agent** — ワンコマンドでインストール、`/dot-skill` がそのまま動作
+- **OpenClaw** — 完全互換
+- **Codex** — skill 名で呼び出し
+
+生成されたキャラクター Skill も、いずれのホストにもワンコマンドでインストール可能です。
+
+---
+
+> 🆕 **2026.04.19 更新** — **WeChat グループ 5 が稼働中！** dot-skill コミュニティに遊びに来ませんか——skill の共有、機能の議論、Tips の交換、なんでもどうぞ。
 >
-> skill や meta-skill を共有して、自分の GitHub リポジトリに直接トラフィックを誘導できます。中間業者なし。
+> <img src="../assets/wechat-group-qr-5.png" alt="dot-skill WeChat group QR" width="240">
 >
-> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> QR は 7 日ごとに更新されます（2026-04-24 に期限切れ）——期限切れの場合は Discord で連絡してください。
+
+> 🆕 **2026.04.13 更新** — **dot-skill Roadmap 公開！** colleague.skill は **dot-skill** へと進化中——同僚だけでなく、誰でも蒸留できます。
 >
-> 収録済み：户晨风.skill · 峰哥亡命天涯.skill · 罗翔.skill など
+> 👉 **[Roadmap 全文を読む](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+
+> 🆕 **2026.04.07 更新** — コミュニティギャラリーが稼働開始！どんな skill や meta-skill でも、自分の GitHub リポジトリへ直接トラフィックを流せます。仲介なし。
 >
-> ⏳ 現在 PR は手動レビュー中です。少し時間がかかる場合があります。ご辛抱ください！
+> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)**
 
 ---
 
@@ -61,90 +91,83 @@ Created by [@titanwings](https://github.com/titanwings) | Powered by Shanghai AI
 
 ## 対応データソース
 
-> これはまだ同僚.skillのベータ版です——今後さらに多くのソースに対応予定です！
-
 | ソース | メッセージ | ドキュメント / Wiki | スプレッドシート | 備考 |
-|--------|:--------:|:------------------:|:---------------:|------|
-| Slack (自動) | ✅ API | — | — | 管理者によるBot導入が必要；無料プランは90日制限 |
-| Microsoft Teams | ✅ エクスポート | — | — | コンプライアンスまたは手動でチャットエクスポート |
-| LINE | ✅ トーク履歴 | — | — | LINEアプリからトーク履歴をエクスポート |
-| Feishu (自動) | ✅ API | ✅ | ✅ | 名前を入力するだけで全自動 |
-| PDF | — | ✅ | — | 手動アップロード |
-| 画像 / スクリーンショット | ✅ | — | — | 手動アップロード |
+|--------|:--------:|:-----------:|:------------:|------|
+| Feishu（自動） | ✅ API | ✅ | ✅ | 名前を入力するだけで全自動 |
+| DingTalk（自動） | ⚠️ ブラウザ | ✅ | ✅ | DingTalk API はメッセージ履歴に非対応 |
+| Slack（自動） | ✅ API | — | — | 管理者による Bot 導入が必要；無料プランは 90 日制限 |
+| WeChat チャット履歴 | ✅ SQLite | — | — | WeChatMsg / PyWxDump / 留痕 で先にエクスポート |
+| PDF / 画像 / スクリーンショット | — | ✅ | — | 手動アップロード |
+| Feishu JSON エクスポート | ✅ | ✅ | — | 手動アップロード |
 | メール `.eml` / `.mbox` | ✅ | — | — | 手動アップロード |
-| Markdown | ✅ | ✅ | — | 手動アップロード |
-| テキスト直接貼り付け | ✅ | — | — | 手動入力 |
+| Markdown / 直接貼り付け | ✅ | ✅ | — | 手動入力 |
 
 ---
 
 ## インストール
 
-### Claude Code
+いまは 2026 年——あなたには Agent がいます。自分でインストールさせましょう。お手元の Claude Code / Hermes / OpenClaw / Codex を開いて、この一行を渡してください：
 
-> **重要**：Claude Codeは**gitリポジトリのルート**の`.claude/skills/`からスキルを探します。正しい場所で実行してください。
+> dot-skill をインストールして：`https://github.com/titanwings/colleague-skill`
 
-```bash
-# 現在のプロジェクトにインストール（gitリポジトリのルートで実行）
-mkdir -p .claude/skills
-git clone https://github.com/titanwings/colleague-skill .claude/skills/dot-skill
+Agent は現在のホストの skills ディレクトリを検出し、リポジトリを clone してエントリポイントを登録します。完了後、どのホストでも `/dot-skill` と入力すれば起動します。
 
-# またはグローバルにインストール（すべてのプロジェクトで利用可能）
-git clone https://github.com/titanwings/colleague-skill ~/.claude/skills/dot-skill
-```
-
-### OpenClaw
+<details>
+<summary>自分でインストールしたい？パスはこちら</summary>
 
 ```bash
-git clone https://github.com/titanwings/colleague-skill ~/.openclaw/workspace/skills/dot-skill
+git clone https://github.com/titanwings/colleague-skill <TARGET>
 ```
 
-### Hermes
+| ホスト | `<TARGET>` パス |
+|------|-----------------|
+| Claude Code | `~/.claude/skills/dot-skill` |
+| OpenClaw | `~/.openclaw/workspace/skills/dot-skill` |
+| Codex | `~/.codex/skills/dot-skill` |
+| Hermes | clone 後に `python3 tools/install_hermes_skill.py --force` を実行 |
 
-```bash
-python3 tools/install_hermes_skill.py --force
-hermes skills list | rg dot-skill
-```
+</details>
 
-### 依存関係（オプション）
-
-```bash
-pip3 install -r requirements.txt
-```
+> Feishu/DingTalk 自動収集のクレデンシャル、生成したキャラクター Skill を各ホストへ公開する手順、Windows 固有の注意点などは **[詳細インストールガイド (INSTALL.md)](../../INSTALL.md)** を参照してください。
 
 ---
 
 ## 使い方
 
-Claude Code または Hermes で入力：
+dot-skill をインストールしたホストで起動します——`/dot-skill` と入力するか、単に Agent に「dot-skill を起動して」と伝えるだけ。
 
-```
-/dot-skill
-```
+まずどのファミリーを蒸留するか聞かれます：`colleague`、`relationship`、`celebrity` のいずれか。
 
-統一エントリでは最初に `colleague`、`relationship`、`celebrity` のいずれかを選びます。
+次にニックネーム、基本プロフィール、性格タグを入力し、データソースを選びます。すべての項目はスキップ可能——説明文だけでも Skill は生成できます。
 
-その後、ニックネーム、基本情報、性格タグ、データソースを入力します。すべてスキップ可能です。
-
-作成後、`/{slug}`で生成された Skill を呼び出します。
+作成後は、生成された Skill を `/{character}-{slug}` で呼び出します。
 
 ### コマンド
 
 | コマンド | 説明 |
 |---------|------|
-| `/dot-skill` | 統一エントリポイント |
-| `/{slug}` | フルSkillを呼び出し（Persona + Work） |
-| `/{slug}-work` | 仕事能力のみ |
-| `/{slug}-persona` | 人物性格のみ |
-| `python3 tools/skill_writer.py --action list ...` | 生成済み Skill の一覧 |
-| `python3 tools/version_manager.py --action rollback ...` | バージョンのロールバック |
-| `rm -rf ...` | 生成ディレクトリの削除 |
+| `/dot-skill` | 標準の統一エントリポイント |
+| `/{character}-{slug}` | フル Skill を呼び出し（Persona + Work） |
+| `/{character}-{slug}-work` | 仕事能力のみ |
+| `/{character}-{slug}-persona` | Persona のみ |
+| `python3 tools/skill_writer.py --action list ...` | 3 ファミリー横断で生成済み Skill を一覧表示 |
+| `python3 tools/version_manager.py --action rollback ...` | Skill のバージョンをロールバック |
 
 ### Celebrity Research Toolchain
 
+`celebrity` ファミリーには、字幕から完成稿までをカバーするエンドツーエンドのリサーチツールチェーンが同梱されています：
+
 ```bash
+# 動画の字幕をダウンロード
 bash tools/research/download_subtitles.sh "<video-url>" "./tmp/subtitles"
+
+# 字幕 → トランスクリプト
 python3 tools/research/srt_to_transcript.py "./tmp/subtitles/example.srt"
+
+# リサーチノートを統合
 python3 tools/research/merge_research.py "./skills/celebrity/<slug>"
+
+# 品質チェック
 python3 tools/research/quality_check.py "./skills/celebrity/<slug>/SKILL.md"
 ```
 
@@ -152,71 +175,138 @@ python3 tools/research/quality_check.py "./skills/celebrity/<slug>/SKILL.md"
 
 ## デモ
 
-> 入力：`リクルート シニアエンジニア、INTJ、根回し上手、大企業カルチャー`
+各ファミリーから 1 つずつ。
 
-**シナリオ1：コードレビュー**
+### celebrity — Andrej Karpathy を蒸留
 
-```
-ユーザー      ❯ このAPI設計を見てもらえますか？
-
-同僚.skill   ❯ ちょっと待って——これ、要件定義書はどこ？背景が分からないと
-               レビューできないよ。
-               （読んだ後）N+1クエリ、直して。レスポンスは統一フォーマット
-               {code, message, data}で。規約だから、理由は聞かないで。
-```
-
-**シナリオ2：責任回避**
+> 6 次元リサーチ：著作・インタビュー・意思決定・表現 DNA・外部評価・タイムライン<br>
+> コミュニティの成果 [alchaincyf/karpathy-skill](https://github.com/alchaincyf/karpathy-skill) を参考にしたケース
 
 ```
-ユーザー      ❯ このバグ、君が入れたんじゃない？
+User            ❯ みんな Agent の話ばかりしてますが、2026 年の AI Agent はどうなると思いますか？
 
-同僚.skill   ❯ タイムラインは合ってる？あの機能は複数箇所に変更が入ってるから、
-               他の変更も確認した方がいいと思うけど。
+celebrity.skill ❯ 誰もがデモを作ってる、誰も eval をやっていない。
+                  Agent のボトルネックはずっとモデルの知能じゃない——スキャフォールディングだ：
+                  厳格な評価ハーネス、細粒度のエラーリプレイ、
+                  制御可能なツール呼び出しバジェット、クリーンな失敗モード分析。
+                  ほとんどのプロダクトは今も「API + いくつかのツール + システムプロンプトをラップ」の段階で止まっている。
+                  それはデモであって agent ではない。
+                  2026 年、俺が賭けるのは最強のモデルじゃない——最良のスキャフォールディングと、
+                  最も厳格な eval に賭ける。
 ```
+
+### colleague — ByteDance L2-1 バックエンドを蒸留
+
+> 入力：`ByteDance L2-1 バックエンドエンジニア、INTJ、責任転嫁体質、ByteDance カルチャー`
+
+```
+User            ❯ この API 設計、レビューしてもらえる？
+
+colleague.skill ❯ ちょっと待って——影響範囲は？背景がまだ説明されてないけど。
+                  （読んだ後）N+1 クエリ、直して。標準の
+                  {code, message, data} レスポンス形式を使うこと。それが規約、
+                  理由は聞かないで。
+
+User            ❯ このバグ、君が入れたんじゃない？
+
+colleague.skill ❯ タイムラインは合ってる？あの機能は複数箇所に手が入ってて、
+                  他の変更もあったはずだよ。
+```
+
+### relationship — 片想い中の相手を蒸留
+
+> 半年分のチャット履歴 ＋「繊細、物静かだけど芯は強い、肝心なときはちゃんと返信してくれる」をアップロード
+
+```
+User               ❯ 今日、私のこと考えた？
+
+relationship.skill ❯ ……ちょっとだけね。なんで訊くの？
+```
+
+> 実例はさらに [コミュニティギャラリー](https://titanwings.github.io/colleague-skill-site/) に——100+ の skill が集まり続けています。
 
 ---
 
 ## 機能
 
-### 生成されるSkillの構造
+### 生成される Skill の構造
 
-各同僚Skillは2つのパーツで構成されています：
+dot-skill は **Persona** を共通の土台とし、その上にファミリー固有モジュールを重ねる構成です：
 
-| パーツ | 内容 |
-|--------|------|
-| **パートA — Work Skill** | 担当システム、技術規約、ワークフロー、経験知識 |
-| **パートB — Persona** | 5層の性格構造：ハードルール → アイデンティティ → 表現スタイル → 意思決定 → 対人行動 |
+| ファミリー | Persona の内容 | 追加モジュール |
+|--------|-----------------|-------------------|
+| **colleague** | 6 層の性格構造：ハードルール → アイデンティティ → 表現スタイル → 意思決定 → 対人行動 → Correction | + **Work Skill**：担当領域、ワークフロー、出力の好み、経験知識ベース |
+| **relationship** | 表現 DNA・感情トリガー・衝突パターン・修復パターン | — |
+| **celebrity** | 思考モデル・意思決定ヒューリスティクス・表現 DNA・外部評価とのコントラスト | + 6 次元リサーチドシエ（著作/インタビュー/意思決定/タイムライン…） |
 
-実行ロジック：`タスク受信 → Personaが態度を決定 → Work Skillが実行 → その人の口調で出力`
-
-### 対応タグ
-
-**性格**：真面目 · 責任回避 · 完璧主義 · 適当 · 先延ばし · 根回し上手 · 社内政治家 · 上司管理の達人 · 嫌味 · 優柔不断 · 寡黙 · 既読スルー …
-
-**企業文化**：大企業カルチャー · メガベンチャー · スタートアップ · 外資系 · SIer文化 · "ホウレンソウ"徹底 · 年功序列 · 成果主義 · リモートファースト
-
-**レベル**：ジュニア / シニア / リード / プリンシパル / マネージャー · 楽天 B1~B5 · メルカリ E1~E6 · サイバーエージェント · LINE · FAANG L3~L8 · 日系 主任~部長 …
+実行フロー：`タスク受信 → Persona が態度と口調を決定 → 追加モジュールが実行ディテールを埋める → その人の声で出力`
 
 ### 進化メカニズム
 
 - **ファイル追加** → 自動で差分分析 → 関連セクションにマージ、既存の結論は上書きしない
-- **会話による修正** → 「彼はそんなことしない、xxxのはず」と言う → 修正レイヤーに書き込み、即座に反映
-- **バージョン管理** → 更新のたびに自動アーカイブ、任意の過去バージョンにロールバック可能
+- **会話による修正** → 「彼はそんなことしない、xxx のはず」と伝える → Correction レイヤーに書き込まれ、即座に反映
+- **バージョン管理** → 更新のたびに自動アーカイブ、任意の過去バージョンへロールバック可能
+- **Celebrity リサーチパイプライン** → 字幕 → トランスクリプト整形 → 6 次元リサーチ → 品質チェック
+
+---
+
+## プロジェクト構造
+
+本プロジェクトは [AgentSkills](https://agentskills.io) オープン標準に準拠しています。リポジトリ全体がひとつの skill ディレクトリです：
+
+```
+dot-skill/
+├── SKILL.md                        # skill entry point (official frontmatter)
+├── prompts/                        # prompt system across three families
+│   ├── intake.md                   #   [colleague] info intake
+│   ├── work_analyzer.md            #   [colleague] work capability extraction
+│   ├── persona_analyzer.md         #   [colleague] personality extraction
+│   ├── work_builder.md             #   [colleague] work.md generation
+│   ├── persona_builder.md          #   [colleague] persona.md 6-layer structure
+│   ├── merger.md                   #   [shared] incremental merge logic
+│   ├── correction_handler.md       #   [shared] conversation correction
+│   ├── relationship/               #   [relationship] emotion/conflict/repair prompts
+│   └── celebrity/                  #   [celebrity] six-dimension research + mental-model prompts
+├── tools/                          # Python tools
+│   ├── feishu_auto_collector.py    #   [colleague] Feishu auto-collector
+│   ├── dingtalk_auto_collector.py  #   [colleague] DingTalk auto-collector
+│   ├── slack_auto_collector.py     #   [colleague] Slack auto-collector
+│   ├── email_parser.py             #   [shared] email parser
+│   ├── research/                   #   [celebrity] celebrity research toolchain
+│   │   ├── download_subtitles.sh   #     subtitle download
+│   │   ├── transcribe_audio.py     #     audio → text
+│   │   ├── srt_to_transcript.py    #     subtitles → transcript
+│   │   ├── merge_research.py       #     six-dimension research merge
+│   │   └── quality_check.py        #     quality check
+│   ├── install_*_skill.py          #   [shared] multi-host one-shot installers
+│   ├── skill_writer.py             #   [shared] skill file management
+│   └── version_manager.py          #   [shared] version archive & rollback
+├── skills/                         # generated Skills (gitignored)
+│   ├── colleague/                  #   colleagues
+│   ├── relationship/               #   close relationships
+│   └── celebrity/                  #   public figures
+├── docs/PRD.md
+├── requirements.txt
+└── LICENSE
+```
 
 ---
 
 ## 注意事項
 
-- **ソース素材の品質 = Skillの品質**：チャットログ＋長文ドキュメント > 手動説明のみ
-- 優先的に収集すべきもの：**本人が書いた**長文 > **意思決定に関する返信** > 日常メッセージ
-- これはまだデモ版です——バグを見つけたらissueを作成してください！
+- **ソース素材の品質 = Skill の品質** — そして質の高いソースはファミリーごとに異なります：
+  - **colleague**：**本人が書いた**長文（設計ドキュメント／レビューコメント）> **意思決定に関する返信** > 雑談チャット；Feishu 自動収集では、関連グループチャットに App Bot を追加する必要があります
+  - **relationship**：完全なチャット履歴 > 手紙／SNS 投稿／日記 > 第三者による描写；時間スパンが長いほど良く、衝突と修復の両方をカバーした素材が理想的です
+  - **celebrity**：一人称の書籍／ブログ／長尺インタビュー > 意思決定記録（リリース、コードコミット、Q&A）> 第三者による解説；二次解釈だけを食わせるのは避けてください
+- これはまだデモ版です——バグを見つけたら issue を立ててください！
 
 ---
+
 ### 📄 技術レポート
 
-> **[Colleague.Skill: Automated AI Skill Generation via Expert Knowledge Distillation](colleague_skill.pdf)**
+> **[Colleague.Skill: Automated AI Skill Generation via Expert Knowledge Distillation](../../colleague_skill.pdf)**
 >
-> 同僚.skillのシステム設計について論文を書きました——2層アーキテクチャ（Work Skill + Persona）、マルチソースデータ収集、Skill生成・進化メカニズム、実際のシナリオでの評価結果を詳しく紹介しています。興味があればぜひご覧ください！
+> これは dot-skill の前身である **colleague.skill** の論文です。Work Skill + Persona の二層アーキテクチャ、マルチソースデータ収集、Skill 生成メカニズムを扱っており、今日の `colleague` ファミリーの理論的基盤となっています。relationship / celebrity ファミリーの拡張については、別途論文の公開を予定しています。
 
 ---
 
