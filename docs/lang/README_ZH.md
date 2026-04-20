@@ -75,6 +75,22 @@ Created by [@titanwings](https://github.com/titanwings) · Powered by **Shanghai
 
 ---
 
+<!-- skillx:begin:setup-skillx -->
+## 用 skillx 试试
+
+[![Run with skillx](https://img.shields.io/badge/Run%20with-skillx-F97316)](https://skillx.run)
+
+无需安装，直接运行这个 skill：
+
+```bash
+skillx run --auto-approve https://github.com/titanwings/colleague-skill
+```
+
+由 [skillx](https://skillx.run) 提供支持 —— 一条命令拉取、扫描、注入并清理任意 agent skill。
+
+*注意：此命令允许 agent 在执行过程中跳过逐步权限确认。仅在你信任 skill 来源时使用。若希望手动确认每一步操作，请去掉 `--auto-approve`。*
+<!-- skillx:end:setup-skillx -->
+
 ## 🆕 这次大版本更新了什么？
 
 ### 1️⃣ 从 colleague-skill 升级为 dot-skill
