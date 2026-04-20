@@ -65,6 +65,7 @@ pip3 install openpyxl        # Excel .xlsx 转 CSV
 | 钉钉用户 | `dingtalk_auto_collector.py` |
 | 钉钉消息采集失败 | 手动截图 → 上传图片 |
 | Slack 用户 | `slack_auto_collector.py` |
+| Confluence 用户 | `confluence_auto_collector.py` |
 
 **飞书自动采集初始化**：
 ```bash
@@ -99,6 +100,14 @@ python3 tools/slack_auto_collector.py --setup
 ```
 
 > Slack 详细配置见下方「[Slack 自动采集配置](#slack-自动采集配置)」章节
+
+**Confluence 自动采集初始化**：
+```bash
+python3 tools/confluence_auto_collector.py --setup
+# 按提示选择 Cloud 或 Server/DC，输入 URL 和认证信息
+```
+
+> Confluence 详细配置见下方「[Confluence 自动采集配置](#confluence-自动采集配置)」章节
 
 ---
 
@@ -211,6 +220,102 @@ knowledge/张三/
 | 消息只有 90 天 | 免费版限制 | 升级 Workspace 或手动补充截图 |
 | 速率限制（429）| 请求太频繁 | 脚本会自动等待重试，无需手动处理 |
 
+---
+
+## Confluence 自动采集配置
+
+### 前置条件
+
+- Python 3.9+
+- `pip3 install requests`（通常已安装）
+- Confluence Cloud 或 Server/Data Center 的访问权限
+
+---
+
+### Confluence Cloud 配置
+
+#### 步骤 1：创建 API Token
+
+1. 前往 [https://id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
+2. 点击 **Create API token**
+3. 填写标签名（如 `colleague-skill`）→ **Create**
+4. 复制生成的 Token（只显示一次）
+
+#### 步骤 2：运行配置向导
+
+```bash
+python3 tools/confluence_auto_collector.py --setup
+```
+
+选择 `[1] Confluence Cloud`，按提示输入：
+- Confluence URL（如 `https://yourcompany.atlassian.net`）
+- Atlassian 账号邮箱
+- API Token
+
+配置成功后会自动验证连接并保存到 `~/.colleague-skill/confluence_config.json`。
+
+---
+
+### Confluence Server / Data Center 配置
+
+#### 方式 A：Personal Access Token（推荐）
+
+1. 登录 Confluence → 右上角头像 → **Settings** → **Personal Access Tokens**
+2. 点击 **Create token** → 填写名称 → **Create**
+3. 复制 Token
+
+#### 方式 B：用户名 + 密码
+
+直接使用 Confluence 登录的用户名和密码。
+
+#### 运行配置向导
+
+```bash
+python3 tools/confluence_auto_collector.py --setup
+```
+
+选择 `[2] Confluence Server / Data Center`，按提示输入 URL 和认证信息。
+
+---
+
+### 采集同事数据
+
+```bash
+# 基本用法
+python3 tools/confluence_auto_collector.py --name "John Doe"
+
+# 指定输出目录
+python3 tools/confluence_auto_collector.py --name "john.doe" --output-dir ./knowledge/john
+
+# 按 Space 过滤
+python3 tools/confluence_auto_collector.py --name "John" --space-key DEV --doc-limit 30
+
+# 调整采集量
+python3 tools/confluence_auto_collector.py --name "John" --doc-limit 100 --comment-limit 500
+```
+
+输出文件：
+```
+knowledge/john/
+├── docs.txt                # 页面内容（按长度分类）
+├── messages.txt            # 评论内容（按长度分类）
+└── collection_summary.json # 采集摘要
+```
+
+---
+
+### 常见报错与解决
+
+| 报错 | 原因 | 解决 |
+|------|------|------|
+| `Auth failed: Invalid credentials` | Token/密码无效 | 重新运行 `--setup` 配置 |
+| `Permission denied` | 账号无权访问该 Space | 联系 Confluence 管理员授权 |
+| `User not found` | 姓名不匹配 | 使用 Confluence 中显示的完整姓名或用户名 |
+| `Connection failed` | URL 错误或网络问题 | 检查 Confluence URL 是否正确 |
+| 速率限制（429）| 请求太频繁 | 脚本会自动等待重试，无需手动处理 |
+
+---
+
 ## 快速验证
 
 ```bash
@@ -221,6 +326,9 @@ python3 tools/feishu_parser.py --help
 
 # 测试 Slack 采集器
 python3 tools/slack_auto_collector.py --help
+
+# 测试 Confluence 采集器
+python3 tools/confluence_auto_collector.py --help
 
 # 测试邮件解析器
 python3 tools/email_parser.py --help

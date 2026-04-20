@@ -1,4 +1,4 @@
-# Required
+# Required (also used by Confluence auto collector)
 requests>=2.28.0
 
 # Optional: Chinese name → slug conversion
