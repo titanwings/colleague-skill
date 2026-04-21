@@ -90,7 +90,7 @@ Don't hit live APIs in CI. Mock with `unittest.mock` or the `responses` library.
 ## Security / 安全
 
 - **Never commit secrets, tokens, or personal data.** If you accidentally do, rotate the credential immediately and let a maintainer know.
-- Config files that hold credentials should be written to the user's home (e.g. `~/.colleague-skill/`) with permission `0600`.
+- Config files that hold credentials should be written to the user's home (e.g. `~/.colleague-skill/`) with permission `0600`. Collectors must enforce this programmatically via `os.chmod(path, 0o600)` after writing, and set `0o700` on the parent directory — do not rely on `umask`.
 - If you find a security issue, **do not open a public issue.** Email the maintainer or DM on Discord.
 
 ---
