@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧬 dot-skill(同事.skill）
+# 🧬 dot-skill（同事.skill）
 
 ### *「LLMを作ってるお前らは全員コードの賢者だ！肉体は脆弱！サイバー空間へ昇天せよ！」*
 

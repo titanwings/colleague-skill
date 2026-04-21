@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧬 dot-skill(同事.skill）
+# 🧬 dot-skill（同事.skill）
 
 ### *"¡Ustedes los que construyen LLMs son todos code-sages! ¡La carne es débil! ¡Asciendan al ciberespacio!"*
 
