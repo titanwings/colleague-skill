@@ -57,11 +57,11 @@ Um obrigado enorme a todos que deram estrela — seguiremos lançando, seguiremo
 
 </div>
 
-> 📢 **Atualização 2026.04.20** — **Grupo 6 do WeChat no ar!** Venha curtir a comunidade dot-skill — compartilhe skills, discuta funcionalidades, troque dicas.
+> 📢 **Atualização 2026.04.21** — **Grupo 7 do WeChat no ar!** Venha curtir a comunidade dot-skill — compartilhe skills, discuta funcionalidades, troque dicas.
 >
-> <img src="../assets/wechat-group-qr-6.png" alt="QR do grupo WeChat dot-skill" width="240">
+> <img src="../assets/wechat-group-qr-7.png" alt="QR do grupo WeChat dot-skill" width="240">
 >
-> O QR renova a cada 7 dias (expira em 2026-04-27) — se expirar, me chame no Discord.
+> O QR renova a cada 7 dias (expira em 2026-04-28) — se expirar, me chame no Discord.
 
 > 🗺️ **2026.04.13** — **O Roadmap do dot-skill está no ar!** colleague.skill está evoluindo para **dot-skill** — destile qualquer pessoa, não apenas colegas. 👉 **[Roadmap completo](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
 
