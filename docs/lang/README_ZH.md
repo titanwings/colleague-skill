@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧬 dot-skill
+# 🧬 dot-skill(同事.skill）
 
 ### *"你们搞大模型的都是码圣！血肉苦弱！赛博飞升！"*
 
