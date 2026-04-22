@@ -9,7 +9,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://claude.ai/code)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-green)](https://agentskills.io)
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/aRjmJBdK)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/2bbP2a7f)
 
 <br>
 
@@ -27,21 +27,21 @@ Liefere Quellmaterialien (Slack-Nachrichten, Confluence-Docs, E-Mails, Screensho
 plus deine subjektive Beschreibung der Person<br>
 und erhalte einen **AI Skill, der tatsächlich wie sie arbeitet**
 
-[Datenquellen](#unterstützte-datenquellen) · [Installation](#installation) · [Nutzung](#nutzung) · [Demo](#demo) · [Detaillierte Installation](../../INSTALL.md) · [**中文**](README_ZH.md) · [**English**](../../README.md) · [**한국어**](README_KO.md) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[Datenquellen](#unterstützte-datenquellen) · [Installation](#installation) · [Nutzung](#nutzung) · [Demo](#demo) · [Detaillierte Installation](../../INSTALL.md) · [**中文**](README_ZH.md) · [**English**](../../README.md) · [**한국어**](README_KO.md) · [💬 Discord](https://discord.gg/2bbP2a7f)
 
 </div>
 
 ---
 
-> 🆕 **Update 2026.04.14** — **WeChat-Gruppe ist online!** Komm in die dot-skill Community — teile Skills, diskutiere Features, tausche Tipps aus.
+> 🆕 **Update 2026.04.18** — **WeChat-Gruppe 5 ist online!** Komm in die dot-skill Community — teile Skills, diskutiere Features, tausche Tipps aus.
 >
-> <img src="../assets/wechat-group-qr-2.png" alt="dot-skill WeChat-Gruppen QR" width="240"> 
+> <img src="../assets/wechat-group-qr-5.png" alt="dot-skill WeChat-Gruppen QR" width="240"> 
 >
 > QR wird alle 7 Tage erneuert — wenn abgelaufen, melde dich auf Discord.
 
 > 🆕 **Update 2026.04.13** — **Die dot-skill Roadmap ist da!** colleague.skill entwickelt sich zu **dot-skill** weiter — destilliere jeden, nicht nur Kollegen. Multimodale Ausgabe, Skill-Ökosysteme und mehr sind in Arbeit.
 >
-> 👉 **[Vollständige Roadmap lesen](ROADMAP_DE.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[Vollständige Roadmap lesen](ROADMAP_DE.md)** · **[💬 Discord](https://discord.gg/2bbP2a7f)**
 >
 > Wir haben auch Issues aufgeräumt, Milestones hinzugefügt und ein [öffentliches Projekt-Board](https://github.com/users/titanwings/projects/1) eingerichtet. Community-Beiträge willkommen — schau dir die `good-first-issue` Labels an!
 
@@ -49,7 +49,7 @@ und erhalte einen **AI Skill, der tatsächlich wie sie arbeitet**
 >
 > Teile jede skill oder meta-skill und leite Traffic direkt zu deinem eigenen GitHub-Repo. Kein Mittelsmann.
 >
-> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/2bbP2a7f)**
 >
 > Bereits gelistet: 户晨风.skill · 峰哥亡命天涯.skill · 罗翔.skill und mehr
 >

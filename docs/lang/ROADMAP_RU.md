@@ -125,7 +125,7 @@
 |--------|-----|
 | Отправить свой .skill | [Gallery PR](https://titanwings.github.io/colleague-skill-site/) |
 | Обсуждать и предлагать | [GitHub Discussions](https://github.com/titanwings/colleague-skill/discussions) (скоро) |
-| Общаться в реальном времени | [Discord](https://discord.gg/aRjmJBdK) |
+| Общаться в реальном времени | [Discord](https://discord.gg/2bbP2a7f) |
 | Сообщить об ошибке | [Issue](https://github.com/titanwings/colleague-skill/issues/new) |
 | Внести код | Ищите метки `good-first-issue` или просто откройте PR |
 
@@ -141,7 +141,7 @@
 
 **Эта дорожная карта принадлежит сообществу. Приоритеты меняются на основе вашей обратной связи.**
 
-Есть идеи? Приходите в [Discord](https://discord.gg/aRjmJBdK) или начните Discussion.
+Есть идеи? Приходите в [Discord](https://discord.gg/2bbP2a7f) или начните Discussion.
 
 Каждый `.skill` -- это продолжение отношений.
 

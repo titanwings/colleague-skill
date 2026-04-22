@@ -9,7 +9,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://claude.ai/code)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-green)](https://agentskills.io)
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/aRjmJBdK)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/2bbP2a7f)
 
 <br>
 
@@ -27,21 +27,21 @@ Proporciona materiales fuente (mensajes de Slack, docs de Confluence, emails, ca
 más tu descripción subjetiva de la persona<br>
 y obtén un **AI Skill que realmente trabaja como ellos**
 
-[Fuentes de datos](#fuentes-de-datos-soportadas) · [Instalación](#instalación) · [Uso](#uso) · [Demo](#demo) · [Instalación detallada](../../INSTALL.md) · [**中文**](README_ZH.md) · [**English**](../../README.md) · [**한국어**](README_KO.md) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[Fuentes de datos](#fuentes-de-datos-soportadas) · [Instalación](#instalación) · [Uso](#uso) · [Demo](#demo) · [Instalación detallada](../../INSTALL.md) · [**中文**](README_ZH.md) · [**English**](../../README.md) · [**한국어**](README_KO.md) · [💬 Discord](https://discord.gg/2bbP2a7f)
 
 </div>
 
 ---
 
-> 🆕 **Actualización 2026.04.14** — **¡Grupo de WeChat activo!** Únete a la comunidad dot-skill — comparte skills, discute funciones e intercambia consejos.
+> 🆕 **Actualización 2026.04.18** — **¡Grupo 5 de WeChat activo!** Únete a la comunidad dot-skill — comparte skills, discute funciones e intercambia consejos.
 >
-> <img src="../assets/wechat-group-qr-2.png" alt="Código QR del grupo de WeChat dot-skill" width="240">
+> <img src="../assets/wechat-group-qr-5.png" alt="Código QR del grupo de WeChat dot-skill" width="240">
 >
 > El QR se actualiza cada 7 días — si expira, contáctame en Discord.
 
 > 🆕 **Actualización 2026.04.13** — **¡La hoja de ruta de dot-skill está aquí!** colleague.skill está evolucionando a **dot-skill** — destila a cualquier persona, no solo colegas. Salida multimodal, ecosistemas de skills y más en camino.
 >
-> 👉 **[Leer la hoja de ruta completa](ROADMAP_ES.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[Leer la hoja de ruta completa](ROADMAP_ES.md)** · **[💬 Discord](https://discord.gg/2bbP2a7f)**
 >
 > También hemos organizado los Issues, añadido Milestones y creado un [tablero público del proyecto](https://github.com/users/titanwings/projects/1). ¡Contribuciones bienvenidas — revisa las etiquetas `good-first-issue`!
 
@@ -49,7 +49,7 @@ y obtén un **AI Skill que realmente trabaja como ellos**
 >
 > Comparte cualquier skill o meta-skill y lleva tráfico directamente a tu propio repo de GitHub. Sin intermediarios.
 >
-> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/2bbP2a7f)**
 >
 > Ya incluidos: 户晨风.skill · 峰哥亡命天涯.skill · 罗翔.skill y más
 >

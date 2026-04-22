@@ -125,7 +125,7 @@
 |------|--------|
 | .skill を投稿する | [Gallery PR](https://titanwings.github.io/colleague-skill-site/) |
 | 議論・提案する | [GitHub Discussions](https://github.com/titanwings/colleague-skill/discussions)（近日公開） |
-| リアルタイムでチャット | [Discord](https://discord.gg/aRjmJBdK) |
+| リアルタイムでチャット | [Discord](https://discord.gg/2bbP2a7f) |
 | バグを報告する | [Issue](https://github.com/titanwings/colleague-skill/issues/new) |
 | コードを貢献する | `good-first-issue` ラベルを探すか、PR を直接作成 |
 
@@ -141,7 +141,7 @@
 
 **このロードマップはコミュニティのものです。優先順位は皆さんのフィードバックに基づいて変わります。**
 
-アイデアがありますか？ [Discord](https://discord.gg/aRjmJBdK) に来るか、Discussion を始めてください。
+アイデアがありますか？ [Discord](https://discord.gg/2bbP2a7f) に来るか、Discussion を始めてください。
 
 すべての `.skill` は、続いていく関係です。
 

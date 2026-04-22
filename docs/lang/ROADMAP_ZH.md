@@ -126,7 +126,7 @@
 |------|------|
 | 提交你的 .skill | [Gallery PR](https://titanwings.github.io/colleague-skill-site/) |
 | 讨论与提议 | [GitHub Discussions](https://github.com/titanwings/colleague-skill/discussions)（即将开放） |
-| 实时交流 | [Discord](https://discord.gg/aRjmJBdK) |
+| 实时交流 | [Discord](https://discord.gg/2bbP2a7f) |
 | 报告 Bug | [Issue](https://github.com/titanwings/colleague-skill/issues/new) |
 | 贡献代码 | 看 `good-first-issue` 标签，或直接提 PR |
 
@@ -142,7 +142,7 @@
 
 **这份路线图属于社区。优先级会根据你们的反馈动态调整。**
 
-有想法？来 [Discord](https://discord.gg/aRjmJBdK) 聊，或者直接开一个 Discussion。
+有想法？来 [Discord](https://discord.gg/2bbP2a7f) 聊，或者直接开一个 Discussion。
 
 每一个 `.skill`，都是一段关系的延续。
 

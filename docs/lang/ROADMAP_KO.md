@@ -125,7 +125,7 @@
 |------|------|
 | .skill 제출 | [Gallery PR](https://titanwings.github.io/colleague-skill-site/) |
 | 토론 및 제안 | [GitHub Discussions](https://github.com/titanwings/colleague-skill/discussions) (곧 공개) |
-| 실시간 채팅 | [Discord](https://discord.gg/aRjmJBdK) |
+| 실시간 채팅 | [Discord](https://discord.gg/2bbP2a7f) |
 | 버그 제보 | [Issue](https://github.com/titanwings/colleague-skill/issues/new) |
 | 코드 기여 | `good-first-issue` 라벨을 찾거나 바로 PR 열기 |
 
@@ -141,7 +141,7 @@
 
 **이 로드맵은 커뮤니티와 함께 만들어갑니다. 우선순위는 여러분의 피드백에 따라 달라집니다.**
 
-아이디어가 있다면 [Discord](https://discord.gg/aRjmJBdK)에 들르거나 Discussion을 시작해 주세요.
+아이디어가 있다면 [Discord](https://discord.gg/2bbP2a7f)에 들르거나 Discussion을 시작해 주세요.
 
 모든 `.skill`은 계속 이어지는 관계의 또 다른 형태입니다.
 

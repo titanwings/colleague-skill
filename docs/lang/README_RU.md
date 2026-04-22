@@ -9,7 +9,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://claude.ai/code)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-green)](https://agentskills.io)
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/aRjmJBdK)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/2bbP2a7f)
 
 <br>
 
@@ -27,21 +27,21 @@
 плюс своё субъективное описание человека<br>
 и получи **AI Skill, который действительно работает как он**
 
-[Источники данных](#поддерживаемые-источники-данных) · [Установка](#установка) · [Использование](#использование) · [Демо](#демо) · [Подробная установка](../../INSTALL.md) · [**中文**](README_ZH.md) · [**English**](../../README.md) · [**한국어**](README_KO.md) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[Источники данных](#поддерживаемые-источники-данных) · [Установка](#установка) · [Использование](#использование) · [Демо](#демо) · [Подробная установка](../../INSTALL.md) · [**中文**](README_ZH.md) · [**English**](../../README.md) · [**한국어**](README_KO.md) · [💬 Discord](https://discord.gg/2bbP2a7f)
 
 </div>
 
 ---
 
-> 🆕 **Обновление 2026.04.14** — **Группа WeChat создана!** Присоединяйтесь к сообществу dot-skill — делитесь навыками, обсуждайте функции, обменивайтесь советами.
+> 🆕 **Обновление 2026.04.18** — **Группа WeChat 5 создана!** Присоединяйтесь к сообществу dot-skill — делитесь навыками, обсуждайте функции, обменивайтесь советами.
 >
-> <img src="../assets/wechat-group-qr-2.png" alt="QR-код группы WeChat dot-skill" width="240">
+> <img src="../assets/wechat-group-qr-5.png" alt="QR-код группы WeChat dot-skill" width="240">
 >
 > QR обновляется каждые 7 дней — если истёк, пишите мне в Discord.
 
 > 🆕 **Обновление 2026.04.13** — **Дорожная карта dot-skill опубликована!** colleague.skill превращается в **dot-skill** — дистиллируйте кого угодно, не только коллег. Мультимодальный вывод, экосистема навыков и многое другое уже в работе.
 >
-> 👉 **[Читать полную дорожную карту](ROADMAP_RU.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[Читать полную дорожную карту](ROADMAP_RU.md)** · **[💬 Discord](https://discord.gg/2bbP2a7f)**
 >
 > Мы также навели порядок в Issues, добавили Milestones и создали [публичную доску проекта](https://github.com/users/titanwings/projects/1). Приветствуем вклад сообщества — смотрите метки `good-first-issue`!
 
@@ -49,7 +49,7 @@
 >
 > Делитесь любыми skill или meta-skill и привлекайте трафик прямо в свой GitHub-репозиторий. Без посредников.
 >
-> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/2bbP2a7f)**
 >
 > Уже включены: 户晨风.skill · 峰哥亡命天涯.skill · 罗翔.skill и другие
 >

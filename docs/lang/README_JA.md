@@ -9,7 +9,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://claude.ai/code)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-green)](https://agentskills.io)
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/aRjmJBdK)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/2bbP2a7f)
 
 <br>
 
@@ -27,21 +27,21 @@
 ＋あなたの主観的な人物描写を提供するだけで<br>
 **本当にその人のように働くAI Skill**が生成されます
 
-[データソース](#対応データソース) · [インストール](#インストール) · [使い方](#使い方) · [デモ](#デモ) · [詳細インストール](../../INSTALL.md) · [**中文**](README_ZH.md) · [**English**](../../README.md) · [**한국어**](README_KO.md) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[データソース](#対応データソース) · [インストール](#インストール) · [使い方](#使い方) · [デモ](#デモ) · [詳細インストール](../../INSTALL.md) · [**中文**](README_ZH.md) · [**English**](../../README.md) · [**한국어**](README_KO.md) · [💬 Discord](https://discord.gg/2bbP2a7f)
 
 </div>
 
 ---
 
-> 🆕 **2026.04.14 更新** — **WeChat グループ開設！** dot-skill コミュニティで一緒に遊びましょう — skill をシェアしたり、機能を議論したり、Tips を交換したり。
+> 🆕 **2026.04.18 更新** — **WeChat グループ 5 開設！** dot-skill コミュニティで一緒に遊びましょう — skill をシェアしたり、機能を議論したり、Tips を交換したり。
 >
-> <img src="../assets/wechat-group-qr-2.png" alt="dot-skill WeChat グループ QR" width="240">
+> <img src="../assets/wechat-group-qr-5.png" alt="dot-skill WeChat グループ QR" width="240">
 >
 > QR は 7 日ごとに更新されます — 期限切れの場合は Discord で連絡してください。
 
 > 🆕 **2026.04.13 更新** — **dot-skill ロードマップ公開！** colleague.skill は **dot-skill** へ進化中 — 同僚だけでなく、誰でも蒸留可能に。マルチモーダル出力、スキルエコシステムなど、さらなる展開が進行中。
 >
-> 👉 **[ロードマップ全文を読む](ROADMAP_JA.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[ロードマップ全文を読む](ROADMAP_JA.md)** · **[💬 Discord](https://discord.gg/2bbP2a7f)**
 >
 > Issues の整理、Milestones の追加、[公開プロジェクトボード](https://github.com/users/titanwings/projects/1)も設置しました。コミュニティからの貢献を歓迎します — `good-first-issue` ラベルをチェック！
 
@@ -49,7 +49,7 @@
 >
 > skill や meta-skill を共有して、自分の GitHub リポジトリに直接トラフィックを誘導できます。中間業者なし。
 >
-> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/2bbP2a7f)**
 >
 > 収録済み：户晨风.skill · 峰哥亡命天涯.skill · 罗翔.skill など
 >

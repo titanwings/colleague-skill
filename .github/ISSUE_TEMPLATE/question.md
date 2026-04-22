@@ -12,7 +12,7 @@ Before opening a question, please check:
 
 - README.md / INSTALL.md / SKILL.md
 - Existing issues and discussions / 已有的 issue 和讨论
-- Discord: https://discord.gg/aRjmJBdK
+- Discord: https://discord.gg/2bbP2a7f
 -->
 
 ## What are you trying to do? / 你想做什么？

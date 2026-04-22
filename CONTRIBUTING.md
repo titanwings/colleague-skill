@@ -106,7 +106,7 @@ Don't hit live APIs in CI. Mock with `unittest.mock` or the `responses` library.
 
 ## Community / 社区
 
-- [💬 Discord](https://discord.gg/aRjmJBdK) — main chat
+- [💬 Discord](https://discord.gg/2bbP2a7f) — main chat
 - [GitHub Discussions](https://github.com/titanwings/colleague-skill/discussions) — long-form Q&A and design threads
 - [Skill gallery](https://titanwings.github.io/colleague-skill-site/) — browse and submit skills
 

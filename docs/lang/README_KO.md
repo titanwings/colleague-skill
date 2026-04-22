@@ -9,7 +9,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://claude.ai/code)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-green)](https://agentskills.io)
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/aRjmJBdK)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/2bbP2a7f)
 
 <br>
 
@@ -27,7 +27,7 @@
 그 사람에 대한 주관적인 설명만 있으면<br>
 **정말 그 사람처럼 일하는 AI 스킬**을 만들 수 있습니다
 
-[지원 데이터 소스](#지원-데이터-소스) · [설치](#설치) · [사용법](#사용법) · [데모](#데모) · [상세 설치](../../INSTALL.md) · [**English**](../../README.md) · [**中文**](README_ZH.md) · [**Español**](README_ES.md) · [**Deutsch**](README_DE.md) · [**日本語**](README_JA.md) · [**Русский**](README_RU.md) · [**Português**](README_PT.md) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[지원 데이터 소스](#지원-데이터-소스) · [설치](#설치) · [사용법](#사용법) · [데모](#데모) · [상세 설치](../../INSTALL.md) · [**English**](../../README.md) · [**中文**](README_ZH.md) · [**Español**](README_ES.md) · [**Deutsch**](README_DE.md) · [**日本語**](README_JA.md) · [**Русский**](README_RU.md) · [**Português**](README_PT.md) · [💬 Discord](https://discord.gg/2bbP2a7f)
 
 </div>
 
@@ -35,7 +35,7 @@
 
 > 🆕 **2026.04.13 업데이트** — **dot-skill 로드맵이 공개되었습니다!** colleague.skill은 이제 **dot-skill**로 진화하고 있습니다. 더 이상 동료에만 머무르지 않고, 누구든 증류할 수 있는 방향으로 확장됩니다. 멀티모달 출력과 스킬 생태계도 준비 중입니다.
 >
-> 👉 **[전체 로드맵 보기](ROADMAP_KO.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[전체 로드맵 보기](ROADMAP_KO.md)** · **[💬 Discord](https://discord.gg/2bbP2a7f)**
 >
 > 이슈를 정리했고, 마일스톤과 [공개 프로젝트 보드](https://github.com/users/titanwings/projects/1)도 마련해 두었습니다. 커뮤니티 기여를 환영합니다. `good-first-issue` 라벨도 확인해 보세요.
 
@@ -43,7 +43,7 @@
 >
 > 어떤 skill이든 meta-skill이든 공유하고, 트래픽을 자신의 GitHub 저장소로 바로 연결할 수 있습니다. 중간 단계는 없습니다.
 >
-> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/2bbP2a7f)**
 >
 > 현재 등록된 스킬: 户晨风.skill · 峰哥亡命天涯.skill · 罗翔.skill 외 다수
 

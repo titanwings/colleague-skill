@@ -9,7 +9,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://claude.ai/code)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-green)](https://agentskills.io)
 
-[![Discord](https://img.shields.io/badge/Discord-加入社区-5865F2?logo=discord&logoColor=white)](https://discord.gg/aRjmJBdK)
+[![Discord](https://img.shields.io/badge/Discord-加入社区-5865F2?logo=discord&logoColor=white)](https://discord.gg/2bbP2a7f)
 
 <br>
 
@@ -27,7 +27,7 @@
 生成一个**真正能替他工作的 AI Skill**<br>
 用他的技术规范写代码，用他的语气回答问题，知道他什么时候会甩锅
 
-[数据来源](#支持的数据来源) · [安装](#安装) · [使用](#使用) · [效果示例](#效果示例) · [详细安装说明](../../INSTALL.md) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[数据来源](#支持的数据来源) · [安装](#安装) · [使用](#使用) · [效果示例](#效果示例) · [详细安装说明](../../INSTALL.md) · [💬 Discord](https://discord.gg/2bbP2a7f)
 
 [**English**](../../README.md) · [**Español**](README_ES.md) · [**Deutsch**](README_DE.md) · [**日本語**](README_JA.md) · [**Русский**](README_RU.md) · [**Português**](README_PT.md) · [**한국어**](README_KO.md)
 
@@ -35,15 +35,15 @@
 
 ---
 
-> 🆕 **2026.04.14 更新** — **微信交流群建好啦！** 欢迎进群一起玩 dot-skill，分享 skill、聊聊功能、互相交流～
+> 🆕 **2026.04.18 更新** — **微信交流5群建好啦！** 欢迎进群一起玩 dot-skill，分享 skill、聊聊功能、互相交流～
 >
-> <img src="../assets/wechat-group-qr-2.png" alt="dot-skill 微信群二维码" width="240">
+> <img src="../assets/wechat-group-qr-5.png" alt="dot-skill 微信群二维码" width="240">
 >
 > 二维码 7 天内有效，过期了就来 Discord 找我重新发。
 
 > 🆕 **2026.04.13 更新** — **dot-skill 路线图正式发布！** colleague.skill 正在进化为 **dot-skill** —— 蒸馏任何人，不止同事。多模态输出、技能生态等更多内容即将到来。
 >
-> 👉 **[查看完整路线图](ROADMAP_ZH.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[查看完整路线图](ROADMAP_ZH.md)** · **[💬 Discord](https://discord.gg/2bbP2a7f)**
 >
 > 我们还整理了 Issues、新增了 Milestones，并建立了[公开项目看板](https://github.com/users/titanwings/projects/1)。欢迎社区贡献 —— 看看 `good-first-issue` 标签！
 
@@ -51,7 +51,7 @@
 >
 > 任何 skill 或者 meta-skill 可以一起分享，可以直接给大家自己的 GitHub repo 引流～ 没有中间商赚差价
 >
-> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)** · **[💬 Discord](https://discord.gg/2bbP2a7f)**
 >
 > 已收录：户晨风.skill · 峰哥亡命天涯.skill · 罗翔.skill 等
 >

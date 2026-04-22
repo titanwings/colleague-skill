@@ -125,7 +125,7 @@ Qualquer pessoa pode se tornar um `.skill`.
 |------|------|
 | Envie seu .skill | [Gallery PR](https://titanwings.github.io/colleague-skill-site/) |
 | Discuta e proponha | [GitHub Discussions](https://github.com/titanwings/colleague-skill/discussions) (em breve) |
-| Converse em tempo real | [Discord](https://discord.gg/aRjmJBdK) |
+| Converse em tempo real | [Discord](https://discord.gg/2bbP2a7f) |
 | Reporte bugs | [Issue](https://github.com/titanwings/colleague-skill/issues/new) |
 | Contribua com codigo | Procure labels `good-first-issue` ou simplesmente abra um PR |
 
@@ -141,7 +141,7 @@ Qualquer pessoa pode se tornar um `.skill`.
 
 **Este roadmap pertence a comunidade. As prioridades mudam com base no seu feedback.**
 
-Tem ideias? Venha ao [Discord](https://discord.gg/aRjmJBdK) ou inicie uma Discussion.
+Tem ideias? Venha ao [Discord](https://discord.gg/2bbP2a7f) ou inicie uma Discussion.
 
 Cada `.skill` e um relacionamento que continua.
 

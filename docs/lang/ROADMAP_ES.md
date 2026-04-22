@@ -125,7 +125,7 @@ Cualquiera puede convertirse en un `.skill`.
 |------|-------|
 | Envía tu .skill | [PR a la Galería](https://titanwings.github.io/colleague-skill-site/) |
 | Discute y propone | [GitHub Discussions](https://github.com/titanwings/colleague-skill/discussions) (próximamente) |
-| Chatea en tiempo real | [Discord](https://discord.gg/aRjmJBdK) |
+| Chatea en tiempo real | [Discord](https://discord.gg/2bbP2a7f) |
 | Reporta errores | [Issue](https://github.com/titanwings/colleague-skill/issues/new) |
 | Contribuye código | Busca etiquetas `good-first-issue`, o simplemente abre un PR |
 
@@ -141,7 +141,7 @@ Cualquiera puede convertirse en un `.skill`.
 
 **Esta hoja de ruta pertenece a la comunidad. Las prioridades cambian según tu feedback.**
 
-¿Tienes ideas? Ven a [Discord](https://discord.gg/aRjmJBdK) o inicia una Discussion.
+¿Tienes ideas? Ven a [Discord](https://discord.gg/2bbP2a7f) o inicia una Discussion.
 
 Cada `.skill` es una relación que continúa.
 
