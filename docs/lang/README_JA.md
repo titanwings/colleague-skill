@@ -57,11 +57,11 @@
 
 </div>
 
-> 📢 **2026.04.22 更新** — **WeChat グループ 8 が稼働中！** dot-skill コミュニティに遊びに来ませんか——skill の共有、機能の議論、Tips の交換、なんでもどうぞ。
+> 📢 **2026.04.22 更新** — **WeChat グループ 9 が稼働中！** dot-skill コミュニティに遊びに来ませんか——skill の共有、機能の議論、Tips の交換、なんでもどうぞ。
 >
-> <img src="../assets/wechat-group-qr-8.png" alt="dot-skill WeChat group QR" width="240">
+> <img src="../assets/wechat-group-qr-9.png" alt="dot-skill WeChat group QR" width="240">
 >
-> QR は 7 日ごとに更新されます（2026-04-29 に期限切れ）——期限切れの場合は Discord で連絡してください。
+> QR は 7 日ごとに更新されます（2026-05-01 に期限切れ）——期限切れの場合は Discord で連絡してください。
 
 > 🗺️ **2026.04.13** — **dot-skill Roadmap 公開！** colleague.skill は **dot-skill** へと進化中——同僚だけでなく、誰でも蒸留できます。 👉 **[Roadmap 全文を読む](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
 
