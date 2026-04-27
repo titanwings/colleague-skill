@@ -14,7 +14,7 @@
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-teal)](https://github.com/titanwings/colleague-skill)
 [![Codex](https://img.shields.io/badge/Codex-Skill-black)](https://github.com/titanwings/colleague-skill)
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/aRjmJBdK)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/NVX66RxWZv)
 
 <br>
 
@@ -41,7 +41,7 @@ Pensa no frame deles, fala na voz deles
 
 <br>
 
-[🆕 Novidades](#-o-que-há-de-novo-nesta-grande-versão) · [📦 Fontes de dados](#-fontes-de-dados-suportadas) · [⚡ Instalação](#-instalação) · [🚀 Uso](#-uso) · [✨ Demo](#-demo) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[🆕 Novidades](#-o-que-há-de-novo-nesta-grande-versão) · [📦 Fontes de dados](#-fontes-de-dados-suportadas) · [⚡ Instalação](#-instalação) · [🚀 Uso](#-uso) · [✨ Demo](#-demo) · [💬 Discord](https://discord.gg/NVX66RxWZv)
 
 [**English**](../../README.md) · [**中文**](README_ZH.md) · [**Español**](README_ES.md) · [**Deutsch**](README_DE.md) · [**日本語**](README_JA.md) · [**Русский**](README_RU.md) · [**한국어**](README_KO.md)
 
@@ -63,7 +63,7 @@ Um obrigado enorme a todos que deram estrela — seguiremos lançando, seguiremo
 >
 > O QR renova a cada 7 dias (expira em 2026-05-01) — se expirar, me chame no Discord.
 
-> 🗺️ **2026.04.13** — **O Roadmap do dot-skill está no ar!** colleague.skill está evoluindo para **dot-skill** — destile qualquer pessoa, não apenas colegas. 👉 **[Roadmap completo](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 🗺️ **2026.04.13** — **O Roadmap do dot-skill está no ar!** colleague.skill está evoluindo para **dot-skill** — destile qualquer pessoa, não apenas colegas. 👉 **[Roadmap completo](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/NVX66RxWZv)**
 
 > 🌐 **2026.04.07** — A galeria comunitária está no ar! Qualquer skill ou meta-skill pode direcionar tráfego diretamente para o seu próprio repositório do GitHub. Sem intermediários. 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)**
 

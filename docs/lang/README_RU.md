@@ -14,7 +14,7 @@
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-teal)](https://github.com/titanwings/colleague-skill)
 [![Codex](https://img.shields.io/badge/Codex-Skill-black)](https://github.com/titanwings/colleague-skill)
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/aRjmJBdK)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/NVX66RxWZv)
 
 <br>
 
@@ -41,7 +41,7 @@
 
 <br>
 
-[🆕 Что нового](#-что-нового-в-этом-крупном-релизе) · [📦 Источники данных](#-поддерживаемые-источники-данных) · [⚡ Установка](#-установка) · [🚀 Использование](#-использование) · [✨ Демо](#-демо) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[🆕 Что нового](#-что-нового-в-этом-крупном-релизе) · [📦 Источники данных](#-поддерживаемые-источники-данных) · [⚡ Установка](#-установка) · [🚀 Использование](#-использование) · [✨ Демо](#-демо) · [💬 Discord](https://discord.gg/NVX66RxWZv)
 
 [**English**](../../README.md) · [**中文**](README_ZH.md) · [**Español**](README_ES.md) · [**Deutsch**](README_DE.md) · [**日本語**](README_JA.md) · [**Português**](README_PT.md) · [**한국어**](README_KO.md)
 
@@ -63,7 +63,7 @@
 >
 > QR обновляется каждые 7 дней (истекает 2026-05-01) — если истёк, пиши мне в Discord.
 
-> 🗺️ **2026.04.13** — **Дорожная карта dot-skill опубликована!** colleague.skill эволюционирует в **dot-skill** — дистиллируй кого угодно, не только коллег. 👉 **[Полная дорожная карта](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 🗺️ **2026.04.13** — **Дорожная карта dot-skill опубликована!** colleague.skill эволюционирует в **dot-skill** — дистиллируй кого угодно, не только коллег. 👉 **[Полная дорожная карта](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/NVX66RxWZv)**
 
 > 🌐 **2026.04.07** — Галерея сообщества запущена! Любой skill или meta-skill может направлять трафик прямо в твой GitHub-репозиторий. Без посредников. 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)**
 

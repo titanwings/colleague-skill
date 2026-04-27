@@ -14,7 +14,7 @@
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-teal)](https://github.com/titanwings/colleague-skill)
 [![Codex](https://img.shields.io/badge/Codex-Skill-black)](https://github.com/titanwings/colleague-skill)
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/aRjmJBdK)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/NVX66RxWZv)
 
 <br>
 
@@ -41,7 +41,7 @@ Piensa en su marco, habla con su voz
 
 <br>
 
-[🆕 Qué hay de nuevo](#-qué-hay-de-nuevo-en-esta-versión-mayor) · [📦 Fuentes de datos](#-fuentes-de-datos-soportadas) · [⚡ Instalación](#-instalación) · [🚀 Uso](#-uso) · [✨ Demo](#-demo) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[🆕 Qué hay de nuevo](#-qué-hay-de-nuevo-en-esta-versión-mayor) · [📦 Fuentes de datos](#-fuentes-de-datos-soportadas) · [⚡ Instalación](#-instalación) · [🚀 Uso](#-uso) · [✨ Demo](#-demo) · [💬 Discord](https://discord.gg/NVX66RxWZv)
 
 [**English**](../../README.md) · [**中文**](README_ZH.md) · [**Deutsch**](README_DE.md) · [**日本語**](README_JA.md) · [**Русский**](README_RU.md) · [**Português**](README_PT.md) · [**한국어**](README_KO.md)
 
@@ -63,7 +63,7 @@ Gracias enormes a todos los que nos dieron star — seguiremos publicando, segui
 >
 > El QR se actualiza cada 7 días (expira el 2026-05-01) — si está vencido, contáctame por Discord.
 
-> 🗺️ **2026.04.13** — **¡La hoja de ruta de dot-skill está aquí!** colleague.skill está evolucionando a **dot-skill** — destila a cualquier persona, no solo colegas. 👉 **[Hoja de ruta completa](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 🗺️ **2026.04.13** — **¡La hoja de ruta de dot-skill está aquí!** colleague.skill está evolucionando a **dot-skill** — destila a cualquier persona, no solo colegas. 👉 **[Hoja de ruta completa](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/NVX66RxWZv)**
 
 > 🌐 **2026.04.07** — ¡La galería comunitaria está activa! Cualquier skill o meta-skill puede llevar tráfico directamente a tu propio repo de GitHub. Sin intermediarios. 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)**
 

@@ -14,7 +14,7 @@
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-teal)](https://github.com/titanwings/colleague-skill)
 [![Codex](https://img.shields.io/badge/Codex-Skill-black)](https://github.com/titanwings/colleague-skill)
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/aRjmJBdK)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/NVX66RxWZv)
 
 <br>
 
@@ -41,7 +41,7 @@ Denkt in ihrem Rahmen, spricht in ihrer Stimme
 
 <br>
 
-[🆕 Was ist neu](#-was-ist-neu-in-diesem-major-release) · [📦 Datenquellen](#-unterstützte-datenquellen) · [⚡ Installation](#-installation) · [🚀 Nutzung](#-nutzung) · [✨ Demo](#-demo) · [💬 Discord](https://discord.gg/aRjmJBdK)
+[🆕 Was ist neu](#-was-ist-neu-in-diesem-major-release) · [📦 Datenquellen](#-unterstützte-datenquellen) · [⚡ Installation](#-installation) · [🚀 Nutzung](#-nutzung) · [✨ Demo](#-demo) · [💬 Discord](https://discord.gg/NVX66RxWZv)
 
 [**English**](../../README.md) · [**中文**](README_ZH.md) · [**Español**](README_ES.md) · [**日本語**](README_JA.md) · [**Русский**](README_RU.md) · [**Português**](README_PT.md) · [**한국어**](README_KO.md)
 
@@ -63,7 +63,7 @@ Riesigen Dank an alle, die einen Stern dagelassen haben — wir liefern weiter a
 >
 > Der QR-Code wird alle 7 Tage erneuert (läuft am 2026-05-01 ab) — wenn abgelaufen, melde dich bei mir auf Discord.
 
-> 🗺️ **2026.04.13** — **Die dot-skill-Roadmap ist da!** colleague.skill entwickelt sich zu **dot-skill** weiter — destilliere jede Person, nicht nur Kollegen. 👉 **[Vollständige Roadmap](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/aRjmJBdK)**
+> 🗺️ **2026.04.13** — **Die dot-skill-Roadmap ist da!** colleague.skill entwickelt sich zu **dot-skill** weiter — destilliere jede Person, nicht nur Kollegen. 👉 **[Vollständige Roadmap](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/NVX66RxWZv)**
 
 > 🌐 **2026.04.07** — Die Community-Galerie ist online! Jeder Skill oder Meta-Skill kann Traffic direkt zu deinem eigenen GitHub-Repo leiten. Kein Mittelsmann. 👉 **[titanwings.github.io/colleague-skill-site](https://titanwings.github.io/colleague-skill-site/)**
 
