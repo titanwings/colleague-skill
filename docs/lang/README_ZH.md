@@ -56,11 +56,11 @@
 
 </div>
 
-> 📢 **2026.04.22 更新** — **微信九群建好啦！** 欢迎进群一起玩 dot-skill，分享 skill、聊聊功能、互相交流～
+> 📢 **2026.04.28 更新** — **微信十群建好啦！** 欢迎进群一起玩 dot-skill，分享 skill、聊聊功能、互相交流～
 >
-> <img src="../assets/wechat-group-qr-9.png" alt="dot-skill 微信群二维码" width="240">
+> <img src="../assets/wechat-group-qr-10.png" alt="dot-skill 微信群二维码" width="240">
 >
-> 二维码 7 天内（5 月 1 日前）有效，过期了就来 Discord 找我重新发。
+> 二维码 7 天内（5 月 5 日前）有效，过期了就来 Discord 找我重新发。
 
 > 🗺️ **2026.04.13** — **dot-skill 路线图正式发布！** colleague.skill 正在进化为 **dot-skill** —— 蒸馏任何人，不止同事。 👉 **[完整路线图](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/NVX66RxWZv)**
 

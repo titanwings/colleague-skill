@@ -57,11 +57,11 @@ Massive thanks to everyone who starred — we'll keep shipping, keep distilling.
 
 </div>
 
-> 📢 **2026.04.22 Update** — **WeChat group 9 is live!** Come hang out with the dot-skill community — share skills, discuss features, trade tips.
+> 📢 **2026.04.28 Update** — **WeChat group 10 is live!** Come hang out with the dot-skill community — share skills, discuss features, trade tips.
 >
-> <img src="../assets/wechat-group-qr-9.png" alt="dot-skill WeChat group QR" width="240">
+> <img src="../assets/wechat-group-qr-10.png" alt="dot-skill WeChat group QR" width="240">
 >
-> QR refreshes every 7 days (expires 2026-05-01) — if expired, ping me on Discord.
+> QR refreshes every 7 days (expires 2026-05-05) — if expired, ping me on Discord.
 
 > 🗺️ **2026.04.13** — **dot-skill Roadmap is live!** colleague.skill is evolving into **dot-skill** — distill anyone, not just colleagues. 👉 **[Full Roadmap](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/NVX66RxWZv)**
 

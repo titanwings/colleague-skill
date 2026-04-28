@@ -57,11 +57,11 @@
 
 </div>
 
-> 📢 **2026.04.22 업데이트** — **WeChat 9번 그룹이 개설되었습니다!** dot-skill 커뮤니티에 놀러 오세요 — 스킬을 공유하고, 기능을 논의하고, 팁을 주고받으세요.
+> 📢 **2026.04.28 업데이트** — **WeChat 10번 그룹이 개설되었습니다!** dot-skill 커뮤니티에 놀러 오세요 — 스킬을 공유하고, 기능을 논의하고, 팁을 주고받으세요.
 >
-> <img src="../assets/wechat-group-qr-9.png" alt="dot-skill WeChat 그룹 QR" width="240">
+> <img src="../assets/wechat-group-qr-10.png" alt="dot-skill WeChat 그룹 QR" width="240">
 >
-> QR은 7일마다 갱신됩니다 (2026-05-01 만료) — 만료되었다면 Discord로 연락 주세요.
+> QR은 7일마다 갱신됩니다 (2026-05-05 만료) — 만료되었다면 Discord로 연락 주세요.
 
 > 🗺️ **2026.04.13** — **dot-skill 로드맵이 공개되었습니다!** colleague.skill은 **dot-skill**로 진화 중입니다 — 동료뿐 아니라 누구든 증류합니다. 👉 **[전체 로드맵 보기](../../ROADMAP.md)** · **[💬 Discord](https://discord.gg/NVX66RxWZv)**
 
