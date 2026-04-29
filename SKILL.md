@@ -1,3 +1,4 @@
+---
 name: dot-skill
 description: "Unified meta-skill engine for distilling colleague, relationship, or celebrity characters into reusable Skills. | 统一的 meta-skill 引擎，把 colleague、relationship、celebrity 三类对象蒸馏成可复用 Skill。"
 argument-hint: "[character] [name-or-slug]"
