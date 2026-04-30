@@ -75,6 +75,22 @@ Created by [@titanwings](https://github.com/titanwings) · Powered by **Shanghai
 
 ---
 
+<!-- skillx:begin:setup-skillx -->
+## Try it with skillx
+
+[![Run with skillx](https://img.shields.io/badge/Run%20with-skillx-F97316)](https://skillx.run)
+
+Run this skill without installing anything:
+
+```bash
+skillx run --auto-approve https://github.com/titanwings/colleague-skill
+```
+
+Powered by [skillx](https://skillx.run) — fetch, scan, inject, and clean up any agent skill in one command.
+
+*Note: this command lets the agent act without per-step permission prompts. Only run if you trust the skill source. Drop `--auto-approve` if you'd rather approve each action manually.*
+<!-- skillx:end:setup-skillx -->
+
 ## 🆕 What's new in this major release?
 
 ### 1️⃣ From colleague-skill to dot-skill
