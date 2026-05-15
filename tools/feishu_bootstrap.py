@@ -3,12 +3,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -20,38 +18,15 @@ from schema_planner import (
     build_workspace_manifest_template,
 )
 from setup_doctor import check_feishu_backend
+from utils import (
+    ensure_state_dir,
+    find_first_key,
+    run_json_command,
+    STATE_DIR,
+)
 
 
-STATE_DIR = Path(".headteacher-skill")
 WORKSPACE_MANIFEST_PATH = STATE_DIR / "workspace_manifest.json"
-
-
-def find_first_key(data: Any, target_key: str) -> Optional[Any]:
-    if isinstance(data, dict):
-        if target_key in data:
-            return data[target_key]
-        for value in data.values():
-            found = find_first_key(value, target_key)
-            if found is not None:
-                return found
-    if isinstance(data, list):
-        for item in data:
-            found = find_first_key(item, target_key)
-            if found is not None:
-                return found
-    return None
-
-
-def run_json_command(cmd: List[str]) -> Dict[str, Any]:
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        message = result.stderr.strip() or result.stdout.strip()
-        raise RuntimeError(f"Command failed: {' '.join(cmd)}\n{message}")
-    return json.loads(result.stdout)
-
-
-def ensure_state_dir() -> None:
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class FeishuBaseAdapter:

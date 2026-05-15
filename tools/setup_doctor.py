@@ -5,34 +5,18 @@ import argparse
 import importlib
 import json
 import os
-import re
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from utils import (
+    parse_embedded_json,
+    run_command,
+)
 
 
 WORKSPACE_MANIFEST = Path(".headteacher-skill/workspace_manifest.json")
 OPENCLAW_PLUGIN_PATH = Path.home() / ".openclaw" / "extensions" / "openclaw-lark"
-
-
-def parse_embedded_json(text: str) -> Optional[Dict[str, Any]]:
-    match = re.search(r"\{[\s\S]*\}", text)
-    if not match:
-        return None
-    try:
-        return json.loads(match.group(0))
-    except json.JSONDecodeError:
-        return None
-
-
-def run_command(cmd: list[str]) -> Dict[str, Any]:
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    return {
-        "returncode": result.returncode,
-        "stdout": result.stdout.strip(),
-        "stderr": result.stderr.strip(),
-    }
 
 
 def check_python_module(module_name: str) -> bool:

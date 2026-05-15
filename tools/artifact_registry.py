@@ -8,13 +8,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
+from utils import (
+    ensure_state_dir,
+    STATE_DIR,
+)
 
-STATE_DIR = Path(".headteacher-skill")
+
 REGISTRY_PATH = STATE_DIR / "artifact_registry.json"
-
-
-def ensure_state_dir() -> None:
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_registry(path: Path = REGISTRY_PATH) -> List[Dict[str, Any]]:

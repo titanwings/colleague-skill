@@ -5,3 +5,9 @@ requests>=2.28.0
 python-docx>=1.1.0
 openpyxl>=3.1.0
 python-pptx>=0.6.23
+
+# Development and quality tools (optional)
+# black>=24.0.0  # Code formatter
+# flake8>=7.0.0  # Linter
+# mypy>=1.8.0    # Type checker
+# pytest>=7.4.0  # Testing framework

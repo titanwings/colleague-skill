@@ -3,17 +3,18 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
-
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from schema_planner import build_schema_manifest
+from utils import (
+    run_json_command,
+)
 
 
 SUBJECT_SCORE_HINTS = (
@@ -27,17 +28,6 @@ SUBJECT_SCORE_HINTS = (
     "竞赛",
     "平均排名",
 )
-
-
-def parse_json_output(text: str) -> Dict[str, Any]:
-    return json.loads(text)
-
-
-def run_json_command(cmd: List[str]) -> Dict[str, Any]:
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or result.stdout.strip())
-    return parse_json_output(result.stdout)
 
 
 def fetch_feishu_structure(base_token: str) -> Dict[str, Any]:
