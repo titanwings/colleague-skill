@@ -41,7 +41,7 @@ Thinks in their frame, speaks in their voice
 
 <br>
 
-[🆕 What's new](#-whats-new-in-this-major-release) · [📦 Data Sources](#-supported-data-sources) · [⚡ Install](#-install) · [🚀 Usage](#-usage) · [✨ Demo](#-demo) · [💬 Discord](https://discord.gg/NVX66RxWZv)
+[🆕 What's new](#-whats-new-in-this-major-release) · [📦 Data Sources](#-supported-data-sources) · [⚡ Install](#-install) · [🚀 Usage](#-usage) · [✨ Demo](#-demo) · [📝 Citation](#-citation) · [💬 Discord](https://discord.gg/NVX66RxWZv)
 
 [**中文**](docs/lang/README_ZH.md) · [**Español**](docs/lang/README_ES.md) · [**Deutsch**](docs/lang/README_DE.md) · [**日本語**](docs/lang/README_JA.md) · [**Русский**](docs/lang/README_RU.md) · [**Português**](docs/lang/README_PT.md) · [**한국어**](docs/lang/README_KO.md)
 
@@ -362,6 +362,23 @@ dot-skill/
 
 ---
 
+## 📝 Citation
+
+If you use **dot-skill** or **colleague.skill** in your research or applications, please cite the technical report:
+
+```bibtex
+@misc{zhou2026colleagueskill,
+  title        = {Colleague.Skill: Automated AI Skill Generation via Expert Knowledge Distillation},
+  author       = {Tianyi Zhou and Dongrui Liu and Leitao Yuan and Jing Shao and Xia Hu},
+  year         = {2026},
+  url          = {https://github.com/titanwings/colleague-skill/blob/dot-skill/colleague_skill.pdf}
+}
+```
+
+You can also use the machine-readable citation metadata in [CITATION.cff](CITATION.cff).
+
+---
+
 ## ⭐ Star History
 
 <a href="https://www.star-history.com/?repos=titanwings%2Fcolleague-skill&type=date&legend=top-left">
@@ -377,7 +394,5 @@ dot-skill/
 <div align="center">
 
 **MIT License** © [titanwings](https://github.com/titanwings)
-
-<sub>Made with 🧬 for everyone who wants to distill a person into a skill.</sub>
 
 </div>

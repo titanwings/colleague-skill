@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use dot-skill or colleague.skill in your research or applications, please cite the technical report."
+title: "dot-skill"
+authors:
+  - family-names: Zhou
+    given-names: Tianyi
+  - family-names: Liu
+    given-names: Dongrui
+  - family-names: Yuan
+    given-names: Leitao
+  - family-names: Shao
+    given-names: Jing
+  - family-names: Hu
+    given-names: Xia
+license: MIT
+repository-code: "https://github.com/titanwings/colleague-skill"
+url: "https://github.com/titanwings/colleague-skill"
+preferred-citation:
+  type: report
+  title: "Colleague.Skill: Automated AI Skill Generation via Expert Knowledge Distillation"
+  authors:
+    - family-names: Zhou
+      given-names: Tianyi
+    - family-names: Liu
+      given-names: Dongrui
+    - family-names: Yuan
+      given-names: Leitao
+    - family-names: Shao
+      given-names: Jing
+    - family-names: Hu
+      given-names: Xia
+  year: 2026
+  url: "https://github.com/titanwings/colleague-skill/blob/dot-skill/colleague_skill.pdf"
