@@ -75,6 +75,22 @@
 
 ---
 
+<!-- skillx:begin:setup-skillx -->
+## Попробуйте со skillx
+
+[![Run with skillx](https://img.shields.io/badge/Run%20with-skillx-F97316)](https://skillx.run)
+
+Запустите эту skill без установки:
+
+```bash
+skillx run --auto-approve https://github.com/titanwings/colleague-skill
+```
+
+На базе [skillx](https://skillx.run) — одна команда, чтобы получить, просканировать, внедрить и удалить любую agent skill.
+
+*Примечание: эта команда позволяет агенту действовать без пошаговых запросов разрешения. Запускайте только если доверяете источнику skill. Удалите `--auto-approve`, если хотите подтверждать каждое действие вручную.*
+<!-- skillx:end:setup-skillx -->
+
 ## 🆕 Что нового в этом крупном релизе?
 
 ### 1️⃣ От colleague-skill к dot-skill
