@@ -133,7 +133,7 @@ class AssemblePluginsTests(unittest.TestCase):
         )
         self.assertEqual(
             release["canonicalSkill"]["digest"],
-            "sha256_d21ddc26d08106708a2a39df44f670d205151529483d59b483c755b07b68901f",
+            "sha256_83b9b45faf76c184a5605b1ec6e2f7007d440813d3314f58a4250246c5de44a9",
         )
         for target in release["targets"]:
             self.assertEqual(target["skillDigest"], release["canonicalSkill"]["digest"])
@@ -143,6 +143,22 @@ class AssemblePluginsTests(unittest.TestCase):
             )
         self.assertNotIn(SENTINEL, raw.decode("utf-8"))
         self.assertNotIn(".mcp.json.template", raw.decode("utf-8"))
+
+    def test_assembly_owned_files_use_lf_line_endings(self) -> None:
+        paths = (
+            "plugins/shared/skills/distilly/SKILL.md",
+            "plugins/shared/skills/distilly/references/source-materials.md",
+            "plugins/codex/skills/distilly/SKILL.md",
+            "plugins/codex/skills/distilly/references/source-materials.md",
+            "plugins/claude-code/skills/distilly/SKILL.md",
+            "plugins/claude-code/skills/distilly/references/source-materials.md",
+            "plugins/codex/.codex-plugin/plugin.json",
+            "plugins/claude-code/.claude-plugin/plugin.json",
+            "plugins/release-manifest.json",
+        )
+        for relative in paths:
+            with self.subTest(path=relative):
+                self.assertNotIn(b"\r\n", (REPOSITORY / relative).read_bytes())
 
     def test_rejects_every_changed_release_target_path(self) -> None:
         for target_index, field in (

@@ -1,0 +1,8 @@
+# Plugin assembly hashes raw bytes; keep every assembly-owned text file stable
+# across Git clients and operating systems.
+plugins/shared/skills/distilly/** text eol=lf
+plugins/codex/skills/distilly/** text eol=lf
+plugins/claude-code/skills/distilly/** text eol=lf
+plugins/codex/.codex-plugin/plugin.json text eol=lf
+plugins/claude-code/.claude-plugin/plugin.json text eol=lf
+plugins/release-manifest.json text eol=lf
