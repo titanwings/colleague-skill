@@ -14,9 +14,16 @@ export interface MutationContext {
 
 /** Capacity negotiated by a trusted host binding or supplied by an SDK client. */
 export interface BriefCapacity {
+  /** Token budget for model input, derived from a measured byte budget. */
   readonly maximumInputTokens: number;
+  /**
+   * Byte budget for model input; the quantity a byte comparison must use. Optional for
+   * backward compatibility, and a consumer that lacks it falls back to the token budget,
+   * which is the stricter reading.
+   */
+  readonly maximumInputBytes?: number | undefined;
   readonly maximumToolResultBytes: number;
-  readonly source: "host_handshake" | "binding_fixture" | "sdk_explicit";
+  readonly source: "host_handshake" | "binding_fixture" | "conservative_floor" | "sdk_explicit";
 }
 
 /** Trusted session state; it is never accepted inside model tool parameters. */

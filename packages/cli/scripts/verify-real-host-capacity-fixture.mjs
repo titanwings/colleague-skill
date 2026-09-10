@@ -607,7 +607,7 @@ const releaseTuple = async (repositoryRoot) => {
 
 const evidence = ({ host, version, fixture, normalized }) => {
   const tuple = {
-    fixtureId: `${host === "openclaw" ? "openclaw-2026.3.24" : "hermes-agent-v0.9.0"}-cli-distilly-${RELEASE_VERSION}-v2`,
+    fixtureId: `${host === "openclaw" ? "openclaw-2026.3.24" : "hermes-agent-v0.9.0"}-cli-distilly-${RELEASE_VERSION}-v3`,
     host,
     hostVersion: version,
     environment: "cli",
@@ -631,7 +631,7 @@ const evidence = ({ host, version, fixture, normalized }) => {
     },
   };
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     ...tuple,
     observed: {
       briefingBytes: fixture.targetBriefingBytes,

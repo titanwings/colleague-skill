@@ -253,7 +253,10 @@ Do not infer or guess missing data.`),
     toolContractDigest,
     serializer: "structured-content-plus-json-text-v1",
     capacity: {
-      maximumInputTokens: TARGET_BRIEFING_BYTES,
+      // The token budget is derived from the carried bytes; the byte budget keeps the
+      // measured figure. Copying bytes into the token field overstated the budget.
+      maximumInputTokens: Math.max(1, Math.floor(TARGET_BRIEFING_BYTES / 4)),
+      maximumInputBytes: TARGET_BRIEFING_BYTES,
       maximumToolResultBytes: TARGET_TOOL_RESULT_BYTES,
     },
   };

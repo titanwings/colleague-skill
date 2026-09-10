@@ -33,7 +33,10 @@ import {
   type HostName,
 } from "@distilly/protocol";
 
-import { loadPreviewHostFixture } from "./host-capacity-fixtures.js";
+import {
+  loadConservativeFloorPreflight,
+  loadPreviewHostFixture,
+} from "./host-capacity-fixtures.js";
 import {
   PREVIEW_PLUGIN_SOURCES,
   PREVIEW_RUNTIME_ENTRY,
@@ -84,6 +87,11 @@ interface InstalledHost {
   readonly executablePath: string;
   readonly hostVersion: string;
   readonly installedAt: string;
+  /**
+   * True when setup ran on the conservative floor because no capacity fixture is
+   * recorded for this host version. Doctor keeps reporting the state.
+   */
+  readonly unverifiedHostVersion?: true;
 }
 
 interface PreviewInstallManifest {
@@ -162,6 +170,23 @@ const previewHost = (value: HostName): HostName => {
   if (host === BUILTIN_HOSTS.hermes) return BUILTIN_HOSTS.hermes;
   if (host === BUILTIN_HOSTS.dsh) return BUILTIN_HOSTS.dsh;
   throw fail("The Developer Preview supports Codex, Claude Code, OpenClaw, Hermes, and DSH.");
+};
+
+/**
+ * Returns a copy of an installed-host entry without the unverified-version flag.
+ *
+ * `exactOptionalPropertyTypes` forbids assigning `undefined` to an optional property, so
+ * clearing the flag means removing the key rather than writing an undefined value.
+ *
+ * @param entry - Recorded host entry.
+ * @returns The same entry with the flag removed.
+ */
+const withoutUnverifiedFlag = (
+  entry: InstalledHost,
+): Omit<InstalledHost, "unverifiedHostVersion"> => {
+  const copy = { ...entry };
+  delete copy.unverifiedHostVersion;
+  return copy;
 };
 
 const compareUtf8 = (left: string, right: string): number =>
@@ -348,7 +373,14 @@ const parseInstalledHost = (value: unknown): InstalledHost => {
   const host = hostNameSchema.safeParse(record.host);
   const installedAt = isoDateTimeSchema.safeParse(record.installedAt);
   if (
-    !hasExactKeys(record, ["host", "executablePath", "hostVersion", "installedAt"]) ||
+    // The unverified-version flag is optional, so this entry is checked for unknown keys
+    // rather than for an exact key set: a verified install legitimately omits it.
+    !Object.keys(record).every((key) =>
+      ["host", "executablePath", "hostVersion", "installedAt", "unverifiedHostVersion"].includes(
+        key,
+      ),
+    ) ||
+    (record.unverifiedHostVersion !== undefined && record.unverifiedHostVersion !== true) ||
     !host.success ||
     ![
       BUILTIN_HOSTS.codex,
@@ -373,6 +405,7 @@ const parseInstalledHost = (value: unknown): InstalledHost => {
     executablePath: record.executablePath,
     hostVersion: record.hostVersion,
     installedAt: installedAt.data,
+    ...(record.unverifiedHostVersion === true ? { unverifiedHostVersion: true as const } : {}),
   };
 };
 
@@ -641,18 +674,30 @@ const createBinding = (
   environment: PreviewLifecycleEnvironment,
   release: ReleaseManifest,
   executablePath: string,
+  allowUnverifiedHost = false,
 ): HostBinding => {
   const options = {
     homeDirectory: environment.homeDirectory,
     forms,
     provider: {
-      load: (context: { readonly environment: "desktop" | "cli" | "ci" }) =>
-        Promise.resolve(
-          loadPreviewHostFixture(host, hostVersion, context.environment, {
-            releaseVersion: release.releaseVersion,
-            canonicalSkillDigest: release.canonicalSkillDigest,
-          }),
-        ),
+      load: (context: { readonly environment: "desktop" | "cli" | "ci" }) => {
+        const tuple = {
+          releaseVersion: release.releaseVersion,
+          canonicalSkillDigest: release.canonicalSkillDigest,
+        };
+        try {
+          return Promise.resolve(
+            loadPreviewHostFixture(host, hostVersion, context.environment, tuple),
+          );
+        } catch (error) {
+          // Only an explicit operator opt-in replaces a missing measurement, and the
+          // replacement is a labelled floor rather than another host's budget.
+          if (!allowUnverifiedHost) throw error;
+          return Promise.resolve(
+            loadConservativeFloorPreflight(host, hostVersion, context.environment, tuple),
+          );
+        }
+      },
     },
     release: {
       releaseVersion: release.releaseVersion,
@@ -746,13 +791,17 @@ const assertEnvironment = (environment: PreviewLifecycleEnvironment): void => {
 /**
  * Installs one real host integration around the current checked built entry.
  *
- * @param hostValue - Codex, Claude Code, OpenClaw, or Hermes.
+ * @param hostValue - Codex, Claude Code, OpenClaw, Hermes, or DSH.
  * @param environment - Trusted local lifecycle paths and clock.
+ * @param options - Install policy.
+ * @param options.allowUnverifiedHost - Accepts an unrecorded host version on the
+ * conservative floor instead of failing closed.
  * @returns The installed host and restart requirement.
  */
 export const setupPreviewHost = async (
   hostValue: HostName,
   environment: PreviewLifecycleEnvironment,
+  options: { readonly allowUnverifiedHost?: boolean } = {},
 ): Promise<PreviewSetupResult> => {
   assertEnvironment(environment);
   const host = previewHost(hostValue);
@@ -796,9 +845,18 @@ export const setupPreviewHost = async (
     environment.nodePath,
     environment.pathValue,
   );
-  const binding = createBinding(host, hostVersion, environment, release, executablePath);
+  const binding = createBinding(
+    host,
+    hostVersion,
+    environment,
+    release,
+    executablePath,
+    options.allowUnverifiedHost === true,
+  );
   const preflight = await binding.preflight({ sessionId: `setup-${host}`, environment: "cli" });
   if (!preflight.ok) throw fail(preflight.error.message);
+  const unverifiedHost =
+    preflight.evidence.kind === "unverified_host_version" ? (true as const) : undefined;
   await ensureRoot(paths.root);
   await verifyLifecycleDirectories(paths, true);
   const previous = await readInstallManifest(paths.install);
@@ -892,8 +950,11 @@ export const setupPreviewHost = async (
             installedAt: isoDateTimeSchema.parse(
               (environment.now ?? (() => new Date()))().toISOString(),
             ),
+            ...(unverifiedHost === undefined ? {} : { unverifiedHostVersion: unverifiedHost }),
           }
-        : { ...priorHost, executablePath, hostVersion };
+        : unverifiedHost === undefined
+          ? { ...withoutUnverifiedFlag(priorHost), executablePath, hostVersion }
+          : { ...priorHost, executablePath, hostVersion, unverifiedHostVersion: unverifiedHost };
     const hosts = [
       ...(previous?.hosts.filter((entry) => entry.host !== host) ?? []),
       hostEntry,
@@ -1006,12 +1067,15 @@ export const doctorPreview = async (
             environment.pathValue,
           ).catch(() => undefined)
         : undefined;
+      // A recorded unverified-version install must keep preflighting on the same floor,
+      // otherwise doctor would fail for the very state setup was allowed to create.
       const binding = createBinding(
         entry.host,
         observedVersion ?? "unavailable",
         environment,
         release,
         entry.executablePath,
+        entry.unverifiedHostVersion === true,
       );
       const preflight = await binding.preflight({
         sessionId: `doctor-${entry.host}`,
@@ -1027,6 +1091,11 @@ export const doctorPreview = async (
       else if (observedVersion !== entry.hostVersion)
         hostWarnings.push("The installed host version changed after Distilly setup.");
       if (!preflight.ok) hostWarnings.push(preflight.error.message);
+      if (entry.unverifiedHostVersion === true) {
+        hostWarnings.push(
+          `No capacity fixture is recorded for ${entry.host} ${entry.hostVersion}; this install runs on the conservative floor.`,
+        );
+      }
       return {
         host: entry.host,
         installed: health.installed,
@@ -1108,7 +1177,16 @@ export const requireInstalledPreviewBinding = async (
 ): Promise<HostBinding> => {
   const { entry, paths } = await requireInstalledPreviewHost(environment, hostValue);
   const release = await readPreviewRelease(installedPluginSources(paths, environment));
-  return createBinding(entry.host, entry.hostVersion, environment, release, entry.executablePath);
+  // An install that setup recorded as unverified must keep running on the same floor,
+  // otherwise the recorded state could never start its own MCP server.
+  return createBinding(
+    entry.host,
+    entry.hostVersion,
+    environment,
+    release,
+    entry.executablePath,
+    entry.unverifiedHostVersion === true,
+  );
 };
 
 /**

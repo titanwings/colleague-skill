@@ -1269,7 +1269,12 @@ export class IngestService {
       }
       const material = batch.items[parsedIndex++];
       if (material === undefined) throw storageCorrupt("A parsed file has no material outcome.");
-      return { kind: "parsed" as const, pathLabel: file.pathLabel, material };
+      return {
+        kind: "parsed" as const,
+        pathLabel: file.pathLabel,
+        material,
+        warnings: file.warnings,
+      };
     });
     const state = derived?.state ?? previous.state;
     const job =

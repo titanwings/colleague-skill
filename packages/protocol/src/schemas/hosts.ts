@@ -114,6 +114,18 @@ export const hostPreflightEvidenceSchema = z.discriminatedUnion("kind", [
     wireMajor: z.literal(3),
     canonicalSkillDigest: contentDigestSchema,
   }),
+  z.strictObject({
+    // An unrecorded host version runs on a floor budget copied from the smallest verified
+    // fixture; this kind keeps that state visible to every reader of the preflight.
+    kind: z.literal("unverified_host_version"),
+    host: hostNameSchema,
+    hostVersion: labelStringSchema,
+    environment: z.enum(["desktop", "cli", "ci"]),
+    releaseVersion: labelStringSchema,
+    wireMajor: z.literal(3),
+    canonicalSkillDigest: contentDigestSchema,
+    floorSourceFixtureId: labelStringSchema,
+  }),
 ]);
 
 const hostUnsupportedWireErrorSchema = z.strictObject({
@@ -150,7 +162,13 @@ export const hostPreflightSchema = z
         message: "a successful preflight requires structured tool calls",
       });
     }
-    if (preflight.capacity.source !== preflight.evidence.kind) {
+    // The capacity source must name the same authority as the evidence: a floor budget
+    // may only come from an unverified host version, and a measurement may not.
+    const expectedSource =
+      preflight.evidence.kind === "unverified_host_version"
+        ? "conservative_floor"
+        : preflight.evidence.kind;
+    if (preflight.capacity.source !== expectedSource) {
       context.addIssue({
         code: "custom",
         path: ["capacity", "source"],

@@ -21,7 +21,7 @@ export const enforcePromptCapacity = (
   if (capacity === undefined) return prompt;
   const serializedBytes = Buffer.byteLength(prompt, "utf8");
   if (
-    serializedBytes <= capacity.maximumInputTokens &&
+    serializedBytes <= (capacity.maximumInputBytes ?? capacity.maximumInputTokens) &&
     serializedBytes <= capacity.maximumToolResultBytes
   ) {
     return prompt;

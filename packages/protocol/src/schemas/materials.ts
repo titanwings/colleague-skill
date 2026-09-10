@@ -248,6 +248,9 @@ export const fileIngestItemResultSchema = z.discriminatedUnion("kind", [
     kind: z.literal("parsed"),
     pathLabel: uriStringSchema,
     material: ingestItemResultSchema,
+    // Parser observations such as skipped attachments or ambiguous separators must reach
+    // the caller: a parsed file is not the same as a file parsed completely.
+    warnings: z.array(labelStringSchema).max(WIRE_LIMITS.smallArrayItems),
   }),
   z.strictObject({
     kind: z.literal("unparsed"),

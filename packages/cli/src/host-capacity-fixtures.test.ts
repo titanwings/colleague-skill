@@ -9,6 +9,7 @@ import hermesEvidence from "./evidence/host-capacity/hermes-agent-v0.9.0-cli-dis
 import openClawEvidence from "./evidence/host-capacity/openclaw-2026.3.24-cli-distilly-0.1.0-preview.1-v3.json" with { type: "json" };
 import {
   loadPreviewHostFixture,
+  loadConservativeFloorPreflight,
   parsePreviewHostCapacityEvidence,
 } from "./host-capacity-fixtures.js";
 
@@ -75,8 +76,10 @@ describe("immutable Preview host capacity evidence", () => {
     );
     if (!preflight.ok) throw new TypeError("Expected the exact Codex evidence tuple to load.");
     expect(preflight.capacity).toEqual({
-      // 16_384 is the conservative token estimate derived from 65_536 measured bytes.
+      // 16_384 is the conservative token estimate derived from 65_536 measured bytes,
+      // and the byte budget keeps the measured figure for byte comparisons.
       maximumInputTokens: 16_384,
+      maximumInputBytes: 65_536,
       maximumToolResultBytes: 65_536,
       source: "binding_fixture",
     });
@@ -85,6 +88,38 @@ describe("immutable Preview host capacity evidence", () => {
       hostVersion: codexEvidence.hostVersion,
       canonicalSkillDigest: codexEvidence.canonicalSkillDigest,
     });
+  });
+
+  it("offers a conservative floor that no recorded fixture exceeds", () => {
+    const release = {
+      releaseVersion: "0.1.0-preview.1",
+      canonicalSkillDigest:
+        "sha256_83b9b45faf76c184a5605b1ec6e2f7007d440813d3314f58a4250246c5de44a9" as ContentDigest,
+    };
+    const floor = loadConservativeFloorPreflight(
+      BUILTIN_HOSTS.codex,
+      "codex-cli 9.9.9 (unrecorded)",
+      "cli",
+      release,
+    );
+    expect(floor.ok).toBe(true);
+    if (!floor.ok) throw new TypeError("Expected a successful floor preflight.");
+    expect(floor.capacity.source).toBe("conservative_floor");
+    expect(floor.evidence.kind).toBe("unverified_host_version");
+    expect(floor.warnings).toHaveLength(1);
+    expect(floor.warnings[0]).toContain("No capacity fixture is recorded");
+    // The floor may never claim more than the smallest verified measurement.
+    for (const evidence of [codexEvidence, openClawEvidence, hermesEvidence]) {
+      const record = evidence as unknown as {
+        capacity: { estimatedInputTokens: number; maximumToolResultBytes: number };
+      };
+      expect(floor.capacity.maximumInputTokens).toBeLessThanOrEqual(
+        record.capacity.estimatedInputTokens,
+      );
+      expect(floor.capacity.maximumToolResultBytes).toBeLessThanOrEqual(
+        record.capacity.maximumToolResultBytes,
+      );
+    }
   });
 
   it("rejects a legacy record that declares a byte count as a token limit", () => {
@@ -156,6 +191,7 @@ describe("immutable Preview host capacity evidence", () => {
     if (!preflight.ok) throw new TypeError(`Expected the exact ${host} evidence tuple to load.`);
     expect(preflight.capacity).toEqual({
       maximumInputTokens: Math.max(1, Math.floor(bytes / 4)),
+      maximumInputBytes: bytes,
       maximumToolResultBytes: bytes,
       source: "binding_fixture",
     });

@@ -264,7 +264,7 @@ const help = `Distilly Developer Preview
 
 Usage:
   distilly setup --host codex
-  distilly setup --host claude-code|openclaw|hermes
+  distilly setup --host claude-code|openclaw|hermes|dsh [--allow-unverified-host]
   distilly doctor [--host <host>]
   distilly install <subject-id> --host <host>
   distilly uninstall --host <host>
@@ -275,7 +275,9 @@ Usage:
 
 The host bindings share the same five-tool MCP contract. Setup remains
 fail-closed until this release has an exact verified capacity fixture for the
-selected host version; no synthetic capacity is used. Other hosts:
+selected host version; no synthetic capacity is used. --allow-unverified-host
+accepts an unrecorded version on a conservative floor budget, records the state,
+and keeps doctor reporting it. Other hosts:
   Use the explicit Legacy Skill compatibility path documented in INSTALL.md.
 `;
 
@@ -298,9 +300,13 @@ export const runPreviewCli = async (
     return 0;
   }
   if (command === "setup") {
-    const host = hostOption(args, true);
+    const allowUnverifiedHost = args.includes("--allow-unverified-host");
+    const host = hostOption(
+      args.filter((argument) => argument !== "--allow-unverified-host"),
+      true,
+    );
     if (host === undefined) throw new Error("This command requires --host.");
-    const result = await setupPreviewHost(host, environment.lifecycle);
+    const result = await setupPreviewHost(host, environment.lifecycle, { allowUnverifiedHost });
     io.stdout.write(
       `Installed Distilly ${result.releaseVersion} for ${result.host}. Restart the host to discover it.\n`,
     );

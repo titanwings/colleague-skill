@@ -51,6 +51,21 @@ export type HostPreflightEvidence =
       readonly canonicalSkillDigest: ContentDigest;
     }
   | {
+      /**
+       * The host version has no recorded capacity measurement, so the binding supplies a
+       * conservative floor derived from the smallest verified budget. Setup records this
+       * state and doctor reports it, so the budget is never mistaken for a measurement.
+       */
+      readonly kind: "unverified_host_version";
+      readonly host: HostName;
+      readonly hostVersion: string;
+      readonly environment: HostEnvironment;
+      readonly releaseVersion: string;
+      readonly wireMajor: 3;
+      readonly canonicalSkillDigest: ContentDigest;
+      readonly floorSourceFixtureId: string;
+    }
+  | {
       readonly kind: "binding_fixture";
       readonly fixtureId: string;
       readonly host: HostName;

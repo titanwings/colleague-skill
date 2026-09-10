@@ -24,9 +24,12 @@ const application = await openPreviewMcpApplication({
   }),
   hostContext: { sessionId: "built-preview-stdio", environment: "ci" },
   capacity: {
-    maximumInputTokens: 4_194_304,
+    // This fixture feeds the protocol's own 4 MiB wire limit, so it declares the byte
+    // budget explicitly and derives the token figure instead of reusing the byte count.
+    maximumInputTokens: 1_048_576,
+    maximumInputBytes: 4_194_304,
     maximumToolResultBytes: 4_194_304,
-    source: "binding_fixture",
+    source: "sdk_explicit",
   },
   panel: { assetsDir },
 });

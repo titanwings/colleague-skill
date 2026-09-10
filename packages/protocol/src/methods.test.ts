@@ -1,4 +1,4 @@
-import { describe, expectTypeOf, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 import type {
   CoreEngineClient,
@@ -8,6 +8,7 @@ import type {
   RuntimeOwnedMethodName,
 } from "./engine-client.js";
 import type { ContentDigest, FacetPath, HostName } from "./ids.js";
+import { hostPreflightSchema } from "./schemas/hosts.js";
 import type {
   EmptyResult,
   EngineMethodMap,
@@ -277,6 +278,57 @@ describe("engine method contracts", () => {
   });
 });
 
+it("binds a floor budget to an unverified host version only", () => {
+  const base = {
+    host: "codex" as const,
+    hostVersion: "codex-cli 9.9.9",
+    environment: "cli" as const,
+    releaseVersion: "0.1.0-preview.1",
+    wireMajor: 3 as const,
+    canonicalSkillDigest:
+      "sha256_83b9b45faf76c184a5605b1ec6e2f7007d440813d3314f58a4250246c5de44a9" as const,
+  };
+  const capabilities = {
+    webResearch: "unknown",
+    localFileRead: "available",
+    vision: "unknown",
+    documentTextExtraction: "unknown",
+    imageOcr: "unknown",
+    audioTranscription: "unknown",
+    videoCaptions: "unknown",
+    privateUiCapture: "unavailable",
+    windowScopedCapture: "unknown",
+    captureDataPolicy: "unknown",
+    structuredToolCalls: true,
+    lifecycleHooks: [],
+    subruns: false,
+    subrunsInheritMcp: false,
+    opensLoopbackUrls: false,
+  } as const;
+  const floorCapacity = {
+    maximumInputTokens: 12_438,
+    maximumToolResultBytes: 49_752,
+    source: "conservative_floor" as const,
+  };
+  const unverified = hostPreflightSchema.safeParse({
+    ok: true,
+    capabilities,
+    capacity: floorCapacity,
+    evidence: { kind: "unverified_host_version", ...base, floorSourceFixtureId: "fixture-v3" },
+    warnings: ["No capacity fixture is recorded for codex codex-cli 9.9.9."],
+  });
+  expect(unverified.success).toBe(true);
+  // A measured fixture may not report a floor budget, and vice versa.
+  const mismatched = hostPreflightSchema.safeParse({
+    ok: true,
+    capabilities,
+    capacity: floorCapacity,
+    evidence: { kind: "binding_fixture", ...base, fixtureId: "fixture-v3" },
+    warnings: [],
+  });
+  expect(mismatched.success).toBe(false);
+});
+
 describe("host and private capture value contracts", () => {
   it("keeps capability probes explicit", () => {
     expectTypeOf<CapabilityAvailability>().toEqualTypeOf<"available" | "unavailable" | "unknown">();
@@ -301,7 +353,7 @@ describe("host and private capture value contracts", () => {
     >();
     expectTypeOf<HostPreflight["capabilities"]>().toEqualTypeOf<HostCapabilities>();
     expectTypeOf<HostPreflightEvidence["kind"]>().toEqualTypeOf<
-      "host_handshake" | "binding_fixture"
+      "host_handshake" | "binding_fixture" | "unverified_host_version"
     >();
     expectTypeOf<HostPreflightEvidence["host"]>().toEqualTypeOf<HostName>();
     expectTypeOf<HostPreflightEvidence["environment"]>().toEqualTypeOf<HostEnvironment>();

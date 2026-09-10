@@ -15,8 +15,9 @@ export const mutationContextSchema = z.strictObject({
 
 export const briefCapacitySchema = z.strictObject({
   maximumInputTokens: safePositiveIntegerSchema,
+  maximumInputBytes: safePositiveIntegerSchema.optional(),
   maximumToolResultBytes: safePositiveIntegerSchema,
-  source: z.enum(["host_handshake", "binding_fixture", "sdk_explicit"]),
+  source: z.enum(["host_handshake", "binding_fixture", "conservative_floor", "sdk_explicit"]),
 });
 
 export const clientSessionContextSchema = z.strictObject({

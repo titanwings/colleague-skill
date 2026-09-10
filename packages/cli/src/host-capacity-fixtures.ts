@@ -354,6 +354,62 @@ const FIXTURES: readonly PreviewCapacityFixture[] = Object.freeze([
 ]);
 
 /**
+ * Smallest verified budget across the recorded fixtures.
+ *
+ * An unrecorded host version has no measurement of its own, so it runs on this floor
+ * rather than on another host's budget. Every number here is copied from a record whose
+ * derivation `parsePreviewHostCapacityEvidence` already verified.
+ */
+const CONSERVATIVE_FLOOR = Object.freeze({
+  maximumInputTokens: 12_438,
+  maximumToolResultBytes: 49_752,
+  floorSourceFixtureId: `hermes-agent-v0.9.0-cli-distilly-${PREVIEW_RELEASE}-v3`,
+});
+
+/**
+ * Builds the floor preflight used when a host version has no recorded measurement.
+ *
+ * The result is a successful preflight on purpose: an unrecorded version should stay
+ * usable after a host upgrade, but never silently. The evidence kind and the capacity
+ * source both say the version is unverified, the warning names the missing fixture, and
+ * setup records the state so doctor keeps reporting it.
+ *
+ * @param host - Host identifier being installed.
+ * @param hostVersion - Version the host executable reported.
+ * @param environment - Trusted host environment.
+ * @param release - Active release and canonical Skill digest.
+ * @returns A successful preflight bounded by the conservative floor.
+ */
+export const loadConservativeFloorPreflight = (
+  host: HostName,
+  hostVersion: string,
+  environment: HostEnvironment,
+  release: PreviewReleaseTuple,
+): HostPreflight => ({
+  ok: true,
+  capabilities: PREVIEW_CAPABILITIES,
+  capacity: {
+    maximumInputTokens: CONSERVATIVE_FLOOR.maximumInputTokens,
+    maximumInputBytes: CONSERVATIVE_FLOOR.maximumToolResultBytes,
+    maximumToolResultBytes: CONSERVATIVE_FLOOR.maximumToolResultBytes,
+    source: "conservative_floor",
+  },
+  evidence: {
+    kind: "unverified_host_version",
+    host,
+    hostVersion,
+    environment,
+    releaseVersion: release.releaseVersion,
+    wireMajor: 3,
+    canonicalSkillDigest: release.canonicalSkillDigest,
+    floorSourceFixtureId: CONSERVATIVE_FLOOR.floorSourceFixtureId,
+  },
+  warnings: [
+    `No capacity fixture is recorded for ${host} ${hostVersion}; this install uses the conservative floor from ${CONSERVATIVE_FLOOR.floorSourceFixtureId}.`,
+  ],
+});
+
+/**
  * Loads one immutable exact-version net-capacity fixture.
  *
  * @param host - Host selected by the owned plugin command.
@@ -389,8 +445,10 @@ export const loadPreviewHostFixture = (
     ok: true,
     capabilities: PREVIEW_CAPABILITIES,
     capacity: {
-      // The runtime budget is the derived token estimate, not the measured byte count.
+      // The token budget is derived; the byte budget is the measured quantity, so a byte
+      // comparison uses a byte figure instead of a token figure.
       maximumInputTokens: fixture.capacity.estimatedInputTokens,
+      maximumInputBytes: fixture.capacity.verifiedBriefingBytes,
       maximumToolResultBytes: fixture.capacity.maximumToolResultBytes,
       source: "binding_fixture",
     },
