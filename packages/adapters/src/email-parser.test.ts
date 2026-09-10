@@ -601,37 +601,83 @@ describe("mail material parsing", () => {
       expect(Date.now() - started).toBeLessThan(3_000);
     });
 
-    it("splits every date shape real writers emit", () => {
-      for (const separator of [
+    it("splits every documented separator shape in a middle position", () => {
+      // The tested separator is deliberately placed between two messages: a separator in
+      // the first line would split because splitMailbox always starts a message there, so
+      // a first-position test would confirm any nonsense rule, including "From x@y zzz".
+      const shapes = [
         "From x@y\t",
         "From x@y\t ",
+        "From x@y ",
         "From x@y  Fri Sep 11 02:31:00 2026",
         "From x@y  2026-09-11 02:31:00",
         "From x@y Friday, 11 Sep 2026 02:31:00 +0000",
         "From x@y 11-Sep-2026 02:31:00",
         "From x@y 11/09/2026 02:31:00",
+        "From x@y 2026/09/11 02:31:00",
+        "From x@y fri sep 11 02:31:00 2026",
         "From x@y 02:31:00 2026",
         "From x@y 20260911",
         "From x@y 1789000000",
         "From x@y <1789000000>",
-      ]) {
+        "From MAILER-DAEMON Sat Sep 11 02:31:00 2026",
+        "From - Fri Sep 11 02:31:00 2026",
+      ];
+      for (const shape of shapes) {
         const mailbox = [
-          separator,
+          "From a@example.com Fri Sep 11 10:00:00 2026",
           "From: A <a@example.com>",
           "Subject: one",
           "",
           "First body.",
           "",
-          "From b@example.com Fri Sep 11 10:00:00 2026",
+          shape,
           "From: B <b@example.com>",
           "Subject: two",
           "",
           "Second body.",
           "",
+          "From c@example.com Fri Sep 11 12:00:00 2026",
+          "From: C <c@example.com>",
+          "Subject: three",
+          "",
+          "Third body.",
+          "",
         ].join("\n");
         const parsed = parseEmailMessages(bytes(mailbox), true);
-        expect(parsed.messages.length, separator).toBe(2);
-        expect(parsed.messages[1]?.subject, separator).toBe("two");
+        expect(
+          parsed.messages.map((message) => message.subject),
+          shape,
+        ).toEqual(["one", "two", "three"]);
+      }
+    });
+
+    it("never splits prose or a quoted address in a middle position", () => {
+      for (const line of [
+        "From now on the plan changes.",
+        "From the desk of Bob, 2nd floor",
+        "From alice@example.com wrote:",
+        "From 2026 we will change everything.",
+        "From 09:30 until 17:00 we are closed.",
+        "From the 11/09/2026 invoice is attached.",
+        "From the 12345678 records are attached.",
+        "From the 20260911 backup was restored.",
+        "From x@y zzz nonsense",
+      ]) {
+        const mailbox = [
+          "From a@example.com Fri Sep 11 10:00:00 2026",
+          "From: A <a@example.com>",
+          "Subject: one",
+          "",
+          "Before.",
+          line,
+          "After.",
+          "",
+        ].join("\n");
+        const parsed = parseEmailMessages(bytes(mailbox), true);
+        expect(parsed.messages, line).toHaveLength(1);
+        expect(parsed.messages[0]?.body, line).toContain(line);
+        expect(parsed.messages[0]?.body, line).toContain("After.");
       }
     });
 

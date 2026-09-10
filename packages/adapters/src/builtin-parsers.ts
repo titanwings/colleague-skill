@@ -115,6 +115,11 @@ const emailParser = (id: string, mediaType: string, mbox: boolean): MaterialPars
       if (parsed.undecodableParts > 0) {
         warnings.push(`${parsed.undecodableParts} part(s) could not be decoded as text.`);
       }
+      if (parsed.unrecognizedSeparatorLines > 0) {
+        warnings.push(
+          `${parsed.unrecognizedSeparatorLines} line(s) begin with "From " without being a recognized mbox separator; later messages may be merged.`,
+        );
+      }
       const result = draft(
         input,
         rendered,

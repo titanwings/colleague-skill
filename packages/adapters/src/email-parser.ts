@@ -15,6 +15,13 @@ export interface ParsedEmail {
   readonly messages: readonly ParsedEmailMessage[];
   readonly skippedAttachments: number;
   readonly undecodableParts: number;
+  /**
+   * Body lines that begin with "From " without being a recognized separator.
+   *
+   * The mbox format escapes those lines; a writer that did not leaves the split
+   * ambiguous, so the count is reported rather than resolved silently.
+   */
+  readonly unrecognizedSeparatorLines: number;
 }
 
 /** Maximum multipart nesting depth before the source is rejected as unrepresentable. */
@@ -59,7 +66,33 @@ const MBOX_SEPARATOR = /^From (\S+)(?:[ \t]+(.*))?$/u;
  * (`From 2026 we will change everything.`) stay body text.
  */
 const MBOX_DATE =
-  /^[ \t]*(?:[A-Za-z]{3,},?[ \t]+)?(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ \t]+\d{1,2}|\d{1,2}[ \t]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{8}|\d{1,2}:\d{2}|\d{9,}|<\d+>)/u;
+  /^[ \t]*(?:[A-Za-z]{3,},?[ \t]+)?(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ \t]+\d{1,2}|\d{1,2}[- ][A-Za-z]{3,}[- ]\d{2,4}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}[-/]\d{2}[-/]\d{2}|\d{4}-\d{2}-\d{2}|\d{8}|\d{1,2}:\d{2}|\d{9,}|<\d+>)/iu;
+
+/**
+ * Sender tokens that identify an mbox `from_` line without an address.
+ *
+ * A `from_` line names the envelope sender, so it carries an address or one of the
+ * well-known system names. Requiring that is what keeps prose out: an ordinary word or a
+ * time-like number after "From " never matches, while every real separator does.
+ */
+const MBOX_SYSTEM_SENDERS = new Set([
+  "-",
+  "daemon",
+  "mailer-daemon",
+  "nobody",
+  "postmaster",
+  "root",
+  "www-data",
+]);
+
+/**
+ * Reports whether a sender token could open a real `from_` line.
+ *
+ * @param token - Token between "From " and the rest of the line.
+ * @returns True when the token is an address or a known system sender.
+ */
+const isSenderToken = (token: string): boolean =>
+  token.includes("@") || MBOX_SYSTEM_SENDERS.has(token.toLowerCase());
 
 /**
  * Maps bytes to a code-point-preserving string so structural scanning never confuses a
@@ -627,19 +660,25 @@ const renderMessage = (
   return lines.join("\n");
 };
 
-const splitMailbox = (text: string): readonly string[] => {
+const splitMailbox = (
+  text: string,
+): { readonly messages: readonly string[]; readonly unrecognized: number } => {
   const messages: string[] = [];
+  let unrecognizedFromLines = 0;
   let current: string[] | undefined;
   let sawSeparator = false;
   for (const line of text.split(/\r\n|\r|\n/u)) {
     const isFirst = !sawSeparator && current === undefined;
     const separator = MBOX_SEPARATOR.exec(line);
-    // A separator has either no remainder or a remainder that starts with a date, so every
-    // writer's date format separates while prose ("From now on ...", "From the desk of
-    // Bob, 2nd floor") and a quoted address ("From alice@example.com wrote:") stay text.
+    // The sender token discriminates: a `from_` line names an address or a system sender,
+    // while prose starts with an ordinary word ("From the desk of…", "From now on…") or a
+    // time-like number ("From 09:30 until…"). Only then must the remainder be empty or
+    // start with a date, which rejects a quoted address such as "From alice@… wrote:".
+    // Without the token gate, accepting every real date shape admitted exactly that prose.
     const remainder = separator?.[2];
     const isSeparator =
       separator !== null &&
+      isSenderToken(separator[1]!) &&
       (remainder === undefined || remainder.trim() === "" || MBOX_DATE.test(remainder));
     if (line.startsWith("From ") && (isFirst || isSeparator)) {
       if (current !== undefined) messages.push(current.join("\n"));
@@ -647,10 +686,15 @@ const splitMailbox = (text: string): readonly string[] => {
       sawSeparator = true;
       continue;
     }
+    if (line.startsWith("From ") && !isSeparator) {
+      // An unescaped body line that merely looks like a separator is the format's own
+      // ambiguity, so the count is reported instead of being decided silently.
+      unrecognizedFromLines += 1;
+    }
     current?.push(line);
   }
   if (current !== undefined) messages.push(current.join("\n"));
-  return messages;
+  return { messages, unrecognized: unrecognizedFromLines };
 };
 
 /**
@@ -665,7 +709,8 @@ const splitMailbox = (text: string): readonly string[] => {
  */
 export const parseEmailMessages = (bytes: Uint8Array, mbox: boolean): ParsedEmail => {
   const text = bytesToBinaryString(bytes);
-  const sources = mbox ? splitMailbox(text) : [text];
+  const split = mbox ? splitMailbox(text) : { messages: [text], unrecognized: 0 };
+  const sources = split.messages;
   const messages: ParsedEmailMessage[] = [];
   let skippedAttachments = 0;
   let undecodableParts = 0;
@@ -705,5 +750,10 @@ export const parseEmailMessages = (bytes: Uint8Array, mbox: boolean): ParsedEmai
   if (messages.length === 0) {
     throw invalidInput("The mail source did not contain a decodable message.");
   }
-  return { messages, skippedAttachments, undecodableParts };
+  return {
+    messages,
+    skippedAttachments,
+    undecodableParts,
+    unrecognizedSeparatorLines: split.unrecognized,
+  };
 };
