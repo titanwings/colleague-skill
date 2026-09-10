@@ -144,6 +144,12 @@ export type FileIngestItemResult =
       readonly kind: "parsed";
       readonly pathLabel: string;
       readonly material: IngestItemResult;
+      /**
+       * Parser observations about a file that was accepted, such as skipped attachments, an
+       * ambiguous separator, or a split into parts. A parsed file is not the same as a file
+       * parsed completely, and these were previously computed and dropped.
+       */
+      readonly warnings: readonly string[];
     }
   | {
       readonly kind: "unparsed";

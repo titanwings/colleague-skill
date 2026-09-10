@@ -95,6 +95,39 @@ afterEach(async () => {
 });
 
 describe("Developer Preview LocalRuntime", () => {
+  it("splits one oversized local file into parts that each fit the material limit", async () => {
+    const root = await temporaryRoot();
+    const inputRoot = await temporaryRoot();
+    const path = join(inputRoot, "huge-chat.txt");
+    // Three lines of 700 KB each: every pair exceeds the 1 MiB material limit, so the split
+    // must land on line boundaries and produce exactly three parts.
+    const line = `${"x".repeat(700_000)}\n`;
+    await writeFile(path, line.repeat(3));
+
+    const runtime = await open(root);
+    const client = await connect(runtime, "file-split");
+    const result = await client.call(
+      "materials.ingestFiles",
+      {
+        subject: { kind: "create" as const, input: { displayName: "Huge", identityHints: [] } },
+        paths: [path],
+        enqueue: "now" as const,
+      },
+      { requestId: request() },
+    );
+
+    expect(result.items).toHaveLength(3);
+    expect(result.items.map((item) => item.pathLabel)).toEqual([
+      "huge-chat.txt [part 1 of 3]",
+      "huge-chat.txt [part 2 of 3]",
+      "huge-chat.txt [part 3 of 3]",
+    ]);
+    for (const item of result.items) {
+      expect(item.kind).toBe("parsed");
+      expect(item.warnings.join(" ")).toContain("Split into 3 parts");
+    }
+  });
+
   it("atomically ingests parsed and unparsed local files, replays before reads, and reopens", async () => {
     const root = await temporaryRoot();
     const inputRoot = await temporaryRoot();

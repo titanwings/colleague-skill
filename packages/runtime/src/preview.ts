@@ -128,6 +128,54 @@ const assertNoSymlinkFile = async (path: string): Promise<void> => {
   if (metadata.isSymbolicLink()) throw new Error("symlinked local path");
 };
 
+/**
+ * Splits rendered material text into parts that each fit the local material limit.
+ *
+ * Text is cut at line boundaries so a part never begins mid-line, except when one line is
+ * itself larger than the limit, which is then cut by characters. Deterministic: the same
+ * text always yields the same parts.
+ *
+ * @param text - Rendered material text.
+ * @param maximumBytes - Largest UTF-8 byte length one part may have.
+ * @returns One or more part texts, in order.
+ */
+const splitParsedText = (text: string, maximumBytes: number): readonly string[] => {
+  const encoder = new TextEncoder();
+  const parts: string[] = [];
+  let current: string[] = [];
+  let currentBytes = 0;
+  const flush = (): void => {
+    if (current.length === 0) return;
+    parts.push(current.join("\n"));
+    current = [];
+    currentBytes = 0;
+  };
+  for (const line of text.split("\n")) {
+    let remaining = line;
+    for (;;) {
+      const lineBytes = encoder.encode(remaining).byteLength;
+      if (lineBytes <= maximumBytes) break;
+      // One line exceeds a whole part: cut it by characters at the byte boundary.
+      let cut = remaining.length;
+      while (cut > 1 && encoder.encode(remaining.slice(0, cut)).byteLength > maximumBytes) {
+        cut -= 1;
+      }
+      flush();
+      parts.push(remaining.slice(0, cut));
+      remaining = remaining.slice(cut);
+    }
+    const lineBytes = encoder.encode(remaining).byteLength + 1;
+    if (currentBytes + lineBytes > maximumBytes) flush();
+    current.push(remaining);
+    currentBytes += lineBytes;
+  }
+  flush();
+  return parts;
+};
+
+/** Largest rendered text the loader accepts before it must split into parts. */
+const MAXIMUM_PARSED_TEXT_BYTES = WIRE_LIMITS.materialContentBytes * WIRE_LIMITS.ingestMaterials;
+
 const createLocalFileLoader = () => {
   const registry = createBuiltinParserRegistry();
   return {
@@ -153,7 +201,7 @@ const createLocalFileLoader = () => {
         }
         labels.add(pathLabel);
       });
-      return Promise.all(
+      const perPath = await Promise.all(
         input.paths.map(async (path, index) => {
           const pathLabel = basename(path);
           let bytes: Uint8Array;
@@ -205,11 +253,54 @@ const createLocalFileLoader = () => {
               {
                 subjectId: input.subjectId,
                 requestId: input.requestId,
-                maximumOutputBytes: WIRE_LIMITS.materialContentBytes,
+                maximumOutputBytes: MAXIMUM_PARSED_TEXT_BYTES,
               },
             );
           } catch (error) {
             return { pathLabel, mediaType, bytes, source, warnings: [parserWarning(error)] };
+          }
+          if (
+            parsed.material !== undefined &&
+            new TextEncoder().encode(parsed.material.content).byteLength >
+              WIRE_LIMITS.materialContentBytes
+          ) {
+            const parts = splitParsedText(
+              parsed.material.content,
+              WIRE_LIMITS.materialContentBytes,
+            );
+            if (parts.length > WIRE_LIMITS.ingestMaterials) {
+              // More parts than one ingest call can carry: refuse rather than drop any.
+              return {
+                pathLabel,
+                mediaType,
+                bytes,
+                source,
+                warnings: [
+                  `The parsed text needs ${String(parts.length)} parts, more than one ingest call carries; narrow the file.`,
+                ],
+              };
+            }
+            return parts.map((part, index) => {
+              // The label may not contain "/" or "\\": the engine treats it as a label, not a path.
+              const partLabel = `${pathLabel} [part ${String(index + 1)} of ${String(parts.length)}]`;
+              return {
+                pathLabel: partLabel,
+                mediaType,
+                bytes: new TextEncoder().encode(part),
+                source: { ...source, title: partLabel },
+                parsed: {
+                  ...parsed.material!,
+                  clientRef: partLabel,
+                  content: part,
+                  source: { ...parsed.material!.source, title: partLabel },
+                  sensitivity: input.sensitivity,
+                },
+                warnings: [
+                  ...parsed.warnings,
+                  `Split into ${String(parts.length)} parts to fit the local material limit.`,
+                ],
+              };
+            });
           }
           return {
             pathLabel,
@@ -223,6 +314,7 @@ const createLocalFileLoader = () => {
           };
         }),
       );
+      return perPath.flat();
     },
   };
 };

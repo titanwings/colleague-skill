@@ -235,11 +235,28 @@ const runHarvest = async (
   }
   const application = await openApplication(options.host, environment);
   try {
-    const batchSize = WIRE_LIMITS.ingestMaterials;
+    // A file larger than one material is split by the runtime into parts, so it must travel
+    // alone: a batch of several oversized files could exceed the wire limit for one result.
+    const batches: (readonly (typeof selection.files)[number][])[] = [];
+    let pending: (typeof selection.files)[number][] = [];
+    for (const file of selection.files) {
+      if (file.sizeBytes > WIRE_LIMITS.materialContentBytes) {
+        if (pending.length > 0) batches.push(pending);
+        batches.push([file]);
+        pending = [];
+        continue;
+      }
+      pending.push(file);
+      if (pending.length === WIRE_LIMITS.ingestMaterials) {
+        batches.push(pending);
+        pending = [];
+      }
+    }
+    if (pending.length > 0) batches.push(pending);
+
     let subjectId: string | undefined = options.subjectId;
     let ingested = 0;
-    for (let start = 0; start < selection.files.length; start += batchSize) {
-      const batch = selection.files.slice(start, start + batchSize);
+    for (const batch of batches) {
       const result = await application.distilly.ingestFiles({
         subject:
           subjectId === undefined

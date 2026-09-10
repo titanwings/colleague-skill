@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 
 import {
   DistillyError,
+  WIRE_LIMITS,
   actorContextSchema,
   briefContractSchema,
   contentDigestSchema,
@@ -723,11 +724,23 @@ const rawIdentity = (
   };
 };
 
+/**
+ * Validates the trusted file loader's records for one file-ingest call.
+ *
+ * The loader may return MORE records than requested paths because one oversized file is
+ * split into parts that each fit the material limit. The count therefore only has a lower
+ * bound, while the wire limit for one result stays the upper bound; every record is still
+ * checked below, and a split never loses or reorders the parts it reports.
+ *
+ * @param loaded - Records returned by the trusted loader.
+ * @param expectedCount - Number of paths the caller supplied.
+ * @returns The validated records, unchanged.
+ */
 const assertTrustedLoadedFiles = (
   loaded: readonly TrustedLoadedFile[],
   expectedCount: number,
 ): readonly TrustedLoadedFile[] => {
-  if (loaded.length !== expectedCount) {
+  if (loaded.length < expectedCount || loaded.length > WIRE_LIMITS.ingestMaterials) {
     throw storageCorrupt("The trusted file loader returned an invalid item count.");
   }
   const labels = new Set<string>();

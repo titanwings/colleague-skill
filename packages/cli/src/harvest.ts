@@ -18,6 +18,8 @@ export interface HarvestFile {
   readonly mediaType: string;
   /** Root-relative path with POSIX separators, used for deterministic ordering. */
   readonly relativePath: string;
+  /** Size in bytes, used to decide whether one file must be ingested on its own. */
+  readonly sizeBytes: number;
 }
 
 /** Complete, deterministic result of selecting evidence from one directory. */
@@ -179,7 +181,7 @@ export const selectHarvestFiles = async (
         return;
       }
       labels.add(pathLabel);
-      files.push({ path, pathLabel, mediaType, relativePath });
+      files.push({ path, pathLabel, mediaType, relativePath, sizeBytes: metadata.size });
     }
   };
 
