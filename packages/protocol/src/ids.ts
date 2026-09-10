@@ -39,4 +39,5 @@ export const BUILTIN_HOSTS = {
   claudeCode: "claude-code" as HostName,
   openclaw: "openclaw" as HostName,
   hermes: "hermes" as HostName,
+  dsh: "dsh" as HostName,
 } as const;

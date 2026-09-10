@@ -2,6 +2,8 @@ export { createClaudeCodeCapabilityBinding } from "./claude-code/capability.js";
 export { createClaudeCodeHostBinding } from "./claude-code/full.js";
 export { createCodexCapabilityBinding } from "./codex/capability.js";
 export { createCodexHostBinding } from "./codex/full.js";
+export { createDshCapabilityBinding } from "./dsh/capability.js";
+export { createDshHostBinding } from "./dsh/full.js";
 export { createHermesCapabilityBinding } from "./hermes/capability.js";
 export { createHermesHostBinding } from "./hermes/full.js";
 export { createOpenClawCapabilityBinding } from "./openclaw/capability.js";
@@ -18,6 +20,7 @@ export type {
   HostContext,
   CodexHostBindingOptions,
   ClaudeCodeHostBindingOptions,
+  DshHostBindingOptions,
   HermesHostBindingOptions,
   OpenClawHostBindingOptions,
   FullHostBindingOptions,

@@ -55,6 +55,21 @@ export interface PluginTreeOptions {
   readonly platformManifestPath: string;
   readonly expectedSkillDigest: `sha256_${string}`;
   readonly mcpShape: (launcherPath: string) => unknown;
+  /**
+   * Host-specific files the binding owns inside the plugin root, keyed by a root-relative
+   * POSIX path. They are written into the staging tree and recorded in the ownership
+   * manifest, so ownership verification still rejects unlisted files. A host that mounts
+   * its server through a patch or config document instead of `INSTALLED_MCP_FILE` uses
+   * this to publish that document without escaping ownership.
+   */
+  readonly extraOwnedFiles?: (launcherPath: string) => ReadonlyMap<string, Uint8Array>;
+  /**
+   * Preserve the source platform manifest's own fields when publishing the installed
+   * manifest, adding only the recorded server pointer. A host whose manifest carries
+   * real configuration (a profile, a bundle list) needs this; the default rewrites the
+   * manifest into the minimal name/version/pointer carrier.
+   */
+  readonly preservePlatformManifestFields?: boolean;
 }
 
 const fail = (message: string, fieldPath?: string): DistillyError =>
@@ -207,9 +222,18 @@ const preparePlugin = async (
   }
   files.set(
     options.platformManifestPath,
-    prettyJson({ ...platformManifest, mcpServers: `./${INSTALLED_MCP_FILE}` }),
+    options.preservePlatformManifestFields === true
+      ? prettyJson({ ...platformManifest, mcpServers: `./${INSTALLED_MCP_FILE}` })
+      : prettyJson({
+          ...platformManifest,
+          version: context.runtimeVersion,
+          mcpServers: `./${INSTALLED_MCP_FILE}`,
+        }),
   );
   files.set(INSTALLED_MCP_FILE, prettyJson(options.mcpShape(context.launcherPath)));
+  for (const [path, bytes] of options.extraOwnedFiles?.(context.launcherPath) ?? []) {
+    files.set(safeRelativePath(path), bytes);
+  }
 
   const ownership: PluginOwnershipManifest = {
     schemaVersion: 1,

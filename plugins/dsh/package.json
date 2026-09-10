@@ -1,0 +1,12 @@
+{
+  "name": "distilly",
+  "version": "0.1.0-preview.1",
+  "private": true,
+  "description": "Distilly plugin source for the DeepSeek Harness profile patch layer.",
+  "distilly": {
+    "host": "dsh",
+    "skillRoot": "skills/distilly",
+    "profileManifest": "package.json",
+    "patchFile": "cordis.patch.yml"
+  }
+}

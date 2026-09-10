@@ -167,6 +167,21 @@ export interface HermesHostBindingOptions extends FullHostBindingOptions {
   readonly commandRunner?: HostCommandRunner;
 }
 
+/**
+ * DeepSeek Harness full-binding inputs.
+ *
+ * DSH composes one profile from bundle layers plus a user patch layer, so the
+ * binding owns a dedicated profile under `$DSH_HOME/profiles/<name>` and mounts
+ * the MCP client there by absolute path instead of mutating a shared profile.
+ */
+export interface DshHostBindingOptions extends FullHostBindingOptions {
+  readonly executablePath: string;
+  readonly profilesRoot?: string;
+  readonly mcpClientPackagePath?: string;
+  readonly profileName?: string;
+  readonly commandRunner?: HostCommandRunner;
+}
+
 export type HostQuestion =
   | { readonly kind: "short_text"; readonly prompt: string }
   | { readonly kind: "explicit_consent"; readonly prompt: string }

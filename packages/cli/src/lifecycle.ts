@@ -18,6 +18,7 @@ import { delimiter, dirname, isAbsolute, join, resolve } from "node:path";
 import {
   createClaudeCodeHostBinding,
   createCodexHostBinding,
+  createDshHostBinding,
   createHermesHostBinding,
   createOpenClawHostBinding,
   type HostBinding,
@@ -353,6 +354,7 @@ const parseInstalledHost = (value: unknown): InstalledHost => {
       BUILTIN_HOSTS.claudeCode,
       BUILTIN_HOSTS.openclaw,
       BUILTIN_HOSTS.hermes,
+      BUILTIN_HOSTS.dsh,
     ].includes(host.data) ||
     typeof record.executablePath !== "string" ||
     !isAbsolute(record.executablePath) ||
@@ -665,6 +667,9 @@ const createBinding = (
   }
   if (host === BUILTIN_HOSTS.openclaw) {
     return createOpenClawHostBinding({ ...options, executablePath });
+  }
+  if (host === BUILTIN_HOSTS.dsh) {
+    return createDshHostBinding({ ...options, executablePath });
   }
   return createHermesHostBinding({ ...options, executablePath });
 };
