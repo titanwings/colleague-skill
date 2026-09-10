@@ -35,8 +35,9 @@ const parseHost = (value: string | undefined): HostName => {
   if (value === BUILTIN_HOSTS.claudeCode) return BUILTIN_HOSTS.claudeCode;
   if (value === BUILTIN_HOSTS.openclaw) return BUILTIN_HOSTS.openclaw;
   if (value === BUILTIN_HOSTS.hermes) return BUILTIN_HOSTS.hermes;
+  if (value === BUILTIN_HOSTS.dsh) return BUILTIN_HOSTS.dsh;
   throw new Error(
-    "Unknown host. Native bindings are available for codex, claude-code, openclaw, and hermes. Other hosts use the explicit Legacy Skill compatibility guide: https://github.com/titanwings/distilly/blob/distilly-plugin/INSTALL.md#legacy-skill-compatibility-for-hosts-without-a-verified-plugin-binding. Distilly did not switch modes.",
+    "Unknown host. Native bindings are available for codex, claude-code, openclaw, hermes, and dsh. Other hosts use the explicit Legacy Skill compatibility guide: https://github.com/titanwings/distilly/blob/distilly-plugin/INSTALL.md#legacy-skill-compatibility-for-hosts-without-a-verified-plugin-binding. Distilly did not switch modes.",
   );
 };
 

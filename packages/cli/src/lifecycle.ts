@@ -160,7 +160,8 @@ const previewHost = (value: HostName): HostName => {
   if (host === BUILTIN_HOSTS.claudeCode) return BUILTIN_HOSTS.claudeCode;
   if (host === BUILTIN_HOSTS.openclaw) return BUILTIN_HOSTS.openclaw;
   if (host === BUILTIN_HOSTS.hermes) return BUILTIN_HOSTS.hermes;
-  throw fail("The Developer Preview supports Codex, Claude Code, OpenClaw, and Hermes.");
+  if (host === BUILTIN_HOSTS.dsh) return BUILTIN_HOSTS.dsh;
+  throw fail("The Developer Preview supports Codex, Claude Code, OpenClaw, Hermes, and DSH.");
 };
 
 const compareUtf8 = (left: string, right: string): number =>
@@ -502,10 +503,11 @@ const verifyBootstrap = async (
   return paths;
 };
 
-const hostExecutableName = (host: HostName): "codex" | "claude" | "openclaw" | "hermes" => {
+const hostExecutableName = (host: HostName): "codex" | "claude" | "openclaw" | "hermes" | "dsh" => {
   if (host === BUILTIN_HOSTS.codex) return "codex";
   if (host === BUILTIN_HOSTS.claudeCode) return "claude";
   if (host === BUILTIN_HOSTS.openclaw) return "openclaw";
+  if (host === BUILTIN_HOSTS.dsh) return "dsh";
   return "hermes";
 };
 
