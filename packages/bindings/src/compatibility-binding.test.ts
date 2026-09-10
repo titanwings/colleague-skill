@@ -450,7 +450,7 @@ describe("Hermes compatibility binding", () => {
     const wrapper = join(home, ".distilly", "bin", "distilly-hermes");
     const run = vi.fn<HostCommandRunner["run"]>(async ({ args }) => {
       const command = args.join(" ");
-      if (command === "mcp add distilly --command " + wrapper) {
+      if (command === "mcp add distilly --command " + wrapper + " --connect-timeout 20") {
         await writeFile(
           configPath,
           `mcp_servers:\n  distilly:\n    command: ${hermesCommandScalar(wrapper)}\n    enabled: true\n    tools:\n      resources: true\n      prompts: true\n`,
@@ -516,7 +516,7 @@ describe("Hermes compatibility binding", () => {
     const run: HostCommandRunner = {
       run: async ({ args }) => {
         const command = args.join(" ");
-        if (command === "mcp add distilly --command " + wrapper) {
+        if (command === "mcp add distilly --command " + wrapper + " --connect-timeout 20") {
           await writeFile(
             configPath,
             `mcp_servers:\n  distilly:\n    command: ${wrapper}\n    enabled: true\n    tools:\n      resources: true\n      prompts: true\n`,
@@ -553,7 +553,7 @@ describe("Hermes compatibility binding", () => {
     const run: HostCommandRunner = {
       run: async ({ args }) => {
         const command = args.join(" ");
-        if (command === "mcp add distilly --command " + wrapper) {
+        if (command === "mcp add distilly --command " + wrapper + " --connect-timeout 20") {
           await writeFile(
             configPath,
             `mcp_servers:\n  distilly:\n    command: ${hermesCommandScalar(wrapper)}\n    enabled: true\n    tools:\n      resources: true\n      prompts: true\n`,
@@ -601,7 +601,7 @@ describe("Hermes compatibility binding", () => {
     const run: HostCommandRunner = {
       run: async ({ args }) => {
         const command = args.join(" ");
-        if (command === "mcp add distilly --command " + wrapper) {
+        if (command === "mcp add distilly --command " + wrapper + " --connect-timeout 20") {
           await writeFile(
             configPath,
             `mcp_servers:\n  distilly:\n    command: ${hermesCommandScalar(wrapper)}\n    enabled: true\n    tools:\n      resources: true\n      prompts: true\n`,
@@ -648,7 +648,7 @@ describe("Hermes compatibility binding", () => {
     const run: HostCommandRunner = {
       run: async ({ args }) => {
         const command = args.join(" ");
-        if (command === "mcp add distilly --command " + wrapper) {
+        if (command === "mcp add distilly --command " + wrapper + " --connect-timeout 20") {
           await writeFile(
             configPath,
             `mcp_servers:\n  distilly:\n    command: ${hermesCommandScalar(wrapper)}\n    enabled: true\n    tools:\n      resources: true\n      prompts: true\n`,
@@ -703,7 +703,7 @@ describe("Hermes compatibility binding", () => {
     const run: HostCommandRunner = {
       run: async ({ args }) => {
         const command = args.join(" ");
-        if (command === "mcp add distilly --command " + wrapper) {
+        if (command === "mcp add distilly --command " + wrapper + " --connect-timeout 20") {
           config = true;
           await writeFile(
             configPath,

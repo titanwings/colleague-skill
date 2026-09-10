@@ -525,8 +525,18 @@ const isManagedMcpEntry = (entry: HermesMcpEntry, wrapper: string): boolean =>
   (entry.resources === true || entry.resources === false) &&
   (entry.prompts === true || entry.prompts === false);
 
+/**
+ * Reports whether one host test output announced exactly five discovered tools.
+ *
+ * A real Hermes v0.19.0 prefixes the line with a status glyph ("✓ Tools discovered: 5")
+ * while an older build printed the bare text, so any run of non-alphanumeric decoration is
+ * allowed before the phrase. The count itself stays exact: "15" cannot match.
+ *
+ * @param stdout - Captured standard output of one host `mcp test` run.
+ * @returns True when the output announced exactly five discovered tools.
+ */
 const discoveredExactlyFiveTools = (stdout: string): boolean =>
-  /(?:^|\r?\n)\s*Tools discovered:\s*5\s*(?:\r?\n|$)/u.test(stdout);
+  /(?:^|\r?\n)[^A-Za-z0-9\r\n]*Tools discovered:\s*5\s*(?:\r?\n|$)/u.test(stdout);
 
 const installSkill = async (
   sourceRoot: string,
@@ -757,10 +767,14 @@ export const createHermesHostBinding = (options: HermesHostBindingOptions): Host
           // command may write config and then return a non-zero status; the
           // rollback below must still inspect and clean that partial write.
           configuredByDistilly = true;
+          // `mcp add` is discovery-first: it starts the server and waits for its tool
+          // list before writing the entry. Distilly's launcher opens a SQLite store and
+          // validates its binding first, which a real Hermes v0.19.0 abandoned after its
+          // short default, so the entry landed disabled and setup failed verification.
           const added = await runHost(
             options,
             homeDirectory,
-            ["mcp", "add", "distilly", "--command", wrapper],
+            ["mcp", "add", "distilly", "--command", wrapper, "--connect-timeout", "20"],
             "y\n",
           );
           if (added.exitCode !== 0) throw commandFailed("configure");
@@ -772,7 +786,30 @@ export const createHermesHostBinding = (options: HermesHostBindingOptions): Host
           ) {
             throw commandFailed("configure");
           }
-          lastObservedConfig = afterAdd;
+          // A discovery that still failed is recoverable: the entry names our wrapper, so
+          // enabling it is the operator's own setup request and the five-tool check below
+          // is what actually proves the integration.
+          if (afterAdd.enabled === false) {
+            const enabled = await runHost(options, homeDirectory, [
+              "config",
+              "set",
+              "mcp_servers.distilly.enabled",
+              "true",
+            ]);
+            if (enabled.exitCode !== 0) throw commandFailed("configure");
+            const afterEnable = await readHermesMcpEntry(homeDirectory);
+            if (
+              afterEnable === undefined ||
+              afterEnable === null ||
+              !isManagedMcpEntry(afterEnable, wrapper) ||
+              afterEnable.enabled !== true
+            ) {
+              throw commandFailed("configure");
+            }
+            lastObservedConfig = afterEnable;
+          } else {
+            lastObservedConfig = afterAdd;
+          }
           for (const key of ["resources", "prompts"] as const) {
             const result = await runHost(options, homeDirectory, [
               "config",

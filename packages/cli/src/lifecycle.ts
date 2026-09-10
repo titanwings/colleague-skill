@@ -927,6 +927,41 @@ export const setupPreviewHost = async (
       .then((health) => health.installed)
       .catch(() => false));
   let bindingInstalled = false;
+  // Two-phase install. A host can verify the integration by connecting to Distilly's
+  // launcher during its own install step (Hermes discovers tools inside `mcp add`), and
+  // that launcher resolves its binding from this manifest. Writing the manifest only
+  // after the projection succeeded deadlocked every discovery-first host, so the entry is
+  // written first and restored if anything below fails.
+  const priorHost = previous?.hosts.find((entry) => entry.host === host);
+  const hostEntry: InstalledHost =
+    priorHost === undefined
+      ? {
+          host,
+          executablePath,
+          hostVersion,
+          installedAt: isoDateTimeSchema.parse(
+            (environment.now ?? (() => new Date()))().toISOString(),
+          ),
+          ...(unverifiedHost === undefined ? {} : { unverifiedHostVersion: unverifiedHost }),
+        }
+      : unverifiedHost === undefined
+        ? { ...withoutUnverifiedFlag(priorHost), executablePath, hostVersion }
+        : { ...priorHost, executablePath, hostVersion, unverifiedHostVersion: unverifiedHost };
+  const hosts = [...(previous?.hosts.filter((entry) => entry.host !== host) ?? []), hostEntry].sort(
+    (left, right) => compareUtf8(left.host, right.host),
+  );
+  await writeManifest(paths.install, {
+    schemaVersion: 1,
+    releaseVersion: release.releaseVersion,
+    wireMajor: 3,
+    nodePath: environment.nodePath,
+    entryPath: installedEntry,
+    launcherPath: paths.launcher,
+    launcherDigest,
+    runtimePath: paths.runtime,
+    runtimeDigest,
+    hosts,
+  });
   try {
     const installed = await binding.installPlugin(
       installContext(paths, release, installedPlugins, host),
@@ -942,37 +977,6 @@ export const setupPreviewHost = async (
     ) {
       throw fail(`Distilly setup could not verify the ${host} integration.`);
     }
-    const priorHost = previous?.hosts.find((entry) => entry.host === host);
-    const hostEntry: InstalledHost =
-      priorHost === undefined
-        ? {
-            host,
-            executablePath,
-            hostVersion,
-            installedAt: isoDateTimeSchema.parse(
-              (environment.now ?? (() => new Date()))().toISOString(),
-            ),
-            ...(unverifiedHost === undefined ? {} : { unverifiedHostVersion: unverifiedHost }),
-          }
-        : unverifiedHost === undefined
-          ? { ...withoutUnverifiedFlag(priorHost), executablePath, hostVersion }
-          : { ...priorHost, executablePath, hostVersion, unverifiedHostVersion: unverifiedHost };
-    const hosts = [
-      ...(previous?.hosts.filter((entry) => entry.host !== host) ?? []),
-      hostEntry,
-    ].sort((left, right) => compareUtf8(left.host, right.host));
-    await writeManifest(paths.install, {
-      schemaVersion: 1,
-      releaseVersion: release.releaseVersion,
-      wireMajor: 3,
-      nodePath: environment.nodePath,
-      entryPath: installedEntry,
-      launcherPath: paths.launcher,
-      launcherDigest,
-      runtimePath: paths.runtime,
-      runtimeDigest,
-      hosts,
-    });
     return {
       host,
       launcherPath: paths.launcher,
@@ -980,6 +984,10 @@ export const setupPreviewHost = async (
       restartRequired: true,
     };
   } catch (error) {
+    // Restore the manifest this attempt replaced, so a failed projection leaves no entry
+    // claiming a host that is not installed.
+    if (previous === undefined) await removeIfPresent(paths.install);
+    else await writeManifest(paths.install, previous).catch(() => undefined);
     if (bindingInstalled && !existed && !preexistingBinding) {
       await binding
         .uninstallPlugin(installContext(paths, release, installedPlugins, host))
