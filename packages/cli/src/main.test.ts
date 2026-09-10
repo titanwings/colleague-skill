@@ -19,6 +19,7 @@ describe("Developer Preview CLI host boundary", () => {
     ["doctor", ["doctor", "--host", "other-host"]],
     ["uninstall", ["uninstall", "--host", "other-host"]],
     ["mcp", ["mcp", "--host", "other-host"]],
+    ["panel", ["panel", "--host", "other-host"]],
     ["person install", ["install", `subject_${"a".repeat(32)}`, "--host", "other-host"]],
   ])(
     "offers an explicit legacy guide for unsupported %s without switching modes",
@@ -53,5 +54,34 @@ describe("Developer Preview CLI host boundary", () => {
 
     expect(stdout.join("")).toContain("Legacy Skill compatibility path documented in INSTALL.md");
     expect(stderr).toEqual([]);
+  });
+
+  it("documents the standalone panel command and the dsh host", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    await expect(
+      runPreviewCli(["--help"], environment, {
+        stdout: { write: (value) => stdout.push(value) },
+        stderr: { write: (value) => stderr.push(value) },
+      }),
+    ).resolves.toBe(0);
+
+    expect(stdout.join("")).toContain("distilly panel --host <host>");
+    expect(stdout.join("")).toContain("codex | claude-code | openclaw | hermes | dsh");
+    expect(stderr).toEqual([]);
+  });
+
+  it("requires --host for the standalone panel command", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    await expect(
+      runPreviewCli(["panel"], environment, {
+        stdout: { write: (value) => stdout.push(value) },
+        stderr: { write: (value) => stderr.push(value) },
+      }),
+    ).rejects.toThrow("This command requires --host.");
+    expect(stdout).toEqual([]);
   });
 });

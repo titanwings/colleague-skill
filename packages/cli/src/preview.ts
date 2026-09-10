@@ -37,6 +37,16 @@ export interface PreviewMcpApplication {
   /** Serves the exact five MCP tools on this process's stdio transport. */
   runStdio(): Promise<void>;
 
+  /**
+   * Starts the loopback review Panel and returns the URL a human opens.
+   *
+   * A review presentation normally starts the Panel on demand; the standalone panel
+   * command needs the root URL without a suspended candidate.
+   *
+   * @returns The validated loopback root URL, including its access token.
+   */
+  startPanel(): Promise<string>;
+
   /** Closes presenters and clients before releasing the single-writer runtime. */
   close(): Promise<void>;
 }
@@ -87,6 +97,13 @@ class PreviewMcpApplicationImplementation implements PreviewMcpApplication {
     }
     this.#stdioPromise ??= runStdio(this.#mcp);
     return this.#stdioPromise;
+  }
+
+  startPanel(): Promise<string> {
+    if (this.#closePromise !== undefined) {
+      return Promise.reject(new Error("The Developer Preview MCP application is closing."));
+    }
+    return this.#panel.start();
   }
 
   close(): Promise<void> {

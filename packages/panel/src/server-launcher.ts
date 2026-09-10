@@ -99,6 +99,26 @@ export class PanelLauncher implements ReviewPresenter {
   }
 
   /**
+   * Starts the one owned Panel and returns its browser entry URL.
+   *
+   * The standalone `distilly panel` command uses this to report the URL a human should
+   * open; a review presentation keeps using {@link present}, which appends the exact
+   * review route to this same root.
+   *
+   * @returns The validated loopback root URL, including its access token.
+   */
+  async start(): Promise<string> {
+    if (this.#state === "closing" || this.#state === "closed") {
+      throw new Error("PanelLauncher is closing or closed.");
+    }
+    const handle = await this.#start();
+    if (this.#state !== "running" || this.#handle !== handle) {
+      throw new Error("PanelLauncher closed while the Panel was starting.");
+    }
+    return handle.url;
+  }
+
+  /**
    * Presents exactly one immutable suspended-candidate reference.
    *
    * @param review - Candidate selected by the engine.

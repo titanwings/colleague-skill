@@ -69,6 +69,46 @@ const openApplication = async (host: HostName, environment: PreviewCliEnvironmen
   });
 };
 
+/**
+ * Resolves when the operator interrupts the process or closes standard input.
+ *
+ * @returns A promise that settles on the first shutdown signal.
+ */
+const waitForShutdown = async (): Promise<void> => {
+  await new Promise<void>((resolvePromise) => {
+    let settled = false;
+    const finish = (): void => {
+      if (settled) return;
+      settled = true;
+      process.off("SIGINT", finish);
+      process.off("SIGTERM", finish);
+      process.stdin.off("end", finish);
+      resolvePromise();
+    };
+    process.once("SIGINT", finish);
+    process.once("SIGTERM", finish);
+    // A closed stdin means the operator or a supervisor stopped waiting for the panel.
+    process.stdin.once("end", finish);
+  });
+};
+
+const runPanel = async (
+  host: HostName,
+  environment: PreviewCliEnvironment,
+  io: PreviewCliIo,
+): Promise<void> => {
+  const application = await openApplication(host, environment);
+  try {
+    const url = await application.startPanel();
+    io.stdout.write(
+      `Distilly review panel for ${host}: ${url}\nReview local profiles in a browser; press Ctrl-C to stop.\n`,
+    );
+    await waitForShutdown();
+  } finally {
+    await application.close();
+  }
+};
+
 const runMcp = async (host: HostName, environment: PreviewCliEnvironment): Promise<void> => {
   const application = await openApplication(host, environment);
   try {
@@ -122,9 +162,10 @@ Usage:
   distilly doctor [--host <host>]
   distilly install <subject-id> --host <host>
   distilly uninstall --host <host>
-  # <host>: codex | claude-code | openclaw | hermes
+  distilly panel --host <host>
+  # <host>: codex | claude-code | openclaw | hermes | dsh
 
-The four host bindings share the same five-tool MCP contract. Setup remains
+The host bindings share the same five-tool MCP contract. Setup remains
 fail-closed until this release has an exact verified capacity fixture for the
 selected host version; no synthetic capacity is used. Other hosts:
   Use the explicit Legacy Skill compatibility path documented in INSTALL.md.
@@ -190,6 +231,12 @@ export const runPreviewCli = async (
     const host = hostOption(args, true);
     if (host === undefined) throw new Error("This command requires --host.");
     await runMcp(host, environment);
+    return 0;
+  }
+  if (command === "panel") {
+    const host = hostOption(args, true);
+    if (host === undefined) throw new Error("This command requires --host.");
+    await runPanel(host, environment, io);
     return 0;
   }
   io.stderr.write(`Unknown or unavailable Developer Preview command: ${command}.\n`);
