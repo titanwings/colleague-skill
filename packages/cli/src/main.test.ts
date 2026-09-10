@@ -123,6 +123,49 @@ describe("Developer Preview CLI host boundary", () => {
     expect(stdout).toEqual([]);
   });
 
+  it("requires a host for personas and a subject plus host for remove", async () => {
+    const stdout: string[] = [];
+    const io = {
+      stdout: { write: (value: string) => stdout.push(value) },
+      stderr: { write: (value: string) => value },
+    };
+    await expect(runPreviewCli(["personas"], environment, io)).rejects.toThrow(
+      "This command requires --host.",
+    );
+    await expect(
+      runPreviewCli(["personas", "--host", "codex", "--nope", "1"], environment, io),
+    ).rejects.toThrow("Unknown personas option: --nope.");
+    await expect(runPreviewCli(["remove", "--host", "codex"], environment, io)).rejects.toThrow(
+      "This command requires a subject id or display name, then --host <host>.",
+    );
+    await expect(
+      runPreviewCli(["remove", "   ", "--host", "codex"], environment, io),
+    ).rejects.toThrow("This command requires a subject id or display name, then --host <host>.");
+    await expect(
+      runPreviewCli(["remove", `subject_${"a".repeat(32)}`], environment, io),
+    ).rejects.toThrow("This command requires --host.");
+    await expect(
+      runPreviewCli(
+        ["remove", `subject_${"a".repeat(32)}`, "--host", "codex", "--nope", "1"],
+        environment,
+        io,
+      ),
+    ).rejects.toThrow("Unknown remove option: --nope.");
+    expect(stdout).toEqual([]);
+  });
+
+  it("documents the person Skill lifecycle commands", async () => {
+    const stdout: string[] = [];
+    await expect(
+      runPreviewCli(["--help"], environment, {
+        stdout: { write: (value: string) => stdout.push(value) },
+        stderr: { write: (value: string) => value },
+      }),
+    ).resolves.toBe(0);
+    expect(stdout.join("")).toContain("distilly personas --host <host>");
+    expect(stdout.join("")).toContain("distilly remove <subject-id|display-name> --host <host>");
+  });
+
   it("documents the standalone panel command and the dsh host", async () => {
     const stdout: string[] = [];
     const stderr: string[] = [];

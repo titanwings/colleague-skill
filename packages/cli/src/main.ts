@@ -11,6 +11,7 @@ import {
   type HostName,
   type SubjectSummary,
 } from "@distilly/protocol";
+import { listPersonInstalls, type PersonInstallSummary } from "@distilly/bindings";
 import type { Distilly } from "distilly";
 
 import { ambiguousCandidates, reusableSubject } from "./subject-errors.js";
@@ -28,6 +29,7 @@ import {
   loadHarvestState,
   planHarvest,
   recordHarvest,
+  recordedPath,
   saveHarvestState,
   type HashedHarvestFile,
 } from "./harvest-state.js";
@@ -257,9 +259,9 @@ const runHarvest = async (
   io: PreviewCliIo,
 ): Promise<void> => {
   const options = harvestOptions(args);
-  const selection = await selectHarvestFiles(options.directory, {
-    ...(options.maximumFiles === undefined ? {} : { maximumFiles: options.maximumFiles }),
-  });
+  // The limit applies to what is actually ingested, not to what is discovered: applying it
+  // first would keep re-selecting files that are already stored and never reach the rest.
+  const selection = await selectHarvestFiles(options.directory);
   for (const line of describeHarvestSelection(selection)) io.stdout.write(`${line}\n`);
   if (selection.files.length === 0) {
     io.stdout.write("Nothing to ingest.\n");
@@ -294,14 +296,23 @@ const runHarvest = async (
         // The engine treats differently capitalized names as different people, so a new
         // subject is correct here; say so when a near-duplicate exists instead of silently
         // splitting one person's material across two subjects.
-        const page = await application.distilly.list({
-          text: options.displayName ?? "",
-          limit: 32,
-        });
-        const nearDuplicate = page.items.find(
-          (candidate) =>
-            candidate.displayName.toLowerCase() === (options.displayName ?? "").toLowerCase(),
-        );
+        const wanted = (options.displayName ?? "").toLowerCase();
+        let nearDuplicate: SubjectSummary | undefined;
+        let cursor: string | undefined;
+        // Page through the whole filtered listing: the case-variant may sort past any fixed
+        // window, and a missed warning silently splits one person across two subjects.
+        for (let page = 0; page < 20 && nearDuplicate === undefined; page += 1) {
+          const listed = await application.distilly.list({
+            text: options.displayName ?? "",
+            limit: 200,
+            ...(cursor === undefined ? {} : { cursor }),
+          });
+          nearDuplicate = listed.items.find(
+            (candidate) => candidate.displayName.toLowerCase() === wanted,
+          );
+          cursor = listed.nextCursor;
+          if (cursor === undefined) break;
+        }
         if (nearDuplicate !== undefined) {
           io.stdout.write(
             `Note: ${nearDuplicate.displayName} (${nearDuplicate.id}) already exists in ${nearDuplicate.space.displayName} with different capitalization; a new subject is created. Pass --subject ${nearDuplicate.id} to add to that one instead.\n`,
@@ -311,9 +322,22 @@ const runHarvest = async (
     }
     const statePath = join(environment.lifecycle.homeDirectory, ".distilly", "harvest-state.json");
     const state = await loadHarvestState(statePath);
-    let files: HashedHarvestFile[] = await Promise.all(
-      selection.files.map(async (file) => ({ ...file, sha256: await hashFile(file.path) })),
-    );
+    const failures: string[] = [];
+    const hashed: HashedHarvestFile[] = [];
+    for (const file of selection.files) {
+      try {
+        hashed.push({
+          ...file,
+          sha256: await hashFile(file.path),
+          recordedPath: await recordedPath(file.path),
+        });
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : "the file could not be read";
+        failures.push(`${file.pathLabel}: ${reason}`);
+        io.stdout.write(`Could not read ${file.pathLabel}: ${reason}\n`);
+      }
+    }
+    let files = hashed;
     const recorded = subjectId === undefined ? [] : (state.entries[subjectId] ?? []);
     if (!options.force && recorded.length > 0) {
       const plan = planHarvest(files, recorded);
@@ -325,9 +349,25 @@ const runHarvest = async (
         }
       }
       files = [...plan.ingest];
+    } else if (options.force && files.length > 0) {
+      io.stdout.write(
+        `--force re-ingests ${String(files.length)} file(s) even if they are unchanged, so the store gains a new material record for each one.\n`,
+      );
+    }
+    if (options.maximumFiles !== undefined && files.length > options.maximumFiles) {
+      const remaining = files.length - options.maximumFiles;
+      files = files.slice(0, options.maximumFiles);
+      io.stdout.write(
+        `Reached --limit ${String(options.maximumFiles)}; ${String(remaining)} more file(s) still need ingesting. Re-run to continue.\n`,
+      );
     }
     if (files.length === 0) {
       io.stdout.write("Nothing new to ingest.\n");
+      if (failures.length > 0) {
+        throw new Error(
+          `${String(failures.length)} of ${String(selection.files.length)} file(s) could not be ingested:\n${failures.join("\n")}`,
+        );
+      }
       return;
     }
     // A file larger than one material is split by the runtime into parts, so it must travel
@@ -351,7 +391,6 @@ const runHarvest = async (
 
     let ingested = 0;
     let recordedState = state;
-    const failures: string[] = [];
     // Harvest is an explicit user action, so distillation is queued now instead of waiting for
     // the engine's automatic threshold: a single small file previously produced no job and no
     // message, which read as nothing having happened.
@@ -477,6 +516,11 @@ const resolveSubjectArgument = async (
       `No subject exists with id ${argument}. Run distilly subjects --host <host> to list what exists.`,
     );
   }
+  if (argument.startsWith("subject_")) {
+    throw new Error(
+      `"${argument}" is not a valid subject id. Run distilly subjects --host <host> to list what exists.`,
+    );
+  }
   if (resolution.kind === "ambiguous") {
     for (const line of describeAmbiguousSubject(argument, resolution.candidates)) {
       io.stdout.write(`${line}\n`);
@@ -577,8 +621,10 @@ const runSubjects = async (
     const value = args[index + 1];
     if (value === undefined) throw new Error(`Missing value for ${String(flag)}.`);
     if (flag === "--host") host = parseHost(value);
-    else if (flag === "--query") query.text = value;
-    else if (flag === "--cursor") query.cursor = value;
+    else if (flag === "--query") {
+      // An empty filter means "no filter": passing it through would surface a wire error.
+      if (value.trim().length > 0) query.text = value;
+    } else if (flag === "--cursor") query.cursor = value;
     else if (flag === "--limit") {
       const limit = Number.parseInt(value, 10);
       if (!Number.isSafeInteger(limit) || limit <= 0) throw new Error("--limit must be positive.");
@@ -602,13 +648,145 @@ const runSubjects = async (
   }
 };
 
+/**
+ * Renders one person Skill listing, verified installs first and unverified ones named.
+ *
+ * @param summaries - Installs found under the host's skills root.
+ * @param skillsRoot - Root that was scanned, printed so the operator can check it.
+ * @returns Stable report lines.
+ */
+const describePersonInstalls = (
+  summaries: readonly PersonInstallSummary[],
+  skillsRoot: string,
+): readonly string[] => {
+  if (summaries.length === 0) {
+    return [
+      `No person Skill is installed under ${skillsRoot}.`,
+      "Install one with: distilly install <subject-id|display-name> --host <host>",
+    ];
+  }
+  const lines = [`Person Skills under ${skillsRoot}:`];
+  for (const summary of summaries) {
+    lines.push(
+      summary.verified
+        ? `  ${summary.install.path} — ${summary.install.subjectId} @ ${summary.install.versionId} (installed ${summary.install.installedAt})`
+        : `  ${summary.path} — not a verified Distilly install: ${summary.reason}`,
+    );
+  }
+  return lines;
+};
+
+/**
+ * Lists the person Skills installed for one host.
+ *
+ * @param args - Optional --host and --json.
+ * @param environment - Resolved Preview CLI environment.
+ * @param io - Command output streams.
+ */
+const runPersonas = async (
+  args: readonly string[],
+  environment: PreviewCliEnvironment,
+  io: PreviewCliIo,
+): Promise<void> => {
+  let host: HostName | undefined;
+  let asJson = false;
+  for (let index = 0; index < args.length; index += 1) {
+    const flag = args[index];
+    if (flag === "--json") {
+      asJson = true;
+      continue;
+    }
+    const value = args[index + 1];
+    if (value === undefined) throw new Error(`Missing value for ${String(flag)}.`);
+    if (flag === "--host") host = parseHost(value);
+    else throw new Error(`Unknown personas option: ${String(flag)}.`);
+    index += 1;
+  }
+  if (host === undefined) throw new Error("This command requires --host.");
+  const summaries = await listPersonInstalls(host, environment.lifecycle.homeDirectory);
+  if (asJson) {
+    io.stdout.write(`${JSON.stringify({ host, installs: summaries }, undefined, 2)}\n`);
+    return;
+  }
+  const root = summaries.find((summary) => (summary.verified ? true : summary.host === host));
+  const skillsRoot =
+    root === undefined
+      ? "<no skills root found>"
+      : root.verified
+        ? dirname(root.install.path)
+        : dirname(root.path);
+  io.stdout.write(`${describePersonInstalls(summaries, skillsRoot).join("\n")}\n`);
+};
+
+/**
+ * Removes one person Skill without touching the host integration.
+ *
+ * @param args - Subject id or display name, plus --host.
+ * @param environment - Resolved Preview CLI environment.
+ * @param io - Command output streams.
+ */
+const runRemove = async (
+  args: readonly string[],
+  environment: PreviewCliEnvironment,
+  io: PreviewCliIo,
+): Promise<void> => {
+  const [subjectArgument, ...rest] = args;
+  if (
+    subjectArgument === undefined ||
+    subjectArgument.startsWith("--") ||
+    subjectArgument.trim().length === 0
+  ) {
+    throw new Error("This command requires a subject id or display name, then --host <host>.");
+  }
+  let host: HostName | undefined;
+  for (let index = 0; index < rest.length; index += 1) {
+    const flag = rest[index];
+    const value = rest[index + 1];
+    if (value === undefined) throw new Error(`Missing value for ${String(flag)}.`);
+    if (flag === "--host") host = parseHost(value);
+    else throw new Error(`Unknown remove option: ${String(flag)}.`);
+    index += 1;
+  }
+  if (host === undefined) throw new Error("This command requires --host.");
+  const application = await openApplication(host, environment);
+  try {
+    const subject = await resolveSubjectArgument(application.distilly, subjectArgument, io);
+    const summaries = await listPersonInstalls(host, environment.lifecycle.homeDirectory);
+    const install = summaries.find(
+      (summary): summary is Extract<PersonInstallSummary, { verified: true }> =>
+        summary.verified && summary.install.subjectId === subject.id,
+    );
+    if (install === undefined) {
+      const blocked = summaries.find(
+        (summary) => !summary.verified && summary.path.includes(String(subject.id).slice(8, 18)),
+      );
+      if (blocked !== undefined && !blocked.verified) {
+        throw new Error(
+          `The person Skill at ${blocked.path} is not a verified Distilly install: ${blocked.reason}`,
+        );
+      }
+      throw new Error(
+        `${subject.displayName} (${subject.id}) has no installed person Skill for ${host}.`,
+      );
+    }
+    await application.distilly.person(subject.id).uninstall(install.install);
+    io.stdout.write(
+      `Removed the person Skill for ${subject.displayName} at ${install.install.path}.\n`,
+    );
+  } finally {
+    await application.close();
+  }
+};
+
 const help = `Distilly Developer Preview
 
 Usage:
   distilly setup --host codex
   distilly setup --host claude-code|openclaw|hermes|dsh [--allow-unverified-host]
   distilly doctor [--host <host>]
-  distilly install <subject-id> --host <host>
+  distilly install <subject-id|display-name> --host <host>
+  distilly personas --host <host> [--json]
+  distilly remove <subject-id|display-name> --host <host>
   distilly uninstall --host <host>
   distilly panel --host <host>
   distilly subjects --host <host> [--query <text>] [--limit <n>] [--cursor <cursor>] [--json]
@@ -672,17 +850,27 @@ export const runPreviewCli = async (
   }
   if (command === "install") {
     if (args.length !== 3 || args[1] !== "--host") {
-      throw new Error("This command requires <subject-id> --host <host>.");
+      throw new Error("This command requires <subject-id|display-name> --host <host>.");
     }
-    const subjectId = subjectIdSchema.parse(args[0]);
     const host = parseHost(args[2]);
     const application = await openApplication(host, environment);
     try {
-      const installed = await application.distilly.person(subjectId).install(host);
-      io.stdout.write(`Installed ${subjectId} for ${host} at ${installed.path}.\n`);
+      const subject = await resolveSubjectArgument(application.distilly, args[0] ?? "", io);
+      const installed = await application.distilly.person(subject.id).install(host);
+      io.stdout.write(
+        `Installed ${subject.displayName} (${subject.id}) version ${installed.versionId} for ${host} at ${installed.path}.\n`,
+      );
     } finally {
       await application.close();
     }
+    return 0;
+  }
+  if (command === "personas") {
+    await runPersonas(args, environment, io);
+    return 0;
+  }
+  if (command === "remove") {
+    await runRemove(args, environment, io);
     return 0;
   }
   if (command === "mcp") {

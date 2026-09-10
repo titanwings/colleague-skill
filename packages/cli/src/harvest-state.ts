@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import type { HarvestFile } from "./harvest.js";
@@ -10,7 +10,7 @@ export interface HarvestStateEntry {
   readonly path: string;
   /** SHA-256 of the exact bytes that were ingested. */
   readonly sha256: string;
-  /** Byte length when it was ingested, so an unchanged file needs no second read. */
+  /** Byte length that was ingested, reported back whenever the entry is listed. */
   readonly sizeBytes: number;
 }
 
@@ -79,15 +79,34 @@ export const loadHarvestState = async (path: string): Promise<HarvestState> => {
 };
 
 /**
- * Writes the harvest record atomically, so an interrupted run cannot leave half a record.
+ * Writes the harvest record atomically, merging what another run recorded in the meantime.
+ *
+ * Two harvests may run at once, so the record on disk is re-read immediately before the
+ * atomic rename and its entries are merged in. Last writer wins per path, but a folder that
+ * another run already recorded is not forgotten just because this run loaded an older copy.
  *
  * @param path - State file path.
  * @param state - Record to persist.
  */
 export const saveHarvestState = async (path: string, state: HarvestState): Promise<void> => {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
+  const current = await loadHarvestState(path);
+  const merged: Record<string, HarvestStateEntry[]> = {};
+  for (const [subjectId, entries] of Object.entries(current.entries)) {
+    merged[subjectId] = [...entries];
+  }
+  for (const [subjectId, entries] of Object.entries(state.entries)) {
+    const existing = merged[subjectId] ?? [];
+    const replaced = new Set(entries.map((entry) => resolve(entry.path)));
+    merged[subjectId] = [
+      ...existing.filter((entry) => !replaced.has(resolve(entry.path))),
+      ...entries,
+    ];
+  }
   const temporary = `${path}.${String(process.pid)}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(state, undefined, 2)}\n`, { mode: 0o600 });
+  await writeFile(temporary, `${JSON.stringify({ version: 1, entries: merged }, undefined, 2)}\n`, {
+    mode: 0o600,
+  });
   await rename(temporary, path);
 };
 
@@ -102,9 +121,29 @@ export const hashFile = async (path: string): Promise<string> =>
     .update(await readFile(path))
     .digest("hex");
 
+/**
+ * Resolves one selected path to the real path the record is keyed on.
+ *
+ * A directory reached through a symlink or through a different spelling of the same location
+ * (`/tmp/d` and `/private/tmp/d`) is the same folder on disk, so the record must not treat its
+ * files as new evidence.
+ *
+ * @param path - Selected absolute file path.
+ * @returns The real path, or the resolved input when it cannot be read.
+ */
+export const recordedPath = async (path: string): Promise<string> => {
+  try {
+    return await realpath(path);
+  } catch {
+    return resolve(path);
+  }
+};
+
 /** One selected file together with the digest of the bytes that will be ingested. */
 export interface HashedHarvestFile extends HarvestFile {
   readonly sha256: string;
+  /** Real path the record is keyed on, so two spellings of one folder stay one entry. */
+  readonly recordedPath: string;
 }
 
 /** What one harvest run should ingest and what it can skip as already recorded. */
@@ -128,11 +167,11 @@ export const planHarvest = (
   files: readonly HashedHarvestFile[],
   entries: readonly HarvestStateEntry[],
 ): HarvestDedupePlan => {
-  const recorded = new Map(entries.map((entry) => [resolve(entry.path), entry.sha256] as const));
+  const recorded = new Map(entries.map((entry) => [entry.path, entry.sha256] as const));
   const ingest: HashedHarvestFile[] = [];
   const alreadyIngested: HashedHarvestFile[] = [];
   for (const file of files) {
-    const previous = recorded.get(resolve(file.path));
+    const previous = recorded.get(file.recordedPath);
     if (previous !== undefined && previous === file.sha256) alreadyIngested.push(file);
     else ingest.push(file);
   }
@@ -153,10 +192,10 @@ export const recordHarvest = (
   files: readonly HashedHarvestFile[],
 ): HarvestState => {
   const existing = (state.entries[subjectId] ?? []).filter(
-    (entry) => !files.some((file) => resolve(file.path) === resolve(entry.path)),
+    (entry) => !files.some((file) => file.recordedPath === entry.path),
   );
   const added = files.map((file) => ({
-    path: resolve(file.path),
+    path: file.recordedPath,
     sha256: file.sha256,
     sizeBytes: file.sizeBytes,
   }));

@@ -1,11 +1,17 @@
 /**
  * Splits one oversized parsed text into parts that each fit the local material byte limit.
  *
- * The split is byte-exact and deterministic: the parts are consecutive slices of the source,
- * so joining them with an empty string reproduces the source exactly, no byte is added or
- * dropped, and no part is empty. Cuts prefer a line boundary; only a single line that cannot
- * fit in one part is cut inside the line, at a Unicode code point boundary, never between a
- * high and a low surrogate and never immediately before a combining mark.
+ * The text is first canonicalized exactly the way the engine canonicalizes stored material
+ * (CRLF/CR to LF, NFC, trailing spaces and tabs before a line end removed), so a part is stored
+ * unchanged and a mid-line cut cannot create a seam the engine would rewrite. Parts are then
+ * consecutive slices of that canonical text: joining them with an empty string reproduces it,
+ * no byte is added or dropped, and no part is empty.
+ *
+ * A cut prefers a line boundary. Only a single line that cannot fit in one part is cut inside
+ * the line, at a Unicode code point boundary, never between a high and a low surrogate, never
+ * immediately before a combining mark, and never where the part would end in spaces or tabs
+ * that the engine would strip. The scan is linear in the text length, including for a single
+ * line larger than the limit.
  *
  * @param text - Rendered material text.
  * @param maximumBytes - Largest UTF-8 byte length one part may have.
@@ -13,61 +19,144 @@
  */
 export const splitParsedText = (text: string, maximumBytes: number): readonly string[] => {
   if (maximumBytes < 4) throw new Error("A part must be able to hold one code point.");
+  const canonical = text
+    .replace(/\r\n?/gu, "\n")
+    .normalize("NFC")
+    .replace(/[ \t]+(?=\n|$)/gu, "");
   const parts: string[] = [];
   let partStart = 0;
   let partBytes = 0;
   let cursor = 0;
-  const pushPart = (end: number): void => {
-    parts.push(text.slice(partStart, end));
+  const push = (end: number): void => {
+    parts.push(canonical.slice(partStart, end));
     partStart = end;
     partBytes = 0;
   };
-  while (cursor < text.length) {
-    const newline = text.indexOf("\n", cursor);
-    // A line keeps its own newline, so a cut after it loses nothing.
-    const lineEnd = newline === -1 ? text.length : newline + 1;
-    const lineBytes = utf8BytesIn(text, cursor, lineEnd);
-    if (partBytes + lineBytes <= maximumBytes) {
+  while (cursor < canonical.length) {
+    const newline = canonical.indexOf("\n", cursor);
+    const lineEnd = newline === -1 ? canonical.length : newline + 1;
+    const lineBytes = utf8BytesIn(canonical, cursor, lineEnd);
+    if (lineBytes <= maximumBytes) {
+      if (partBytes + lineBytes > maximumBytes) {
+        // Close this part on the line boundary, taking any combining marks that begin this
+        // line with it so the next part cannot start with a detached mark. The rest of the
+        // line then starts the next part, where it fits because this line fits in one part.
+        const extended = extendOverMarks(canonical, cursor, partBytes, maximumBytes);
+        push(extended);
+        cursor = extended;
+        continue;
+      }
       partBytes += lineBytes;
       cursor = lineEnd;
       continue;
     }
-    if (lineBytes > maximumBytes) {
-      // One line is larger than a whole part: fill the rest of this part by code point.
-      let end = cursor;
-      let bytes = partBytes;
+    // One line is larger than a whole part: fill the rest of this part, then chunk the line.
+    if (partBytes > 0) push(cursor);
+    let index = cursor;
+    while (index < lineEnd) {
+      let end = index;
+      let bytes = 0;
       while (end < lineEnd) {
-        const codePoint = text.codePointAt(end) ?? 0;
+        const codePoint = canonical.codePointAt(end) ?? 0;
         const width = utf8Width(codePoint);
         if (bytes + width > maximumBytes) break;
         bytes += width;
         end += codePoint > 0xffff ? 2 : 1;
       }
-      // A part must not begin with a combining mark, or the mark renders detached.
-      while (end > cursor && end < lineEnd) {
-        const next = text.codePointAt(end) ?? 0;
-        if (!COMBINING_MARK.test(String.fromCodePoint(next))) break;
-        const previousStart = previousCodePointStart(text, end, cursor);
-        bytes -= utf8Width(text.codePointAt(previousStart) ?? 0);
-        end = previousStart;
-      }
-      if (end > cursor) {
-        cursor = end;
-        partBytes = bytes;
-      }
-      // A part that is already full is flushed and the line continues in the next part.
-      if (partBytes > 0) pushPart(cursor);
-      continue;
+      if (end === index) throw new Error("A part must be able to hold one code point.");
+      const cut = trimCut(canonical, index, end, lineEnd, bytes);
+      parts.push(canonical.slice(index, cut.end));
+      index = cut.end;
     }
-    // The line fits in an empty part, so this part ends here and the line starts the next one.
-    pushPart(cursor);
+    partStart = index;
+    cursor = index;
+    partBytes = 0;
   }
-  if (partBytes > 0) parts.push(text.slice(partStart));
+  if (partBytes > 0) parts.push(canonical.slice(partStart));
   return parts;
 };
 
 /** Matches one combining mark, which must not be the first code point of a part. */
 const COMBINING_MARK = /^\p{M}$/u;
+
+/**
+ * Largest number of code points a cut may move back to avoid a seam the engine would rewrite.
+ *
+ * The bound keeps the scan linear when a pathological line is one long run of combining marks
+ * or spaces: past it the cut is taken as computed, which can leave a detached mark or a
+ * stripped space in that one place instead of scanning the whole run again for every part.
+ */
+const MAXIMUM_CUT_BACKOFF = 32;
+
+/** Matches the whitespace the engine strips at the end of a part. */
+const TRIMMED_AT_PART_END = /^[ \t]$/u;
+
+/**
+ * Moves a line-boundary cut forward over combining marks that begin the next line.
+ *
+ * @param text - Canonical text.
+ * @param cursor - Index of the next line's first code point.
+ * @param usedBytes - Bytes already in the closing part.
+ * @param maximumBytes - Part byte ceiling.
+ * @returns Index the closing part should end at.
+ */
+const extendOverMarks = (
+  text: string,
+  cursor: number,
+  usedBytes: number,
+  maximumBytes: number,
+): number => {
+  let end = cursor;
+  let bytes = usedBytes;
+  while (end < text.length) {
+    const codePoint = text.codePointAt(end) ?? 0;
+    if (!COMBINING_MARK.test(String.fromCodePoint(codePoint))) break;
+    const width = utf8Width(codePoint);
+    if (bytes + width > maximumBytes) break;
+    bytes += width;
+    end += codePoint > 0xffff ? 2 : 1;
+  }
+  return end;
+};
+
+/**
+ * Chooses where a mid-line cut ends so the stored part equals the slice.
+ *
+ * A part must not end in spaces or tabs (the engine strips them) and the next part must not
+ * begin with a combining mark, but a part always keeps at least one code point so the scan
+ * always advances.
+ *
+ * @param text - Canonical text.
+ * @param start - First index of the part.
+ * @param end - Largest index that fits the byte ceiling.
+ * @param lineEnd - Exclusive end of the line being cut.
+ * @param bytes - Byte length of the untrimmed slice.
+ * @returns The chosen end index and its byte length.
+ */
+const trimCut = (
+  text: string,
+  start: number,
+  end: number,
+  lineEnd: number,
+  bytes: number,
+): { readonly end: number; readonly bytes: number } => {
+  let trimmedEnd = end;
+  let trimmedBytes = bytes;
+  let steps = 0;
+  while (trimmedEnd < lineEnd && trimmedEnd > start && steps < MAXIMUM_CUT_BACKOFF) {
+    const next = text.codePointAt(trimmedEnd) ?? 0;
+    const previousStart = previousCodePointStart(text, trimmedEnd, start);
+    if (previousStart <= start) break;
+    const previous = text.codePointAt(previousStart) ?? 0;
+    const startsWithMark = COMBINING_MARK.test(String.fromCodePoint(next));
+    const endsWithTrimmed = TRIMMED_AT_PART_END.test(String.fromCodePoint(previous));
+    if (!startsWithMark && !endsWithTrimmed) break;
+    trimmedEnd = previousStart;
+    trimmedBytes -= utf8Width(previous);
+    steps += 1;
+  }
+  return { end: trimmedEnd, bytes: trimmedBytes };
+};
 
 /**
  * Measures the UTF-8 byte width of one code point.

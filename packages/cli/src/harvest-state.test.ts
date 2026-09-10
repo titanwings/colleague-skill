@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -10,6 +10,7 @@ import {
   loadHarvestState,
   planHarvest,
   recordHarvest,
+  recordedPath,
   saveHarvestState,
   type HarvestState,
 } from "./harvest-state.js";
@@ -44,7 +45,7 @@ describe("harvest record", () => {
     await writeFile(note, "first version\n");
     const digest = await hashFile(note);
     const first = recordHarvest(EMPTY_HARVEST_STATE, "subject_a", [
-      { ...file(note, "note.md"), sha256: digest },
+      { ...file(note, "note.md"), sha256: digest, recordedPath: note },
     ]);
     await saveHarvestState(path, first);
     const loaded = await loadHarvestState(path);
@@ -52,7 +53,7 @@ describe("harvest record", () => {
 
     await writeFile(note, "second version\n");
     const second = recordHarvest(loaded, "subject_a", [
-      { ...file(note, "note.md", 15), sha256: await hashFile(note) },
+      { ...file(note, "note.md", 15), sha256: await hashFile(note), recordedPath: note },
     ]);
     expect(second.entries["subject_a"]).toHaveLength(1);
     expect(second.entries["subject_a"]?.[0]?.sha256).not.toBe(digest);
@@ -106,9 +107,13 @@ describe("harvest dedupe plan", () => {
 
   it("skips only files whose recorded bytes match and keeps edited ones", () => {
     const files = [
-      { ...file("/data/same.md", "same.md"), sha256: digest },
-      { ...file("/data/edited.md", "edited.md"), sha256: "c".repeat(64) },
-      { ...file("/data/new.md", "new.md"), sha256: "d".repeat(64) },
+      { ...file("/data/same.md", "same.md"), sha256: digest, recordedPath: "/data/same.md" },
+      {
+        ...file("/data/edited.md", "edited.md"),
+        sha256: "c".repeat(64),
+        recordedPath: "/data/edited.md",
+      },
+      { ...file("/data/new.md", "new.md"), sha256: "d".repeat(64), recordedPath: "/data/new.md" },
     ];
     const plan = planHarvest(files, [
       { path: "/data/same.md", sha256: digest, sizeBytes: 10 },
@@ -118,31 +123,64 @@ describe("harvest dedupe plan", () => {
     expect(plan.ingest.map((entry) => entry.pathLabel)).toEqual(["edited.md", "new.md"]);
   });
 
-  it("matches a recorded relative path against the absolute selection", () => {
+  it("matches a recorded entry only when the real path is identical", () => {
     const plan = planHarvest(
-      [{ ...file("/data/sub/note.md", "note.md"), sha256: digest }],
-      [{ path: "/data/sub/./note.md", sha256: digest, sizeBytes: 10 }],
+      [
+        {
+          ...file("/data/sub/note.md", "note.md"),
+          sha256: digest,
+          recordedPath: "/private/data/sub/note.md",
+        },
+      ],
+      [{ path: "/private/data/sub/note.md", sha256: digest, sizeBytes: 10 }],
     );
     expect(plan.alreadyIngested).toHaveLength(1);
     expect(plan.ingest).toHaveLength(0);
+    const other = planHarvest(
+      [
+        {
+          ...file("/data/sub/note.md", "note.md"),
+          sha256: digest,
+          recordedPath: "/data/sub/note.md",
+        },
+      ],
+      [{ path: "/private/data/sub/note.md", sha256: digest, sizeBytes: 10 }],
+    );
+    expect(other.ingest).toHaveLength(1);
   });
 
   it("records a state per subject, so another subject still ingests the same bytes", () => {
-    const first: HarvestState = recordHarvest(EMPTY_HARVEST_STATE, "subject_a", [
-      { ...file("/data/note.md", "note.md"), sha256: digest },
-    ]);
+    const entry = {
+      ...file("/data/note.md", "note.md"),
+      sha256: digest,
+      recordedPath: "/data/note.md",
+    };
+    const first: HarvestState = recordHarvest(EMPTY_HARVEST_STATE, "subject_a", [entry]);
     expect(
       planHarvest(
-        [{ ...file("/data/note.md", "note.md"), sha256: digest }],
+        [{ ...file("/data/note.md", "note.md"), sha256: digest, recordedPath: "/data/note.md" }],
         first.entries["subject_b"] ?? [],
       ).ingest,
     ).toHaveLength(1);
     expect(
       planHarvest(
-        [{ ...file("/data/note.md", "note.md"), sha256: digest }],
+        [{ ...file("/data/note.md", "note.md"), sha256: digest, recordedPath: "/data/note.md" }],
         first.entries["subject_a"] ?? [],
       ).alreadyIngested,
     ).toHaveLength(1);
+  });
+});
+
+describe("recorded path", () => {
+  it("resolves a symlinked path to the real one and falls back for a missing file", async () => {
+    const root = await temporaryRoot();
+    const target = join(root, "real");
+    await mkdir(target);
+    await writeFile(join(target, "note.md"), "note\n");
+    const link = join(root, "link");
+    await symlink(target, link, "dir");
+    expect(await recordedPath(join(link, "note.md"))).toBe(join(await realpath(target), "note.md"));
+    expect(await recordedPath(join(root, "missing.md"))).toBe(join(root, "missing.md"));
   });
 });
 
