@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "fixtureId": "hermes-agent-v0.9.0-cli-distilly-0.1.0-preview.1-v2",
+  "schemaVersion": 2,
+  "fixtureId": "hermes-agent-v0.9.0-cli-distilly-0.1.0-preview.1-v3",
   "host": "hermes",
   "hostVersion": "Hermes Agent v0.9.0 (2026.4.13)",
   "environment": "cli",
@@ -13,8 +13,11 @@
   "probeContractDigest": "sha256_c7e2ae4afcdedd3d59e9ffd50ffca8c4d8c6449f82977fc167f171204497bd77",
   "serializer": "structured-content-plus-json-text-v1",
   "capacity": {
-    "maximumInputTokens": 49752,
-    "maximumToolResultBytes": 49752
+    "boundKind": "verified_lower_bound",
+    "verifiedBriefingBytes": 49752,
+    "estimatedInputTokens": 12438,
+    "maximumToolResultBytes": 49752,
+    "estimatedToolResultTokens": 12438
   },
   "observed": {
     "briefingBytes": 49752,

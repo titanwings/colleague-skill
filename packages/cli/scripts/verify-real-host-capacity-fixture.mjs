@@ -620,8 +620,14 @@ const evidence = ({ host, version, fixture, normalized }) => {
     probeContractDigest,
     serializer: "structured-content-plus-json-text-v1",
     capacity: {
-      maximumInputTokens: fixture.targetBriefingBytes,
+      // Bytes the probe actually carried, and the token limit derived from them. The
+      // earlier record copied the byte count into a token field, which overstated the
+      // budget; the two quantities are now named and derived separately.
+      boundKind: "verified_lower_bound",
+      verifiedBriefingBytes: fixture.targetBriefingBytes,
+      estimatedInputTokens: fixture.briefingTokens,
       maximumToolResultBytes: fixture.targetToolResultBytes,
+      estimatedToolResultTokens: fixture.toolResultTokens,
     },
   };
   return {
@@ -864,7 +870,9 @@ const verifyRealHostCapacityFixture = async (host, options = {}) => {
       briefingToolInput: fixture.briefingToolInput,
       expected: {
         markers: [...BRIEF_MARKERS],
-        estimatedInputTokens: String(fixture.targetBriefingBytes),
+        // The probe payload declares a token limit derived from the carried bytes, so the
+        // model must echo the derived value rather than the byte count it used to echo.
+        estimatedInputTokens: String(fixture.briefingTokens),
       },
     };
     const promptPrompt = promptProbeText(promptFixture.promptToolInput);

@@ -84,6 +84,25 @@ const positiveByteCount = (value, label) => {
 };
 
 /**
+ * Conservative bytes-per-token divisor for the probe's declared token limits.
+ *
+ * The probe measures BYTES the transport carried, which is the only quantity it can
+ * observe. A token limit must be derived from that, never copied from it: declaring
+ * a byte count as a token count overstates the budget by roughly this factor. The
+ * divisor is deliberately pessimistic, so a dense script (where one token covers
+ * one or two bytes) still yields a limit the host is known to carry.
+ */
+const BYTES_PER_TOKEN = 4;
+
+/**
+ * Converts a measured byte budget into the token limit the probe may declare.
+ *
+ * @param bytes - Positive byte budget the probe carries.
+ * @returns A positive conservative token estimate.
+ */
+const conservativeTokens = (bytes) => Math.max(1, Math.floor(bytes / BYTES_PER_TOKEN));
+
+/**
  * Creates a deterministic fixture at independently requested wire boundaries.
  * Host verifiers use this factory so a host-specific limit never changes the
  * canonical five-tool contract or the default Codex fixture.
@@ -94,6 +113,8 @@ export const createHostCapacityFixture = ({
 } = {}) => {
   const targetBriefingBytes = positiveByteCount(briefingBytes, "briefingBytes");
   const targetToolResultBytes = positiveByteCount(toolResultBytes, "toolResultBytes");
+  const briefingTokens = conservativeTokens(targetBriefingBytes);
+  const toolResultTokens = conservativeTokens(targetToolResultBytes);
   const createBriefing = (content) => ({
     job: {
       id: JOB_ID,
@@ -143,8 +164,8 @@ export const createHostCapacityFixture = ({
       evidenceRules: ["Preserve every distributed capacity marker."],
     },
     limits: {
-      estimatedInputTokens: targetBriefingBytes,
-      maximumInputTokens: targetBriefingBytes,
+      estimatedInputTokens: briefingTokens,
+      maximumInputTokens: briefingTokens,
       maximumOutputBytes: 65_536,
     },
   });
@@ -168,6 +189,8 @@ export const createHostCapacityFixture = ({
   return {
     targetBriefingBytes,
     targetToolResultBytes,
+    briefingTokens,
+    toolResultTokens,
     briefing,
     prompt: promptEnvelope.value.prompt,
     expectedPromptOutput: promptEnvelope,

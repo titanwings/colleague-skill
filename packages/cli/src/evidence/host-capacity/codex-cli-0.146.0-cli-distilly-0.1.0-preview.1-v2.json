@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "fixtureId": "codex-cli-0.146.0-cli-distilly-0.1.0-preview.1-v1",
+  "schemaVersion": 2,
+  "fixtureId": "codex-cli-0.146.0-cli-distilly-0.1.0-preview.1-v2",
   "host": "codex",
   "hostVersion": "codex-cli 0.146.0",
   "environment": "cli",
@@ -10,8 +10,11 @@
   "toolContractDigest": "sha256_a5ef4303fa29360416008448f12dd4b01f325143633e7fa2298c2094f73a6eda",
   "serializer": "structured-content-plus-json-text-v1",
   "capacity": {
-    "maximumInputTokens": 65536,
-    "maximumToolResultBytes": 65536
+    "boundKind": "verified_lower_bound",
+    "verifiedBriefingBytes": 65536,
+    "estimatedInputTokens": 16384,
+    "maximumToolResultBytes": 65536,
+    "estimatedToolResultTokens": 16384
   },
   "observed": {
     "briefingBytes": 65536,

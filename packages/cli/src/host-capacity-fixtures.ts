@@ -10,17 +10,24 @@ import {
 } from "@distilly/protocol";
 import { advertisedToolContractDigest, type McpSchemaProfile } from "@distilly/mcp/internal/schema";
 
-import codexCapacityEvidence from "./evidence/host-capacity/codex-cli-0.146.0-cli-distilly-0.1.0-preview.1-v1.json" with { type: "json" };
-import hermesCapacityEvidence from "./evidence/host-capacity/hermes-agent-v0.9.0-cli-distilly-0.1.0-preview.1-v2.json" with { type: "json" };
-import openClawCapacityEvidence from "./evidence/host-capacity/openclaw-2026.3.24-cli-distilly-0.1.0-preview.1-v2.json" with { type: "json" };
+import codexCapacityEvidence from "./evidence/host-capacity/codex-cli-0.146.0-cli-distilly-0.1.0-preview.1-v2.json" with { type: "json" };
+import hermesCapacityEvidence from "./evidence/host-capacity/hermes-agent-v0.9.0-cli-distilly-0.1.0-preview.1-v3.json" with { type: "json" };
+import openClawCapacityEvidence from "./evidence/host-capacity/openclaw-2026.3.24-cli-distilly-0.1.0-preview.1-v3.json" with { type: "json" };
 
 interface PreviewReleaseTuple {
   readonly releaseVersion: string;
   readonly canonicalSkillDigest: ContentDigest;
 }
 
+/**
+ * Conservative bytes-per-token divisor used to derive a token budget from a measured
+ * byte budget. It must match the probe generator so a record cannot claim a token
+ * limit that its own byte measurement does not support.
+ */
+const BYTES_PER_TOKEN = 4;
+
 interface PreviewCapacityFixture {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly fixtureId: string;
   readonly host: HostName;
   readonly hostVersion: string;
@@ -35,8 +42,14 @@ interface PreviewCapacityFixture {
   readonly probeContractDigest?: ContentDigest;
   readonly serializer: "structured-content-plus-json-text-v1";
   readonly capacity: {
-    readonly maximumInputTokens: number;
+    /** Declares that the numbers below are a verified lower bound, not a measured maximum. */
+    readonly boundKind: "verified_lower_bound";
+    /** Bytes the probe payload actually carried, as recorded by a real host session. */
+    readonly verifiedBriefingBytes: number;
+    /** Token budget derived from those bytes; never a copy of the byte count. */
+    readonly estimatedInputTokens: number;
     readonly maximumToolResultBytes: number;
+    readonly estimatedToolResultTokens: number;
   };
   readonly observed: {
     readonly briefingBytes: number;
@@ -77,8 +90,10 @@ const PROBE_CONTRACT_DIGEST =
 interface PreviewFixtureIdentity {
   readonly fixtureId: string;
   readonly hostVersion: string;
-  readonly maximumInputTokens: number;
+  readonly verifiedBriefingBytes: number;
+  readonly estimatedInputTokens: number;
   readonly maximumToolResultBytes: number;
+  readonly estimatedToolResultTokens: number;
   readonly normalizedTranscriptDigest: ContentDigest;
 }
 
@@ -95,28 +110,34 @@ const expectedFixtureIdentityForHost = (host: unknown): PreviewFixtureIdentity |
   switch (host) {
     case BUILTIN_HOSTS.codex:
       return {
-        fixtureId: `codex-cli-0.146.0-cli-distilly-${PREVIEW_RELEASE}-v1`,
+        fixtureId: `codex-cli-0.146.0-cli-distilly-${PREVIEW_RELEASE}-v2`,
         hostVersion: "codex-cli 0.146.0",
-        maximumInputTokens: 65_536,
+        verifiedBriefingBytes: 65_536,
+        estimatedInputTokens: 16_384,
         maximumToolResultBytes: 65_536,
+        estimatedToolResultTokens: 16_384,
         normalizedTranscriptDigest:
           "sha256_0affeceaaaec7d0475f74f7ae94854fc66faf201e25e940164bd16c65ad42dbc" as ContentDigest,
       };
     case BUILTIN_HOSTS.openclaw:
       return {
-        fixtureId: `openclaw-2026.3.24-cli-distilly-${PREVIEW_RELEASE}-v2`,
+        fixtureId: `openclaw-2026.3.24-cli-distilly-${PREVIEW_RELEASE}-v3`,
         hostVersion: "OpenClaw 2026.3.24 (af6f32f)",
-        maximumInputTokens: 65_536,
+        verifiedBriefingBytes: 65_536,
+        estimatedInputTokens: 16_384,
         maximumToolResultBytes: 65_536,
+        estimatedToolResultTokens: 16_384,
         normalizedTranscriptDigest:
           "sha256_1df1f1c1835c5992400f4b044c59351f3fa71b72754eb7d239d1bbad3440f37b" as ContentDigest,
       };
     case BUILTIN_HOSTS.hermes:
       return {
-        fixtureId: `hermes-agent-v0.9.0-cli-distilly-${PREVIEW_RELEASE}-v2`,
+        fixtureId: `hermes-agent-v0.9.0-cli-distilly-${PREVIEW_RELEASE}-v3`,
         hostVersion: "Hermes Agent v0.9.0 (2026.4.13)",
-        maximumInputTokens: 49_752,
+        verifiedBriefingBytes: 49_752,
+        estimatedInputTokens: 12_438,
         maximumToolResultBytes: 49_752,
+        estimatedToolResultTokens: 12_438,
         normalizedTranscriptDigest:
           "sha256_f0824c66221b2ad522de74c393d661bff98ba2324480985d0ec1974fef60fec5" as ContentDigest,
       };
@@ -190,7 +211,13 @@ export const parsePreviewHostCapacityEvidence = (value: unknown): PreviewCapacit
       : undefined;
   if (
     (capacity !== undefined &&
-      !hasOnlyKeys(capacity, ["maximumInputTokens", "maximumToolResultBytes"])) ||
+      !hasOnlyKeys(capacity, [
+        "boundKind",
+        "verifiedBriefingBytes",
+        "estimatedInputTokens",
+        "maximumToolResultBytes",
+        "estimatedToolResultTokens",
+      ])) ||
     (observed !== undefined &&
       !hasOnlyKeys(observed, [
         "briefingBytes",
@@ -217,8 +244,21 @@ export const parsePreviewHostCapacityEvidence = (value: unknown): PreviewCapacit
   const capacityMatches =
     expectedIdentity !== undefined &&
     capacity !== undefined &&
-    capacity.maximumInputTokens === expectedIdentity.maximumInputTokens &&
-    capacity.maximumToolResultBytes === expectedIdentity.maximumToolResultBytes;
+    capacity.boundKind === "verified_lower_bound" &&
+    capacity.verifiedBriefingBytes === expectedIdentity.verifiedBriefingBytes &&
+    capacity.estimatedInputTokens === expectedIdentity.estimatedInputTokens &&
+    capacity.maximumToolResultBytes === expectedIdentity.maximumToolResultBytes &&
+    capacity.estimatedToolResultTokens === expectedIdentity.estimatedToolResultTokens;
+  // A token budget must be derived from the measured bytes, never copied from them: the
+  // original record did exactly that and overstated every host's budget by this factor.
+  const tokensAreDerived =
+    capacity !== undefined &&
+    isPositiveSafeInteger(capacity.verifiedBriefingBytes) &&
+    capacity.estimatedInputTokens ===
+      Math.max(1, Math.floor(capacity.verifiedBriefingBytes / BYTES_PER_TOKEN)) &&
+    isPositiveSafeInteger(capacity.maximumToolResultBytes) &&
+    capacity.estimatedToolResultTokens ===
+      Math.max(1, Math.floor(capacity.maximumToolResultBytes / BYTES_PER_TOKEN));
   const transcriptMatches =
     expectedIdentity !== undefined &&
     transcriptDigest.success &&
@@ -234,7 +274,7 @@ export const parsePreviewHostCapacityEvidence = (value: unknown): PreviewCapacit
         probeDigest.success &&
         probeDigest.data === PROBE_CONTRACT_DIGEST;
   if (
-    record.schemaVersion !== 1 ||
+    record.schemaVersion !== 2 ||
     typeof record.fixtureId !== "string" ||
     !fixtureIdentityMatches ||
     ![
@@ -254,11 +294,14 @@ export const parsePreviewHostCapacityEvidence = (value: unknown): PreviewCapacit
     !projectionMatches ||
     record.serializer !== "structured-content-plus-json-text-v1" ||
     capacity === undefined ||
-    !isPositiveSafeInteger(capacity.maximumInputTokens) ||
+    !isPositiveSafeInteger(capacity.verifiedBriefingBytes) ||
+    !isPositiveSafeInteger(capacity.estimatedInputTokens) ||
     !isPositiveSafeInteger(capacity.maximumToolResultBytes) ||
+    !isPositiveSafeInteger(capacity.estimatedToolResultTokens) ||
+    !tokensAreDerived ||
     !capacityMatches ||
     observed === undefined ||
-    observed.briefingBytes !== capacity.maximumInputTokens ||
+    observed.briefingBytes !== capacity.verifiedBriefingBytes ||
     observed.toolResultBytes !== capacity.maximumToolResultBytes ||
     observed.structuredTextDeepEqual !== true ||
     observed.modelObservedBothTailMarkers !== true ||
@@ -269,7 +312,7 @@ export const parsePreviewHostCapacityEvidence = (value: unknown): PreviewCapacit
     throw new TypeError("The host capacity evidence record is invalid.");
   }
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     fixtureId: record.fixtureId,
     host: host as HostName,
     hostVersion: record.hostVersion,
@@ -287,8 +330,11 @@ export const parsePreviewHostCapacityEvidence = (value: unknown): PreviewCapacit
       : { probeContractDigest: probeDigest.data }),
     serializer: "structured-content-plus-json-text-v1",
     capacity: {
-      maximumInputTokens: capacity.maximumInputTokens,
+      boundKind: "verified_lower_bound",
+      verifiedBriefingBytes: capacity.verifiedBriefingBytes,
+      estimatedInputTokens: capacity.estimatedInputTokens,
       maximumToolResultBytes: capacity.maximumToolResultBytes,
+      estimatedToolResultTokens: capacity.estimatedToolResultTokens,
     },
     observed: {
       briefingBytes: observed.briefingBytes,
@@ -343,7 +389,8 @@ export const loadPreviewHostFixture = (
     ok: true,
     capabilities: PREVIEW_CAPABILITIES,
     capacity: {
-      maximumInputTokens: fixture.capacity.maximumInputTokens,
+      // The runtime budget is the derived token estimate, not the measured byte count.
+      maximumInputTokens: fixture.capacity.estimatedInputTokens,
       maximumToolResultBytes: fixture.capacity.maximumToolResultBytes,
       source: "binding_fixture",
     },

@@ -4,9 +4,9 @@ import { advertisedToolContractDigest } from "@distilly/mcp/internal/schema";
 import { BUILTIN_HOSTS, distillyMcpTools, type ContentDigest } from "@distilly/protocol";
 import { describe, expect, it } from "vitest";
 
-import codexEvidence from "./evidence/host-capacity/codex-cli-0.146.0-cli-distilly-0.1.0-preview.1-v1.json" with { type: "json" };
-import hermesEvidence from "./evidence/host-capacity/hermes-agent-v0.9.0-cli-distilly-0.1.0-preview.1-v2.json" with { type: "json" };
-import openClawEvidence from "./evidence/host-capacity/openclaw-2026.3.24-cli-distilly-0.1.0-preview.1-v2.json" with { type: "json" };
+import codexEvidence from "./evidence/host-capacity/codex-cli-0.146.0-cli-distilly-0.1.0-preview.1-v2.json" with { type: "json" };
+import hermesEvidence from "./evidence/host-capacity/hermes-agent-v0.9.0-cli-distilly-0.1.0-preview.1-v3.json" with { type: "json" };
+import openClawEvidence from "./evidence/host-capacity/openclaw-2026.3.24-cli-distilly-0.1.0-preview.1-v3.json" with { type: "json" };
 import {
   loadPreviewHostFixture,
   parsePreviewHostCapacityEvidence,
@@ -43,9 +43,9 @@ const PROBE_CONTRACT_DIGEST =
   "sha256_c7e2ae4afcdedd3d59e9ffd50ffca8c4d8c6449f82977fc167f171204497bd77";
 
 const EXPECTED_FIXTURE_IDS = {
-  [BUILTIN_HOSTS.codex]: "codex-cli-0.146.0-cli-distilly-0.1.0-preview.1-v1",
-  [BUILTIN_HOSTS.openclaw]: "openclaw-2026.3.24-cli-distilly-0.1.0-preview.1-v2",
-  [BUILTIN_HOSTS.hermes]: "hermes-agent-v0.9.0-cli-distilly-0.1.0-preview.1-v2",
+  [BUILTIN_HOSTS.codex]: "codex-cli-0.146.0-cli-distilly-0.1.0-preview.1-v2",
+  [BUILTIN_HOSTS.openclaw]: "openclaw-2026.3.24-cli-distilly-0.1.0-preview.1-v3",
+  [BUILTIN_HOSTS.hermes]: "hermes-agent-v0.9.0-cli-distilly-0.1.0-preview.1-v3",
 } as const;
 
 interface ProjectedEvidence {
@@ -75,7 +75,8 @@ describe("immutable Preview host capacity evidence", () => {
     );
     if (!preflight.ok) throw new TypeError("Expected the exact Codex evidence tuple to load.");
     expect(preflight.capacity).toEqual({
-      maximumInputTokens: 65_536,
+      // 16_384 is the conservative token estimate derived from 65_536 measured bytes.
+      maximumInputTokens: 16_384,
       maximumToolResultBytes: 65_536,
       source: "binding_fixture",
     });
@@ -84,6 +85,48 @@ describe("immutable Preview host capacity evidence", () => {
       hostVersion: codexEvidence.hostVersion,
       canonicalSkillDigest: codexEvidence.canonicalSkillDigest,
     });
+  });
+
+  it("rejects a legacy record that declares a byte count as a token limit", () => {
+    const legacy = {
+      ...(codexEvidence as unknown as Record<string, unknown>),
+      schemaVersion: 1,
+      capacity: { maximumInputTokens: 65_536, maximumToolResultBytes: 65_536 },
+    };
+    expect(() => parsePreviewHostCapacityEvidence(legacy)).toThrow(
+      /host capacity evidence record/u,
+    );
+  });
+
+  it("rejects a record whose token budget is copied from its byte measurement", () => {
+    const copied = {
+      ...(codexEvidence as unknown as Record<string, unknown>),
+      capacity: {
+        boundKind: "verified_lower_bound",
+        verifiedBriefingBytes: 65_536,
+        estimatedInputTokens: 65_536,
+        maximumToolResultBytes: 65_536,
+        estimatedToolResultTokens: 16_384,
+      },
+    };
+    expect(() => parsePreviewHostCapacityEvidence(copied)).toThrow(
+      /host capacity evidence record/u,
+    );
+  });
+
+  it("rejects a record that drops the explicit lower-bound declaration", () => {
+    const unlabelled = {
+      ...(codexEvidence as unknown as Record<string, unknown>),
+      capacity: {
+        verifiedBriefingBytes: 65_536,
+        estimatedInputTokens: 16_384,
+        maximumToolResultBytes: 65_536,
+        estimatedToolResultTokens: 16_384,
+      },
+    };
+    expect(() => parsePreviewHostCapacityEvidence(unlabelled)).toThrow(
+      /host capacity evidence record/u,
+    );
   });
 
   it("fails closed for an exact tuple without a real evidence record", () => {
@@ -112,7 +155,7 @@ describe("immutable Preview host capacity evidence", () => {
     });
     if (!preflight.ok) throw new TypeError(`Expected the exact ${host} evidence tuple to load.`);
     expect(preflight.capacity).toEqual({
-      maximumInputTokens: bytes,
+      maximumInputTokens: Math.max(1, Math.floor(bytes / 4)),
       maximumToolResultBytes: bytes,
       source: "binding_fixture",
     });
