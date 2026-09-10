@@ -41,6 +41,12 @@ import {
   looksLikeSubjectId,
 } from "./show.js";
 import {
+  describeProfileDiff,
+  describeVersions,
+  resolveVersionArgument,
+  statusLabel,
+} from "./versions.js";
+import {
   PREVIEW_PANEL_ASSETS,
   PREVIEW_PLUGIN_SOURCES,
   PREVIEW_RUNTIME_MANIFEST,
@@ -778,6 +784,207 @@ const runRemove = async (
   }
 };
 
+/**
+ * Reads a version id argument plus optional flags shared by the version commands.
+ *
+ * @param rest - Arguments after the subject.
+ * @param options - Which flags this command accepts.
+ * @param options.withFrom - Whether this command accepts --from.
+ * @param options.withReason - Whether this command accepts --reason.
+ * @returns Parsed flags.
+ */
+const versionFlags = (
+  rest: readonly string[],
+  options: { readonly withFrom?: boolean; readonly withReason?: boolean },
+): {
+  readonly host?: string;
+  readonly to?: string;
+  readonly from?: string;
+  readonly reason?: string;
+  readonly limit?: number;
+  readonly cursor?: string;
+  readonly asJson: boolean;
+} => {
+  const parsed: {
+    host?: string;
+    to?: string;
+    from?: string;
+    reason?: string;
+    limit?: number;
+    cursor?: string;
+    asJson: boolean;
+  } = { asJson: false };
+  for (let index = 0; index < rest.length; index += 1) {
+    const flag = rest[index];
+    if (flag === "--json") {
+      parsed.asJson = true;
+      continue;
+    }
+    const value = rest[index + 1];
+    if (value === undefined) throw new Error(`Missing value for ${String(flag)}.`);
+    if (flag === "--host") parsed.host = value;
+    else if (flag === "--to") parsed.to = value;
+    else if (flag === "--from" && options.withFrom === true) parsed.from = value;
+    else if (flag === "--reason" && options.withReason === true) parsed.reason = value;
+    else if (flag === "--cursor") parsed.cursor = value;
+    else if (flag === "--limit") {
+      const limit = Number.parseInt(value, 10);
+      if (!Number.isSafeInteger(limit) || limit <= 0) throw new Error("--limit must be positive.");
+      parsed.limit = limit;
+    } else {
+      throw new Error(
+        `Unknown ${options.withFrom === true ? "diff" : options.withReason === true ? "rollback" : "versions"} option: ${String(flag)}.`,
+      );
+    }
+    index += 1;
+  }
+  return parsed;
+};
+
+/** One resolved subject, host, and open application shared by the version commands. */
+interface VersionCommandTarget {
+  readonly application: Awaited<ReturnType<typeof openApplication>>;
+  readonly subject: SubjectSummary;
+  readonly host: HostName;
+}
+
+/**
+ * Opens the local application and resolves the subject named on the command line.
+ *
+ * @param args - Subject id or display name plus flags.
+ * @param environment - Resolved Preview CLI environment.
+ * @param io - Command output streams.
+ * @param options - Which flags the calling command accepts.
+ * @param options.withFrom - Whether this command accepts --from.
+ * @param options.withReason - Whether this command accepts --reason.
+ * @returns The open application, resolved subject, and host.
+ */
+const openVersionTarget = async (
+  args: readonly string[],
+  environment: PreviewCliEnvironment,
+  io: PreviewCliIo,
+  options: { readonly withFrom?: boolean; readonly withReason?: boolean },
+): Promise<{
+  readonly target: VersionCommandTarget;
+  readonly flags: ReturnType<typeof versionFlags>;
+}> => {
+  const [subjectArgument, ...rest] = args;
+  if (
+    subjectArgument === undefined ||
+    subjectArgument.startsWith("--") ||
+    subjectArgument.trim().length === 0
+  ) {
+    throw new Error("This command requires a subject id or display name, then --host <host>.");
+  }
+  const flags = versionFlags(rest, options);
+  if (flags.host === undefined) throw new Error("This command requires --host.");
+  const host = parseHost(flags.host);
+  const application = await openApplication(host, environment);
+  try {
+    const subject = await resolveSubjectArgument(application.distilly, subjectArgument, io);
+    return { target: { application, subject, host }, flags };
+  } catch (error) {
+    await application.close();
+    throw error;
+  }
+};
+
+/**
+ * Prints one subject's version history.
+ *
+ * @param args - Subject, --host, and optional paging flags.
+ * @param environment - Resolved Preview CLI environment.
+ * @param io - Command output streams.
+ */
+const runVersions = async (
+  args: readonly string[],
+  environment: PreviewCliEnvironment,
+  io: PreviewCliIo,
+): Promise<void> => {
+  const { target, flags } = await openVersionTarget(args, environment, io, {});
+  try {
+    const page = await target.application.distilly.person(target.subject.id).versions({
+      ...(flags.limit === undefined ? {} : { limit: flags.limit }),
+      ...(flags.cursor === undefined ? {} : { cursor: flags.cursor }),
+    });
+    if (flags.asJson) {
+      io.stdout.write(`${JSON.stringify(page, undefined, 2)}\n`);
+      return;
+    }
+    io.stdout.write(`${describeVersions(page, target.subject.displayName).join("\n")}\n`);
+  } finally {
+    await target.application.close();
+  }
+};
+
+/**
+ * Prints the semantic diff between two versions of one subject.
+ *
+ * @param args - Subject, --host, --from, and --to.
+ * @param environment - Resolved Preview CLI environment.
+ * @param io - Command output streams.
+ */
+const runDiff = async (
+  args: readonly string[],
+  environment: PreviewCliEnvironment,
+  io: PreviewCliIo,
+): Promise<void> => {
+  const { target, flags } = await openVersionTarget(args, environment, io, { withFrom: true });
+  try {
+    if (flags.from === undefined || flags.to === undefined) {
+      throw new Error("This command requires --from <version> and --to <version>.");
+    }
+    const person = target.application.distilly.person(target.subject.id);
+    const history = await person.versions({ limit: 200 });
+    const before = resolveVersionArgument(history.items, flags.from);
+    const after = resolveVersionArgument(history.items, flags.to);
+    const diff = await person.diff(before.id, after.id);
+    if (flags.asJson) {
+      io.stdout.write(
+        `${JSON.stringify({ before: before.id, after: after.id, diff }, undefined, 2)}\n`,
+      );
+      return;
+    }
+    io.stdout.write(
+      `${target.subject.displayName}: ${before.id} -> ${after.id}\n${describeProfileDiff(diff).join("\n")}\n`,
+    );
+  } finally {
+    await target.application.close();
+  }
+};
+
+/**
+ * Restores an earlier version as a new current version, keeping every version immutable.
+ *
+ * @param args - Subject, --host, --to, and optional --reason.
+ * @param environment - Resolved Preview CLI environment.
+ * @param io - Command output streams.
+ */
+const runRollback = async (
+  args: readonly string[],
+  environment: PreviewCliEnvironment,
+  io: PreviewCliIo,
+): Promise<void> => {
+  const { target, flags } = await openVersionTarget(args, environment, io, { withReason: true });
+  try {
+    if (flags.to === undefined) throw new Error("This command requires --to <version>.");
+    const person = target.application.distilly.person(target.subject.id);
+    const history = await person.versions({ limit: 200 });
+    const target_ = resolveVersionArgument(history.items, flags.to);
+    if (target_.status === "current") {
+      io.stdout.write(`${target_.id} is already the current version; nothing to roll back.\n`);
+      return;
+    }
+    const reason = flags.reason ?? `User rolled back to ${target_.id} from the distilly CLI.`;
+    const rolled = await person.rollback({ versionId: target_.id, reason });
+    io.stdout.write(
+      `Rolled ${target.subject.displayName} back to ${target_.id}.\nNew current version: ${rolled.id} (${statusLabel(rolled.status)}).\nReason recorded: ${reason}\n`,
+    );
+  } finally {
+    await target.application.close();
+  }
+};
+
 const help = `Distilly Developer Preview
 
 Usage:
@@ -785,6 +992,9 @@ Usage:
   distilly setup --host claude-code|openclaw|hermes|dsh [--allow-unverified-host]
   distilly doctor [--host <host>]
   distilly install <subject-id|display-name> --host <host>
+  distilly versions <subject-id|display-name> --host <host> [--limit <n>] [--cursor <cursor>] [--json]
+  distilly diff <subject-id|display-name> --host <host> --from <version> --to <version> [--json]
+  distilly rollback <subject-id|display-name> --host <host> --to <version> [--reason <text>]
   distilly personas --host <host> [--json]
   distilly remove <subject-id|display-name> --host <host>
   distilly uninstall --host <host>
@@ -863,6 +1073,18 @@ export const runPreviewCli = async (
     } finally {
       await application.close();
     }
+    return 0;
+  }
+  if (command === "versions") {
+    await runVersions(args, environment, io);
+    return 0;
+  }
+  if (command === "diff") {
+    await runDiff(args, environment, io);
+    return 0;
+  }
+  if (command === "rollback") {
+    await runRollback(args, environment, io);
     return 0;
   }
   if (command === "personas") {

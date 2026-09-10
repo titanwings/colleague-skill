@@ -154,6 +154,64 @@ describe("Developer Preview CLI host boundary", () => {
     expect(stdout).toEqual([]);
   });
 
+  it("requires a subject and the right flags for the version commands", async () => {
+    const stdout: string[] = [];
+    const io = {
+      stdout: { write: (value: string) => stdout.push(value) },
+      stderr: { write: (value: string) => value },
+    };
+    for (const command of ["versions", "diff", "rollback"]) {
+      await expect(runPreviewCli([command, "--host", "codex"], environment, io)).rejects.toThrow(
+        "This command requires a subject id or display name, then --host <host>.",
+      );
+      await expect(
+        runPreviewCli([command, `subject_${"a".repeat(32)}`], environment, io),
+      ).rejects.toThrow("This command requires --host.");
+    }
+    await expect(
+      runPreviewCli(
+        ["versions", `subject_${"a".repeat(32)}`, "--host", "codex", "--nope", "1"],
+        environment,
+        io,
+      ),
+    ).rejects.toThrow("Unknown versions option: --nope.");
+    await expect(
+      runPreviewCli(
+        ["diff", `subject_${"a".repeat(32)}`, "--host", "codex", "--reason", "x"],
+        environment,
+        io,
+      ),
+    ).rejects.toThrow("Unknown diff option: --reason.");
+    await expect(
+      runPreviewCli(
+        ["rollback", `subject_${"a".repeat(32)}`, "--host", "codex", "--from", "x"],
+        environment,
+        io,
+      ),
+    ).rejects.toThrow("Unknown rollback option: --from.");
+    await expect(
+      runPreviewCli(
+        ["versions", `subject_${"a".repeat(32)}`, "--host", "codex", "--limit", "0"],
+        environment,
+        io,
+      ),
+    ).rejects.toThrow("--limit must be positive.");
+    expect(stdout).toEqual([]);
+  });
+
+  it("documents the version commands", async () => {
+    const stdout: string[] = [];
+    await expect(
+      runPreviewCli(["--help"], environment, {
+        stdout: { write: (value: string) => stdout.push(value) },
+        stderr: { write: (value: string) => value },
+      }),
+    ).resolves.toBe(0);
+    expect(stdout.join("")).toContain("distilly versions <subject-id|display-name> --host <host>");
+    expect(stdout.join("")).toContain("distilly diff <subject-id|display-name> --host <host>");
+    expect(stdout.join("")).toContain("distilly rollback <subject-id|display-name> --host <host>");
+  });
+
   it("documents the person Skill lifecycle commands", async () => {
     const stdout: string[] = [];
     await expect(
