@@ -97,6 +97,15 @@ const rawMessage = (headerLines: readonly string[], body: Uint8Array): Uint8Arra
   return combined;
 };
 
+/**
+ * Builds a one-part HTML message around an inner fragment.
+ *
+ * @param inner - HTML body content.
+ * @returns Complete message bytes.
+ */
+const htmlMessage = (inner: string): string =>
+  ["From: h@example.com", "Content-Type: text/html; charset=utf-8", "", inner, ""].join("\r\n");
+
 describe("mail material parsing", () => {
   it("renders a simple message with decoded headers and body", () => {
     const parsed = parseEmailMessages(bytes(SIMPLE), false);
@@ -590,6 +599,69 @@ describe("mail material parsing", () => {
       const body = parseEmailMessages(bytes(html), false).messages[0]?.body ?? "";
       expect(body).toContain("visible tail");
       expect(Date.now() - started).toBeLessThan(3_000);
+    });
+
+    it("splits a date-less separator that carries trailing whitespace", () => {
+      for (const separator of ["From x@y ", "From x@y  ", "From MAILER-DAEMON ", "From - "]) {
+        const mailbox = [
+          separator,
+          "From: A <a@example.com>",
+          "Subject: one",
+          "",
+          "First body.",
+          "",
+          "From b@example.com",
+          "From: B <b@example.com>",
+          "Subject: two",
+          "",
+          "Second body.",
+          "",
+        ].join("\n");
+        const parsed = parseEmailMessages(bytes(mailbox), true);
+        expect(parsed.messages.length, separator).toBe(2);
+        expect(parsed.messages[0]?.body, separator).not.toContain("Subject: two");
+      }
+    });
+
+    it("does not split on prose whose digit appears later in the line", () => {
+      const mailbox = [
+        "From a@example.com Fri Sep 11 10:00:00 2026",
+        "From: A <a@example.com>",
+        "Subject: one",
+        "",
+        "Before.",
+        "From the desk of Bob, 2nd floor",
+        "After.",
+        "",
+      ].join("\n");
+      const parsed = parseEmailMessages(bytes(mailbox), true);
+      expect(parsed.messages).toHaveLength(1);
+      expect(parsed.messages[0]?.body).toContain("From the desk of Bob, 2nd floor");
+      expect(parsed.messages[0]?.body).toContain("After.");
+    });
+
+    it("lets no commented-out opener swallow visible text", () => {
+      for (const inner of [
+        "<!-- <script> --><script>LEAK</script>VISIBLE",
+        "<!-- <script> -->VISIBLE<p>TAIL</p><script>LEAK</script>",
+        "<!-- <script> -->A<!-- <script> -->VISIBLE<script>LEAK</script>",
+      ]) {
+        const body = parseEmailMessages(bytes(htmlMessage(inner)), false).messages[0]?.body ?? "";
+        expect(body, inner).toContain("VISIBLE");
+        expect(body, inner).not.toContain("LEAK");
+      }
+    });
+
+    it("matches element names at the tag boundary instead of by prefix", () => {
+      for (const inner of [
+        "<scripty>LEAK</scripty>VISIBLE",
+        "<scripts>LEAK</scripts>VISIBLE",
+        "<stylesheet>LEAK</stylesheet>VISIBLE",
+      ]) {
+        const body = parseEmailMessages(bytes(htmlMessage(inner)), false).messages[0]?.body ?? "";
+        expect(body, inner).toContain("LEAK");
+        expect(body, inner).toContain("VISIBLE");
+      }
     });
 
     it("keeps markup scanning aligned when lowercasing would change length", () => {

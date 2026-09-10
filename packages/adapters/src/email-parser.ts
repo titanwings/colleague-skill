@@ -50,6 +50,16 @@ const HEADER_LINE = /^([!-9;-~]+):\s*(.*)$/u;
 const MBOX_SEPARATOR = /^From (\S+)(?: (.*))?$/u;
 
 /**
+ * Matches the date part of an mbox `from_` line at its start.
+ *
+ * Weekday-month-day (ctime), day-month (RFC 2822), ISO 8601, and epoch seconds are the
+ * shapes writers emit. Requiring the date at the start rejects prose that merely contains
+ * a digit later, such as "From the desk of Bob, 2nd floor".
+ */
+const MBOX_DATE =
+  /^(?:[A-Z][a-z]{2},? )?(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)|\d{1,2} )|^\d{4}-\d{2}-\d{2}|^\d{9,}/u;
+
+/**
  * Maps bytes to a code-point-preserving string so structural scanning never confuses a
  * part's raw bytes with a decoded charset.
  *
@@ -235,11 +245,13 @@ const removeScriptAndStyle = (html: string): string => {
     const open = html.indexOf("<", index);
     if (open === -1) return result + html.slice(index);
     const head = html.slice(open, open + 9).toLowerCase();
-    const tag: "script" | "style" | "" = head.startsWith("<script")
-      ? "script"
-      : head.startsWith("<style")
-        ? "style"
-        : "";
+    // The element name must end at the tag boundary, so <scripty> is not <script>.
+    const named = (name: string): boolean => {
+      if (!head.startsWith(`<${name}`)) return false;
+      const next = head.charAt(name.length + 1);
+      return next === "" || next === ">" || next === "/" || /\s/u.test(next);
+    };
+    const tag: "script" | "style" | "" = named("script") ? "script" : named("style") ? "style" : "";
     if (tag === "") {
       result += html.slice(index, open + 1);
       index = open + 1;
@@ -252,7 +264,14 @@ const removeScriptAndStyle = (html: string): string => {
       for (;;) {
         const candidate = html.indexOf("<", cursor);
         if (candidate === -1) break;
-        if (html.slice(candidate, candidate + closeTag.length).toLowerCase() === closeTag) {
+        const candidateHead = html.slice(candidate, candidate + closeTag.length + 1).toLowerCase();
+        if (
+          candidateHead.startsWith(closeTag) &&
+          (() => {
+            const next = candidateHead.charAt(closeTag.length);
+            return next === "" || next === ">" || next === "/" || /\s/u.test(next);
+          })()
+        ) {
           close = candidate;
           break;
         }
@@ -310,7 +329,8 @@ const decodeNumericEntities = (text: string): string =>
 
 const stripHtml = (html: string): string =>
   decodeNumericEntities(
-    removeComments(removeScriptAndStyle(html))
+    // Comments are removed first so a commented-out opener cannot swallow real text.
+    removeScriptAndStyle(removeComments(html))
       .replaceAll(/<br\s*\/?>/giu, "\n")
       .replaceAll(/<\/(p|div|tr|li|h[1-6])>/giu, "\n")
       .replaceAll(HTML_TAGS, " "),
@@ -619,11 +639,13 @@ const splitMailbox = (text: string): readonly string[] => {
   for (const line of text.split(/\r\n|\r|\n/u)) {
     const isFirst = !sawSeparator && current === undefined;
     const separator = MBOX_SEPARATOR.exec(line);
-    // A separator has either no remainder or a date-like remainder carrying a digit, so
-    // every writer's date format separates while prose ("From now on ...") and an address
-    // in a quotation ("From alice@example.com wrote:") stay body text.
+    // A separator has either no remainder or a remainder that starts with a date, so every
+    // writer's date format separates while prose ("From now on ...", "From the desk of
+    // Bob, 2nd floor") and a quoted address ("From alice@example.com wrote:") stay text.
     const remainder = separator?.[2];
-    const isSeparator = separator !== null && (remainder === undefined || /\d/u.test(remainder));
+    const isSeparator =
+      separator !== null &&
+      (remainder === undefined || remainder.trim() === "" || MBOX_DATE.test(remainder));
     if (line.startsWith("From ") && (isFirst || isSeparator)) {
       if (current !== undefined) messages.push(current.join("\n"));
       current = [];
