@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [dot-skill, distilly, distilly-plugin, main]
+    branches: [dot-skill, distilly, distilly-plugin, distilly-work, main]
   pull_request:
-    branches: [dot-skill, distilly, distilly-plugin, main]
+    branches: [dot-skill, distilly, distilly-plugin, distilly-work, main]
 
 permissions:
   contents: read

@@ -2,7 +2,7 @@
 
 ## 2026-09 — Developer Preview is open for host contributors
 
-The `distilly-plugin` branch is now the repository's default public Developer Preview. It packages a real TypeScript/SQLite product path for Codex: local material intake, versioned Person Profiles, five MCP tools, correction review, and explicit profile Skill installation. This update also adds local OpenClaw and Hermes compatibility bindings for bundle/Skill installation, host discovery, and five-tool MCP checks. The legacy `dot-skill` branch remains available as a separate maintenance line.
+The `distilly-plugin` branch carries the public Developer Preview; the repository's default branch is `dot-skill`, the separate legacy implementation, so a bare clone lands there. This branch packages a real TypeScript/SQLite product path for Codex: local material intake, versioned Person Profiles, five MCP tools, correction review, and explicit profile Skill installation. This update also adds local OpenClaw and Hermes compatibility bindings for bundle/Skill installation, host discovery, and five-tool MCP checks. The legacy `dot-skill` branch remains available as a separate maintenance line.
 
 Until a host has a verified native Plugin binding, users may explicitly install that branch as a best-effort Legacy Skill compatibility mode. This keeps the older local-file distillation flow available on Claude Code, OpenClaw, Hermes, DeepSeek Harness, Pi agent, Grok Build, and OpenCode; Grok Bot remains a manual saved/private Skill path. It is not an automatic fallback and does not claim the Preview's SQLite, five-tool MCP, Panel, lifecycle, or security guarantees. See [INSTALL.md](INSTALL.md#legacy-skill-compatibility-for-hosts-without-a-verified-plugin-binding).
 
