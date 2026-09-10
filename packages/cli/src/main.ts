@@ -3,7 +3,7 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { lstat, realpath } from "node:fs/promises";
 
-import { BUILTIN_HOSTS, subjectIdSchema, type HostName } from "@distilly/protocol";
+import { BUILTIN_HOSTS, WIRE_LIMITS, subjectIdSchema, type HostName } from "@distilly/protocol";
 
 import {
   doctorPreview,
@@ -12,6 +12,7 @@ import {
   uninstallPreviewHost,
   type PreviewLifecycleEnvironment,
 } from "./lifecycle.js";
+import { describeHarvestSelection, selectHarvestFiles } from "./harvest.js";
 import {
   PREVIEW_PANEL_ASSETS,
   PREVIEW_PLUGIN_SOURCES,
@@ -154,6 +155,111 @@ export const resolvePreviewCliEnvironment = async (): Promise<PreviewCliEnvironm
   };
 };
 
+/**
+ * Parses the harvest command's arguments into one validated request.
+ *
+ * @param args - Directory path followed by flag pairs.
+ * @returns Directory, host, subject selection, sensitivity, and optional cap.
+ */
+const harvestOptions = (
+  args: readonly string[],
+): {
+  readonly directory: string;
+  readonly host: HostName;
+  readonly subjectId?: string;
+  readonly displayName?: string;
+  readonly sensitivity?: "private" | "shareable";
+  readonly maximumFiles?: number;
+} => {
+  const [directory, ...rest] = args;
+  if (directory === undefined || directory.startsWith("--")) {
+    throw new Error("This command requires a directory path, then --host <host>.");
+  }
+  let host: HostName | undefined;
+  const parsed: {
+    subjectId?: string;
+    displayName?: string;
+    sensitivity?: "private" | "shareable";
+    maximumFiles?: number;
+  } = {};
+  for (let index = 0; index < rest.length; index += 2) {
+    const flag = rest[index];
+    const value = rest[index + 1];
+    if (value === undefined) throw new Error(`Missing value for ${String(flag)}.`);
+    if (flag === "--host") host = parseHost(value);
+    else if (flag === "--subject") parsed.subjectId = value;
+    else if (flag === "--name") parsed.displayName = value;
+    else if (flag === "--sensitivity") {
+      if (value !== "private" && value !== "shareable") {
+        throw new Error("--sensitivity must be private or shareable.");
+      }
+      parsed.sensitivity = value;
+    } else if (flag === "--limit") {
+      const limit = Number.parseInt(value, 10);
+      if (!Number.isSafeInteger(limit) || limit <= 0) throw new Error("--limit must be positive.");
+      parsed.maximumFiles = limit;
+    } else {
+      throw new Error(`Unknown harvest option: ${String(flag)}.`);
+    }
+  }
+  if (host === undefined) throw new Error("This command requires --host.");
+  if ((parsed.subjectId === undefined) === (parsed.displayName === undefined)) {
+    throw new Error("Pass exactly one of --subject <subject-id> or --name <display-name>.");
+  }
+  return { directory, host, ...parsed };
+};
+
+/**
+ * Selects a directory and ingests its evidence in wire-sized batches.
+ *
+ * Batches are capped by the protocol's per-call material limit, so a large export folder
+ * is ingested over several calls with visible progress rather than one oversized request.
+ *
+ * @param args - Directory plus host, subject, sensitivity, and cap options.
+ * @param environment - Resolved Preview CLI environment.
+ * @param io - Command output streams.
+ */
+const runHarvest = async (
+  args: readonly string[],
+  environment: PreviewCliEnvironment,
+  io: PreviewCliIo,
+): Promise<void> => {
+  const options = harvestOptions(args);
+  const selection = await selectHarvestFiles(options.directory, {
+    ...(options.maximumFiles === undefined ? {} : { maximumFiles: options.maximumFiles }),
+  });
+  for (const line of describeHarvestSelection(selection)) io.stdout.write(`${line}\n`);
+  if (selection.files.length === 0) {
+    io.stdout.write("Nothing to ingest.\n");
+    return;
+  }
+  const application = await openApplication(options.host, environment);
+  try {
+    const batchSize = WIRE_LIMITS.ingestMaterials;
+    let subjectId: string | undefined = options.subjectId;
+    let ingested = 0;
+    for (let start = 0; start < selection.files.length; start += batchSize) {
+      const batch = selection.files.slice(start, start + batchSize);
+      const result = await application.distilly.ingestFiles({
+        subject:
+          subjectId === undefined
+            ? { kind: "create", input: { displayName: options.displayName ?? "" } }
+            : { kind: "existing", subjectId: subjectIdSchema.parse(subjectId) },
+        paths: batch.map((file) => file.path),
+        enqueue: "auto",
+        ...(options.sensitivity === undefined ? {} : { sensitivity: options.sensitivity }),
+      });
+      subjectId = result.subject.id;
+      ingested += batch.length;
+      io.stdout.write(
+        `Ingested ${String(ingested)}/${String(selection.files.length)} file(s) as ${result.subject.displayName} (${result.subject.id}).\n`,
+      );
+    }
+  } finally {
+    await application.close();
+  }
+};
+
 const help = `Distilly Developer Preview
 
 Usage:
@@ -163,6 +269,8 @@ Usage:
   distilly install <subject-id> --host <host>
   distilly uninstall --host <host>
   distilly panel --host <host>
+  distilly harvest <directory> --host <host> --subject <subject-id>|--name <display-name>
+                   [--sensitivity private|shareable] [--limit <n>]
   # <host>: codex | claude-code | openclaw | hermes | dsh
 
 The host bindings share the same five-tool MCP contract. Setup remains
@@ -231,6 +339,10 @@ export const runPreviewCli = async (
     const host = hostOption(args, true);
     if (host === undefined) throw new Error("This command requires --host.");
     await runMcp(host, environment);
+    return 0;
+  }
+  if (command === "harvest") {
+    await runHarvest(args, environment, io);
     return 0;
   }
   if (command === "panel") {

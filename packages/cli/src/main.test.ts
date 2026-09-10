@@ -20,6 +20,7 @@ describe("Developer Preview CLI host boundary", () => {
     ["uninstall", ["uninstall", "--host", "other-host"]],
     ["mcp", ["mcp", "--host", "other-host"]],
     ["panel", ["panel", "--host", "other-host"]],
+    ["harvest", ["harvest", "/tmp/evidence", "--host", "other-host", "--name", "Ada"]],
     ["person install", ["install", `subject_${"a".repeat(32)}`, "--host", "other-host"]],
   ])(
     "offers an explicit legacy guide for unsupported %s without switching modes",
@@ -56,6 +57,33 @@ describe("Developer Preview CLI host boundary", () => {
     expect(stderr).toEqual([]);
   });
 
+  it("requires a directory and exactly one subject selector for harvest", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const io = {
+      stdout: { write: (value: string) => stdout.push(value) },
+      stderr: { write: (value: string) => stderr.push(value) },
+    };
+
+    await expect(
+      runPreviewCli(["harvest", "--host", "codex", "--name", "Ada"], environment, io),
+    ).rejects.toThrow("This command requires a directory path, then --host <host>.");
+
+    await expect(
+      runPreviewCli(["harvest", "/tmp/evidence", "--host", "codex"], environment, io),
+    ).rejects.toThrow("Pass exactly one of --subject <subject-id> or --name <display-name>.");
+
+    await expect(
+      runPreviewCli(
+        ["harvest", "/tmp/evidence", "--host", "codex", "--name", "Ada", "--subject", "s"],
+        environment,
+        io,
+      ),
+    ).rejects.toThrow("Pass exactly one of --subject <subject-id> or --name <display-name>.");
+
+    expect(stdout).toEqual([]);
+  });
+
   it("documents the standalone panel command and the dsh host", async () => {
     const stdout: string[] = [];
     const stderr: string[] = [];
@@ -68,6 +96,7 @@ describe("Developer Preview CLI host boundary", () => {
     ).resolves.toBe(0);
 
     expect(stdout.join("")).toContain("distilly panel --host <host>");
+    expect(stdout.join("")).toContain("distilly harvest <directory>");
     expect(stdout.join("")).toContain("codex | claude-code | openclaw | hermes | dsh");
     expect(stderr).toEqual([]);
   });

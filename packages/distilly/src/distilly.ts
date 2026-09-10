@@ -5,6 +5,8 @@ import type {
   CreateSubjectInput,
   EngineClient,
   HostDistillBriefing,
+  IngestFilesInput,
+  IngestFilesResult,
   JobLease,
   PendingFilter,
   PendingJob,
@@ -74,6 +76,28 @@ export class Distilly {
       mutationContext(mutation?.requestId),
     );
     return this.person(subject.id);
+  }
+
+  /**
+   * Ingests explicitly selected local files as material for one subject.
+   *
+   * The caller owns file selection; this method only forwards the exact paths, so a
+   * direct-user surface such as the harvest command can batch a large selection without
+   * widening any model-facing tool.
+   *
+   * @param input - Subject target, explicit local paths, enqueue policy, and sensitivity.
+   * @param mutation - Optional request identity for replay.
+   * @returns Per-file ingest results plus the resulting generation and pending job.
+   */
+  async ingestFiles(
+    input: IngestFilesInput,
+    mutation?: MutationOptions,
+  ): Promise<IngestFilesResult> {
+    return await this.#client.call(
+      "materials.ingestFiles",
+      input,
+      mutationContext(mutation?.requestId),
+    );
   }
 
   /**
