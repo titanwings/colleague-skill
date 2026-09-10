@@ -2,9 +2,10 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { DistillyError } from "@distilly/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { describeHarvestSelection, selectHarvestFiles } from "./harvest.js";
+import { describeHarvestSelection, recordBudgetExceeded, selectHarvestFiles } from "./harvest.js";
 
 const temporaryRoots: string[] = [];
 
@@ -118,5 +119,37 @@ describe("directory harvest selection", () => {
 
     expect(lines[0]).toBe("Selected 1 file(s) from 1 director(ies).");
     expect(lines.slice(1)).toEqual(["  skipped credential: 1", "  skipped unsupported-format: 1"]);
+  });
+});
+
+describe("record budget classification", () => {
+  it("recognizes the runtime's record-budget refusal and nothing else", () => {
+    const budget = new DistillyError({
+      code: "invalid_input",
+      message:
+        "This selection expands to 33 material records, more than the 32 one ingest call carries.",
+      retryable: false,
+      details: { reason: "record_budget_exceeded", records: 33, maximumRecords: 32 },
+    });
+    expect(recordBudgetExceeded(budget)).toBe(true);
+    expect(
+      recordBudgetExceeded(
+        new DistillyError({
+          code: "invalid_input",
+          message: "The materials.ingest boundary input is invalid.",
+          retryable: false,
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      recordBudgetExceeded(
+        new DistillyError({
+          code: "storage_corrupt",
+          message: "The trusted file loader returned an invalid item count.",
+          retryable: false,
+        }),
+      ),
+    ).toBe(false);
+    expect(recordBudgetExceeded(new Error("record_budget_exceeded"))).toBe(false);
   });
 });

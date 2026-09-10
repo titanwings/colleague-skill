@@ -1,10 +1,4 @@
-import type {
-  JobId,
-  Profile,
-  SubjectId,
-  SubjectSummary,
-  VersionId,
-} from "@distilly/protocol";
+import type { JobId, Profile, SubjectId, SubjectSummary, VersionId } from "@distilly/protocol";
 import { describe, expect, it } from "vitest";
 
 import {

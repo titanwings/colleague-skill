@@ -2,6 +2,8 @@ import { lstat, readFile } from "node:fs/promises";
 import { basename, extname } from "node:path";
 
 import { createBuiltinParserRegistry } from "@distilly/adapters";
+
+import { splitParsedText } from "./split-parsed-text.js";
 import type { ParsedMaterial } from "@distilly/adapters";
 import type { HostBinding, HostContext, HostInjector } from "@distilly/bindings";
 import {
@@ -126,51 +128,6 @@ const parserWarning = (error: unknown): string => {
 const assertNoSymlinkFile = async (path: string): Promise<void> => {
   const metadata = await lstat(path);
   if (metadata.isSymbolicLink()) throw new Error("symlinked local path");
-};
-
-/**
- * Splits rendered material text into parts that each fit the local material limit.
- *
- * Text is cut at line boundaries so a part never begins mid-line, except when one line is
- * itself larger than the limit, which is then cut by characters. Deterministic: the same
- * text always yields the same parts.
- *
- * @param text - Rendered material text.
- * @param maximumBytes - Largest UTF-8 byte length one part may have.
- * @returns One or more part texts, in order.
- */
-const splitParsedText = (text: string, maximumBytes: number): readonly string[] => {
-  const encoder = new TextEncoder();
-  const parts: string[] = [];
-  let current: string[] = [];
-  let currentBytes = 0;
-  const flush = (): void => {
-    if (current.length === 0) return;
-    parts.push(current.join("\n"));
-    current = [];
-    currentBytes = 0;
-  };
-  for (const line of text.split("\n")) {
-    let remaining = line;
-    for (;;) {
-      const lineBytes = encoder.encode(remaining).byteLength;
-      if (lineBytes <= maximumBytes) break;
-      // One line exceeds a whole part: cut it by characters at the byte boundary.
-      let cut = remaining.length;
-      while (cut > 1 && encoder.encode(remaining.slice(0, cut)).byteLength > maximumBytes) {
-        cut -= 1;
-      }
-      flush();
-      parts.push(remaining.slice(0, cut));
-      remaining = remaining.slice(cut);
-    }
-    const lineBytes = encoder.encode(remaining).byteLength + 1;
-    if (currentBytes + lineBytes > maximumBytes) flush();
-    current.push(remaining);
-    currentBytes += lineBytes;
-  }
-  flush();
-  return parts;
 };
 
 /** Largest rendered text the loader accepts before it must split into parts. */
@@ -314,7 +271,24 @@ const createLocalFileLoader = () => {
           };
         }),
       );
-      return perPath.flat();
+      const records = perPath.flat();
+      // One selected file can expand into several records when its parsed text is split, so
+      // the file count is not the record count. Refuse here, with a reason the caller can act
+      // on, instead of letting the engine see more records than the wire limit allows.
+      if (records.length > WIRE_LIMITS.ingestMaterials) {
+        throw new DistillyError({
+          code: "invalid_input",
+          message: `This selection expands to ${String(records.length)} material records, more than the ${String(WIRE_LIMITS.ingestMaterials)} one ingest call carries.`,
+          retryable: false,
+          remediation: "Ingest fewer files at once, starting with the largest ones.",
+          details: {
+            reason: "record_budget_exceeded",
+            records: records.length,
+            maximumRecords: WIRE_LIMITS.ingestMaterials,
+          },
+        });
+      }
+      return records;
     },
   };
 };

@@ -612,3 +612,117 @@ describe("Developer Preview LocalRuntime", () => {
     });
   });
 });
+
+describe("local record budget", () => {
+  it("splits an oversized text and refuses a selection that expands past the wire record limit", async () => {
+    const root = await temporaryRoot();
+    const inputRoot = await temporaryRoot();
+    const paths: string[] = [];
+    // The JSON parser pretty-prints, so a 500 KB file becomes more than one material record
+    // while staying under the per-file material limit that would send it alone.
+    const compact = JSON.stringify({
+      items: Array.from({ length: 9_000 }, (_, index) => ({
+        id: index,
+        name: `item-${String(index)}`,
+        tags: ["alpha", "beta", "gamma"],
+        nested: { a: 1, b: "two", c: [1, 2, 3] },
+      })),
+    });
+    expect(Buffer.byteLength(compact)).toBeLessThan(1_048_576);
+    expect(Buffer.byteLength(JSON.stringify(JSON.parse(compact), null, 2))).toBeGreaterThan(
+      1_048_576,
+    );
+    const jsonPath = join(inputRoot, "export.json");
+    await writeFile(jsonPath, compact);
+    paths.push(jsonPath);
+    for (let index = 0; index < 31; index += 1) {
+      const path = join(inputRoot, `note-${String(index)}.md`);
+      await writeFile(path, `Note ${String(index)} records one ordinary observation.\n`);
+      paths.push(path);
+    }
+
+    const runtime = await open(root);
+    const client = await connect(runtime, "record-budget");
+    const failure = await client
+      .call(
+        "materials.ingestFiles",
+        {
+          subject: { kind: "create" as const, input: { displayName: "Budget", identityHints: [] } },
+          paths,
+          enqueue: "now" as const,
+        },
+        { requestId: request() },
+      )
+      .then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+    expect(failure).toBeInstanceOf(DistillyError);
+    expect((failure as DistillyError).code).toBe("invalid_input");
+    expect((failure as DistillyError).details?.["reason"]).toBe("record_budget_exceeded");
+
+    // The same selection succeeds when the expanding file travels alone, which is what the
+    // harvest command falls back to.
+    const small = await client.call(
+      "materials.ingestFiles",
+      {
+        subject: { kind: "create" as const, input: { displayName: "Budget", identityHints: [] } },
+        paths: paths.slice(1),
+        enqueue: "now" as const,
+      },
+      { requestId: request() },
+    );
+    expect(small.items).toHaveLength(31);
+    const alone = await client.call(
+      "materials.ingestFiles",
+      {
+        subject: { kind: "existing" as const, subjectId: small.subject.id },
+        paths: [jsonPath],
+        enqueue: "now" as const,
+      },
+      { requestId: request() },
+    );
+    expect(alone.items.length).toBeGreaterThan(1);
+    expect(alone.items.map((item) => item.pathLabel)).toContain("export.json [part 1 of 3]");
+  });
+});
+
+describe("split reassembly through the engine", () => {
+  it("briefs every part of a split file and reproduces the parsed text byte for byte", async () => {
+    const root = await temporaryRoot();
+    const inputRoot = await temporaryRoot();
+    const path = join(inputRoot, "mixed.md");
+    // Astral characters and line boundaries both sit on part seams: 2.5 MiB of 4-byte code
+    // points with a newline every 32 characters.
+    const line = `${"😀".repeat(31)}\n`;
+    const original = line.repeat(Math.ceil((2.5 * 1_048_576) / Buffer.byteLength(line)));
+    await writeFile(path, original);
+
+    const runtime = await open(root);
+    // The direct-user capacity is wide enough to carry the whole briefing, so this proves the
+    // stored parts, not the splitter alone.
+    const client = await connect(runtime, "split-reassembly");
+    const result = await client.call(
+      "materials.ingestFiles",
+      {
+        subject: {
+          kind: "create" as const,
+          input: { displayName: "Reassembly", identityHints: [] },
+        },
+        paths: [path],
+        enqueue: "now" as const,
+      },
+      { requestId: request() },
+    );
+    expect(result.items.length).toBeGreaterThan(1);
+    if (result.job === undefined) throw new Error("Expected an enqueued job.");
+    const briefing = await client.call(
+      "distill.brief",
+      { jobId: result.job.id },
+      { requestId: request() },
+    );
+    const joined = briefing.materials.map((entry) => entry.content).join("");
+    expect(joined).toBe(original);
+    expect(joined).not.toContain("\uFFFD");
+  });
+});

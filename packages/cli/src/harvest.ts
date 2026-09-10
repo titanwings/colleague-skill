@@ -1,6 +1,23 @@
 import { lstat, readdir } from "node:fs/promises";
 import { basename, extname, join, relative, sep } from "node:path";
 
+import { DistillyError } from "@distilly/protocol";
+
+/**
+ * Reports whether one ingest call refused the selection for expanding past the record budget.
+ *
+ * The runtime raises this when the selected files parse into more material records than one
+ * call carries, which is not the same failure as an unreadable file: the caller can still make
+ * progress by sending fewer files, so it must be recognizable instead of matched by message.
+ *
+ * @param error - Error thrown by an ingest call.
+ * @returns True when the selection must be split into smaller calls.
+ */
+export const recordBudgetExceeded = (error: unknown): boolean =>
+  error instanceof DistillyError &&
+  error.code === "invalid_input" &&
+  error.details?.["reason"] === "record_budget_exceeded";
+
 /** Why one discovered path was not selected as evidence. */
 export type HarvestSkipReason =
   | "credential"

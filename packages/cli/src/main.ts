@@ -22,7 +22,7 @@ import {
   uninstallPreviewHost,
   type PreviewLifecycleEnvironment,
 } from "./lifecycle.js";
-import { describeHarvestSelection, selectHarvestFiles } from "./harvest.js";
+import { describeHarvestSelection, recordBudgetExceeded, selectHarvestFiles } from "./harvest.js";
 import {
   describeAmbiguousSubject,
   describePendingProfile,
@@ -273,58 +273,89 @@ const runHarvest = async (
 
     let subjectId: string | undefined = options.subjectId;
     let ingested = 0;
-    for (const batch of batches) {
-      // Harvest is an explicit user action, so distillation is queued now instead of
-      // waiting for the engine's automatic threshold: a single small file previously
-      // produced no job and no message, which read as nothing having happened.
-      const ingest = async (
-        target:
-          | { readonly kind: "create"; readonly input: { readonly displayName: string } }
-          | { readonly kind: "existing"; readonly subjectId: string },
-      ) =>
-        await application.distilly.ingestFiles({
-          subject:
-            target.kind === "create"
-              ? { kind: "create", input: target.input }
-              : { kind: "existing", subjectId: subjectIdSchema.parse(target.subjectId) },
-          paths: batch.map((file) => file.path),
-          enqueue: "now",
-          ...(options.sensitivity === undefined ? {} : { sensitivity: options.sensitivity }),
-        });
-      let result;
+    const failures: string[] = [];
+    // Harvest is an explicit user action, so distillation is queued now instead of waiting for
+    // the engine's automatic threshold: a single small file previously produced no job and no
+    // message, which read as nothing having happened.
+    const ingest = async (
+      target:
+        | { readonly kind: "create"; readonly input: { readonly displayName: string } }
+        | { readonly kind: "existing"; readonly subjectId: string },
+      files: readonly (typeof selection.files)[number][],
+    ) =>
+      await application.distilly.ingestFiles({
+        subject:
+          target.kind === "create"
+            ? { kind: "create", input: target.input }
+            : { kind: "existing", subjectId: subjectIdSchema.parse(target.subjectId) },
+        paths: files.map((file) => file.path),
+        enqueue: "now",
+        ...(options.sensitivity === undefined ? {} : { sensitivity: options.sensitivity }),
+      });
+    const ingestTarget = () =>
+      subjectId === undefined
+        ? ({ kind: "create", input: { displayName: options.displayName ?? "" } } as const)
+        : ({ kind: "existing", subjectId } as const);
+    const ingestWithSubjectReuse = async (files: readonly (typeof selection.files)[number][]) => {
       try {
-        result = await ingest(
-          subjectId === undefined
-            ? { kind: "create", input: { displayName: options.displayName ?? "" } }
-            : { kind: "existing", subjectId },
-        );
+        return await ingest(ingestTarget(), files);
       } catch (error) {
-        // A second harvest for the same person is normal, not an error: the engine refuses
-        // to guess between people and answers with the exact subject it matched. Reusing
-        // that subject keeps the one-shot flow working instead of failing on a duplicate.
+        // A second harvest for the same person is normal, not an error: the engine refuses to
+        // guess between people and answers with the exact subject it matched. Reusing that
+        // subject keeps the one-shot flow working instead of failing on a duplicate.
         const reuse = reusableSubject(error);
         if (reuse !== undefined) {
           subjectId = reuse.id;
           io.stdout.write(
             `${reuse.displayName} (${reuse.id}) already exists, so this material was added to it.\n`,
           );
-          result = await ingest({ kind: "existing", subjectId: reuse.id });
-        } else {
-          const candidates = ambiguousCandidates(error);
-          if (candidates === undefined) throw error;
-          for (const line of describeAmbiguousSubject(options.displayName ?? "", candidates)) {
-            io.stdout.write(`${line}\n`);
-          }
-          throw new Error(
-            "More than one subject matches that name. Repeat harvest with --subject <subject-id>.",
-            { cause: error },
-          );
+          return await ingest({ kind: "existing", subjectId: reuse.id }, files);
         }
+        const candidates = ambiguousCandidates(error);
+        if (candidates === undefined) throw error;
+        for (const line of describeAmbiguousSubject(options.displayName ?? "", candidates)) {
+          io.stdout.write(`${line}\n`);
+        }
+        throw new Error(
+          "More than one subject matches that name. Repeat harvest with --subject <subject-id>.",
+          { cause: error },
+        );
       }
+    };
+    const recordResult = (
+      result: { subject: { id: string; displayName: string } },
+      count: number,
+    ) => {
       subjectId = result.subject.id;
-      ingested += batch.length;
+      ingested += count;
       io.stdout.write(
         `Ingested ${String(ingested)}/${String(selection.files.length)} file(s) as ${result.subject.displayName} (${result.subject.id}).\n`,
+      );
+    };
+    for (const batch of batches) {
+      try {
+        recordResult(await ingestWithSubjectReuse(batch), batch.length);
+      } catch (error) {
+        // A batch can exceed the record budget because one file splits into several records.
+        // Retry that batch one file per call so one expanding file cannot lose the others.
+        if (!recordBudgetExceeded(error) || batch.length === 1) throw error;
+        io.stdout.write(
+          "That batch expands past one call's record budget; ingesting its files one at a time.\n",
+        );
+        for (const file of batch) {
+          try {
+            recordResult(await ingestWithSubjectReuse([file]), 1);
+          } catch (fileError) {
+            const reason = fileError instanceof Error ? fileError.message : "unknown failure";
+            failures.push(`${file.pathLabel}: ${reason}`);
+            io.stdout.write(`Skipped ${file.pathLabel}: ${reason}\n`);
+          }
+        }
+      }
+    }
+    if (failures.length > 0) {
+      throw new Error(
+        `${String(failures.length)} of ${String(selection.files.length)} file(s) could not be ingested:\n${failures.join("\n")}`,
       );
     }
   } finally {
