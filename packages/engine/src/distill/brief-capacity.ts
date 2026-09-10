@@ -80,7 +80,11 @@ export const enforceBriefCapacity = (
     candidate.materials.length > MAXIMUM_BRIEF_MATERIALS ||
     serializedBytes > MAXIMUM_BRIEFING_BYTES ||
     serializedBytes > capacity.maximumToolResultBytes ||
-    briefing.limits.estimatedInputTokens > capacity.maximumInputTokens
+    // The briefing's `estimatedInputTokens` is a serialized-size fixed point that the lease
+    // verifies against the stored bytes, not a token estimate, so the gate compares its
+    // size with the byte budget. Comparing it with the token budget rejected briefings the
+    // host was verified to carry.
+    serializedBytes > (capacity.maximumInputBytes ?? capacity.maximumInputTokens)
   ) {
     throw briefingTooLarge(details);
   }

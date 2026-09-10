@@ -696,6 +696,61 @@ describe("mail material parsing", () => {
       }
     });
 
+    it("splits a day-month date that carries a time, and rejects one that does not", () => {
+      // Round 8 measured two defects here: the day-month branch matched an unanchored
+      // prefix, so prose like "From Ada 11 Sep 2026 the rate changes." split; and it
+      // hard-coded three-letter months, so "11 September 2026" did not split at all.
+      for (const shape of [
+        "From Ada 11 Sep 2026 02:31:00",
+        "From x@y 11 September 2026 02:31:00",
+        "From x@y 11-September-2026 02:31:00",
+        "From x@y Friday, 11 Sep 2026 02:31:00 +0000",
+      ]) {
+        const mailbox = [
+          "From a@example.com Fri Sep 11 10:00:00 2026",
+          "From: A <a@example.com>",
+          "Subject: one",
+          "",
+          "First body.",
+          "",
+          shape,
+          "From: B <b@example.com>",
+          "Subject: two",
+          "",
+          "Second body.",
+          "",
+          "From c@example.com Fri Sep 11 12:00:00 2026",
+          "From: C <c@example.com>",
+          "Subject: three",
+          "",
+          "Third body.",
+          "",
+        ].join("\n");
+        expect(
+          parseEmailMessages(bytes(mailbox), true).messages.map((message) => message.subject),
+          shape,
+        ).toEqual(["one", "two", "three"]);
+      }
+      for (const prose of [
+        "From Ada 11 Sep 2026 the rate changes.",
+        "From x@y 11 September 2026 the rate changes.",
+      ]) {
+        const mailbox = [
+          "From a@example.com Fri Sep 11 10:00:00 2026",
+          "From: A <a@example.com>",
+          "Subject: one",
+          "",
+          "Before.",
+          prose,
+          "After.",
+          "",
+        ].join("\n");
+        const parsed = parseEmailMessages(bytes(mailbox), true);
+        expect(parsed.messages, prose).toHaveLength(1);
+        expect(parsed.messages[0]?.body, prose).toContain("After.");
+      }
+    });
+
     it("rejects prose that starts with a number, a month, or a time", () => {
       for (const line of [
         "From alice@example.com 09:30 works for me.",

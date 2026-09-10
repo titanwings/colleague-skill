@@ -90,6 +90,22 @@ describe("immutable Preview host capacity evidence", () => {
     });
   });
 
+  it("marks a missing measurement so a caller cannot absorb other failures", () => {
+    const release = {
+      releaseVersion: "0.1.0-preview.1",
+      canonicalSkillDigest:
+        "sha256_83b9b45faf76c184a5605b1ec6e2f7007d440813d3314f58a4250246c5de44a9" as ContentDigest,
+    };
+    try {
+      loadPreviewHostFixture(BUILTIN_HOSTS.claudeCode, "2.1.221 (Claude Code)", "cli", release);
+      throw new TypeError("Expected a missing fixture to throw.");
+    } catch (error) {
+      // The marker is what lets setup fall back only for a missing measurement; a release
+      // or digest mismatch must stay fatal instead of recording an unverified version.
+      expect((error as { readonly code?: string }).code).toBe("host_unsupported");
+    }
+  });
+
   it("offers a conservative floor that no recorded fixture exceeds", () => {
     const release = {
       releaseVersion: "0.1.0-preview.1",

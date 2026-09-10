@@ -690,9 +690,11 @@ const createBinding = (
             loadPreviewHostFixture(host, hostVersion, context.environment, tuple),
           );
         } catch (error) {
-          // Only an explicit operator opt-in replaces a missing measurement, and the
-          // replacement is a labelled floor rather than another host's budget.
+          // Only an explicit operator opt-in replaces a MISSING MEASUREMENT. Any other
+          // failure stays fatal: absorbing it would install a recorded host version as
+          // unverified and claim no fixture exists when one does.
           if (!allowUnverifiedHost) throw error;
+          if ((error as { readonly code?: string }).code !== "host_unsupported") throw error;
           return Promise.resolve(
             loadConservativeFloorPreflight(host, hostVersion, context.environment, tuple),
           );

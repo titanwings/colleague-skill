@@ -439,7 +439,12 @@ export const loadPreviewHostFixture = (
         candidate.probeContractDigest === PROBE_CONTRACT_DIGEST),
   );
   if (fixture === undefined) {
-    throw new Error("No verified capacity fixture matches this host version and release.");
+    // The code marks this as a missing measurement specifically, so the one caller that
+    // may fall back to a floor cannot also absorb an unrelated failure such as a release
+    // or digest mismatch, which would record a verified version as unverified.
+    const error = new Error("No verified capacity fixture matches this host version and release.");
+    (error as Error & { code?: string }).code = "host_unsupported";
+    throw error;
   }
   return {
     ok: true,
