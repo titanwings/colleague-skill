@@ -61,38 +61,30 @@ const MBOX_SEPARATOR = /^From (\S+)(?:[ \t]+(.*))?$/u;
  *
  * Writers emit ctime (`Fri Sep  1 10:00:00 2026`), day-month (`11 Sep 2026`), hyphenated
  * or slashed dates, ISO 8601, a compact date, a leading time, or epoch seconds, sometimes
- * after a padded sender. The shape must begin where the remainder begins, so prose that
- * merely contains a digit later (`From the desk of Bob, 2nd floor`) and a bare year
- * (`From 2026 we will change everything.`) stay body text.
+ * after a padded sender. The date must be complete: a month-name date always carries a day
+ * and a time, and a numeric date either carries a time or ends the line. That keeps every
+ * real writer's format while rejecting prose that merely starts with a number, such as
+ * `From the 11/09/2026 invoice is attached.` or `From 09:30 until 17:00 we are closed.`.
  */
-const MBOX_DATE =
-  /^[ \t]*(?:[A-Za-z]{3,},?[ \t]+)?(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ \t]+\d{1,2}|\d{1,2}[- ][A-Za-z]{3,}[- ]\d{2,4}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}[-/]\d{2}[-/]\d{2}|\d{4}-\d{2}-\d{2}|\d{8}|\d{1,2}:\d{2}|\d{9,}|<\d+>)/iu;
-
-/**
- * Sender tokens that identify an mbox `from_` line without an address.
- *
- * A `from_` line names the envelope sender, so it carries an address or one of the
- * well-known system names. Requiring that is what keeps prose out: an ordinary word or a
- * time-like number after "From " never matches, while every real separator does.
- */
-const MBOX_SYSTEM_SENDERS = new Set([
-  "-",
-  "daemon",
-  "mailer-daemon",
-  "nobody",
-  "postmaster",
-  "root",
-  "www-data",
-]);
-
-/**
- * Reports whether a sender token could open a real `from_` line.
- *
- * @param token - Token between "From " and the rest of the line.
- * @returns True when the token is an address or a known system sender.
- */
-const isSenderToken = (token: string): boolean =>
-  token.includes("@") || MBOX_SYSTEM_SENDERS.has(token.toLowerCase());
+const MBOX_MONTH = "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec";
+const MBOX_DATE = new RegExp(
+  "^(?:[ \\t]*)" +
+    // An optional weekday applies to every branch, so both `Fri Sep 11 02:31` and the
+    // RFC 2822 `Friday, 11 Sep 2026 02:31:00 +0000` form are recognized.
+    "(?:[A-Za-z]{3,},?[ \\t]+)?" +
+    "(?:" +
+    `(?:${MBOX_MONTH})[ \\t]+\\d{1,2}[ \\t]+\\d{1,2}:\\d{2}` +
+    `|\\d{1,2}[ \\t]+(?:${MBOX_MONTH})[ \\t]+\\d{2,4}` +
+    "|\\d{1,2}[-](?:[A-Za-z]{3,})[-]\\d{2,4}(?:[ \\t]+\\d{1,2}:\\d{2}(?::\\d{2})?)?" +
+    "|\\d{1,2}[-/]\\d{1,2}[-/]\\d{2,4}(?:[ \\t]+\\d{1,2}:\\d{2}(?::\\d{2})?(?:[ \\t]+\\S+)*)?[ \\t]*$" +
+    "|\\d{8}(?:[ \\t]*$|[ \\t]+\\d{1,2}:\\d{2})" +
+    "|\\d{4}[-/]\\d{2}[-/]\\d{2}(?:[T \\t]\\d{1,2}:\\d{2}(?::\\d{2})?(?:Z|[+-]\\d{2}:?\\d{2})?)?" +
+    "|\\d{1,2}:\\d{2}(?::\\d{2})?[ \\t]+\\d{2,4}" +
+    "|\\d{9,}[ \\t]*$" +
+    "|<\\d+>[ \\t]*$" +
+    ")",
+  "iu",
+);
 
 /**
  * Maps bytes to a code-point-preserving string so structural scanning never confuses a
@@ -670,15 +662,12 @@ const splitMailbox = (
   for (const line of text.split(/\r\n|\r|\n/u)) {
     const isFirst = !sawSeparator && current === undefined;
     const separator = MBOX_SEPARATOR.exec(line);
-    // The sender token discriminates: a `from_` line names an address or a system sender,
-    // while prose starts with an ordinary word ("From the desk of…", "From now on…") or a
-    // time-like number ("From 09:30 until…"). Only then must the remainder be empty or
-    // start with a date, which rejects a quoted address such as "From alice@… wrote:".
-    // Without the token gate, accepting every real date shape admitted exactly that prose.
+    // A separator has an empty remainder, or one that starts with a complete date. The
+    // sender token deliberately does not participate: a bare local username or a hostname
+    // is a real sender, and gating on the token merged exactly those mailboxes.
     const remainder = separator?.[2];
     const isSeparator =
       separator !== null &&
-      isSenderToken(separator[1]!) &&
       (remainder === undefined || remainder.trim() === "" || MBOX_DATE.test(remainder));
     if (line.startsWith("From ") && (isFirst || isSeparator)) {
       if (current !== undefined) messages.push(current.join("\n"));

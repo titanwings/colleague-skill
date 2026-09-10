@@ -652,6 +652,74 @@ describe("mail material parsing", () => {
       }
     });
 
+    it("splits every real sender shape, including bare usernames and hostnames", () => {
+      // Round 7 measured these as regressions when the separator rule gated on the sender
+      // token: a bare local username is a real sender, so the token cannot discriminate.
+      for (const shape of [
+        "From ada Fri Sep 11 10:00:00 2026",
+        "From alice Fri Sep 11 10:00:00 2026",
+        "From ada, Fri Sep 11 10:00:00 2026",
+        "From ada@localhost Fri Sep 11 10:00:00 2026",
+        "From localhost Fri Sep 11 10:00:00 2026",
+        "From example.com Fri Sep 11 10:00:00 2026",
+        "From ada 2026-09-11T10:00:00Z",
+        "From ada 11/09/2026 10:00:00",
+        "From ada 20260911",
+        "From ada 1789000000",
+        "From ada",
+        "From x@y 11-Sep-2026 02:31:00",
+      ]) {
+        const mailbox = [
+          "From a@example.com Fri Sep 11 10:00:00 2026",
+          "From: A <a@example.com>",
+          "Subject: one",
+          "",
+          "First body.",
+          "",
+          shape,
+          "From: B <b@example.com>",
+          "Subject: two",
+          "",
+          "Second body.",
+          "",
+          "From c@example.com Fri Sep 11 12:00:00 2026",
+          "From: C <c@example.com>",
+          "Subject: three",
+          "",
+          "Third body.",
+          "",
+        ].join("\n");
+        expect(
+          parseEmailMessages(bytes(mailbox), true).messages.map((message) => message.subject),
+          shape,
+        ).toEqual(["one", "two", "three"]);
+      }
+    });
+
+    it("rejects prose that starts with a number, a month, or a time", () => {
+      for (const line of [
+        "From alice@example.com 09:30 works for me.",
+        "From Sep we will change everything.",
+        "From 11/09/2026 invoice is attached.",
+        "From 20260911 backup was restored.",
+      ]) {
+        const mailbox = [
+          "From a@example.com Fri Sep 11 10:00:00 2026",
+          "From: A <a@example.com>",
+          "Subject: one",
+          "",
+          "Before.",
+          line,
+          "After.",
+          "",
+        ].join("\n");
+        const parsed = parseEmailMessages(bytes(mailbox), true);
+        expect(parsed.messages, line).toHaveLength(1);
+        expect(parsed.messages[0]?.body, line).toContain(line);
+        expect(parsed.messages[0]?.body, line).toContain("After.");
+      }
+    });
+
     it("never splits prose or a quoted address in a middle position", () => {
       for (const line of [
         "From now on the plan changes.",
