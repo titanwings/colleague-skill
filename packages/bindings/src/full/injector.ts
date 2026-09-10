@@ -1,5 +1,15 @@
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, mkdir, readFile, rename, rm, rmdir, unlink, writeFile } from "node:fs/promises";
+import {
+  lstat,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  rmdir,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import {
@@ -120,6 +130,8 @@ const defaultSkillsRoot = (host: HostName, homeDirectory: string): string => {
   if (host === "claude-code") return join(homeDirectory, ".claude", "skills");
   if (host === "openclaw") return join(homeDirectory, ".openclaw", "skills");
   if (host === "hermes") return join(homeDirectory, ".hermes", "skills");
+  // DSH scans its own home's skills root, so a person Skill belongs beside the integration.
+  if (host === "dsh") return join(homeDirectory, "skills");
   throw invalid(`No default Skill directory is defined for host ${host}.`);
 };
 
@@ -258,16 +270,38 @@ const installProfile = async (
     contentDigest,
   } as const;
 
-  const existing = await lstat(root).catch(() => undefined);
+  // A profile can be re-distilled after its Skill was installed. Distilly updates the install
+  // it already owns for this subject in place rather than refusing or leaving a second copy
+  // behind, and a display-name change therefore keeps the host's Skill path stable.
+  const owned =
+    options.destination === undefined
+      ? await findOwnedInstall(host, homeDirectory, profile.subjectId)
+      : undefined;
+  const destination = owned?.path ?? root;
+  const existing = await lstat(destination).catch(() => undefined);
   if (existing !== undefined) {
     if (!existing.isDirectory() || existing.isSymbolicLink()) {
       throw invalid("The person Skill destination already exists and is not a regular directory.");
     }
-    const current = await readVerifiedInstall(root, host);
+    const current = await readVerifiedInstall(destination, host);
     if (hasSameInstallIdentity(current.install, identity)) return current.install;
-    throw invalid(
-      "The person Skill destination already contains another or modified installation.",
-    );
+    if (current.install.subjectId !== profile.subjectId) {
+      throw invalid(
+        "The person Skill destination already contains another or modified installation.",
+      );
+    }
+    const replaced: InstallRef = {
+      id: personInstallId({ ...identity, path: destination }),
+      ...identity,
+      path: destination,
+      installedAt: isoDateTimeSchema.parse(now().toISOString()),
+    };
+    await replaceInstall(destination, homeDirectory, host, skill, {
+      schemaVersion: 1,
+      install: replaced,
+      files: [{ path: SKILL_FILE, contentDigest }],
+    });
+    return replaced;
   }
 
   const install: InstallRef = {
@@ -297,6 +331,118 @@ const installProfile = async (
     throw error;
   }
   return install;
+};
+
+/**
+ * Replaces one verified person Skill with a new version without a window where neither exists.
+ *
+ * The old Skill is moved aside first and restored if the new one cannot be moved into place, so
+ * a failure leaves the host with exactly the Skill it had before. Only a verified install is
+ * ever replaced: modified or foreign content is never deleted by Distilly.
+ *
+ * @param destination - Absolute Skill directory to replace.
+ * @param homeDirectory - Host home owning the transaction directory.
+ * @param host - Host the Skill belongs to.
+ * @param skill - New SKILL.md content.
+ * @param manifest - New install manifest.
+ */
+const replaceInstall = async (
+  destination: string,
+  homeDirectory: string,
+  host: HostName,
+  skill: string,
+  manifest: PersonInstallManifest,
+): Promise<void> => {
+  const transactionRoot = join(homeDirectory, ".distilly", "host-install");
+  await mkdir(transactionRoot, { recursive: true });
+  const staging = join(transactionRoot, `${host}-person-${randomUUID()}`);
+  const backup = join(transactionRoot, `${host}-person-previous-${randomUUID()}`);
+  await mkdir(staging);
+  await writeFile(join(staging, SKILL_FILE), skill, { mode: 0o644 });
+  await writeFile(join(staging, INSTALL_MANIFEST), `${canonicalJson(manifest)}\n`, { mode: 0o600 });
+  let movedAside = false;
+  try {
+    await rename(destination, backup);
+    movedAside = true;
+    await rename(staging, destination);
+  } catch (error) {
+    if (movedAside) await rename(backup, destination).catch(() => undefined);
+    await rm(staging, { recursive: true, force: true });
+    throw error;
+  }
+  await rm(backup, { recursive: true, force: true });
+};
+
+/**
+ * Finds the person Skill Distilly already installed for one subject under a host's skills root.
+ *
+ * @param host - Host whose skills root is scanned.
+ * @param homeDirectory - Host home directory.
+ * @param subjectId - Subject the Skill must belong to.
+ * @returns The verified install, or undefined when no readable install matches.
+ */
+const findOwnedInstall = async (
+  host: HostName,
+  homeDirectory: string,
+  subjectId: string,
+): Promise<InstallRef | undefined> => {
+  const installs = await listPersonInstalls(host, homeDirectory);
+  const match = installs.find(
+    (entry): entry is Extract<PersonInstallSummary, { verified: true }> =>
+      entry.verified && entry.install.subjectId === subjectId,
+  );
+  return match?.install;
+};
+
+/** One entry under a host's skills root that looks like a Distilly person Skill. */
+export type PersonInstallSummary =
+  | { readonly verified: true; readonly install: InstallRef }
+  | {
+      readonly verified: false;
+      readonly path: string;
+      readonly host: HostName;
+      /** Why the directory could not be verified as a Distilly install. */
+      readonly reason: string;
+    };
+
+/**
+ * Lists every person Skill installed for one host, verified ones first.
+ *
+ * A directory that cannot be verified is reported instead of hidden: it is either a modified
+ * Distilly Skill (which Distilly refuses to overwrite or delete) or another tool's Skill that
+ * happens to sit in the same root.
+ *
+ * @param host - Host whose skills root is scanned.
+ * @param homeDirectory - Host home directory.
+ * @returns Deterministically ordered install summaries.
+ */
+export const listPersonInstalls = async (
+  host: HostName,
+  homeDirectory: string,
+): Promise<readonly PersonInstallSummary[]> => {
+  const root = defaultSkillsRoot(host, homeDirectory);
+  const entries = await readdir(root, { withFileTypes: true }).catch(() => []);
+  const summaries: PersonInstallSummary[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+    const path = join(root, entry.name);
+    try {
+      const manifest = await readVerifiedInstall(path, host);
+      summaries.push({ verified: true, install: manifest.install });
+    } catch (error) {
+      summaries.push({
+        verified: false,
+        path,
+        host,
+        reason: error instanceof Error ? error.message : "The install could not be verified.",
+      });
+    }
+  }
+  return summaries.sort((left, right) => {
+    const leftPath = left.verified ? left.install.path : left.path;
+    const rightPath = right.verified ? right.install.path : right.path;
+    return compareUtf8(leftPath, rightPath);
+  });
 };
 
 const resolveDestination = (destination: string): string => {

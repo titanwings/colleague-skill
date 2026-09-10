@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,6 +8,7 @@ import type { HostCapabilities } from "@distilly/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createDshHostBinding } from "./dsh/full.js";
+import { listPersonInstalls } from "./full/injector.js";
 import type { DshHostBindingOptions, HostFormPresenter } from "./protocol.js";
 
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
@@ -251,5 +252,64 @@ describe("DeepSeek Harness full binding", () => {
     expect(failure === undefined ? "constructed" : (failure as Error).message).toMatch(
       /dsh-mcp-client/u,
     );
+  });
+});
+
+describe("DSH person Skill root", () => {
+  it("installs a person Skill into the skills root DSH itself scans", async () => {
+    const home = await temporaryHome();
+    const binding = createDshHostBinding(await options(home));
+    const manifest = JSON.parse(
+      await readFile(join(REPOSITORY_ROOT, "plugins", "release-manifest.json"), "utf8"),
+    ) as { releaseVersion: string; canonicalSkill: { digest: `sha256_${string}` } };
+    const facet = (name: string): string =>
+      `# core.${name}\n\n## Active claims\n\n    []\n\n## Contested claims\n\n    []\n`;
+    const profile = {
+      subjectId: `subject_${"a".repeat(32)}`,
+      displayName: "Ada Lovelace",
+      versionId: `version_${"b".repeat(64)}`,
+      claims: [],
+      core: {
+        identity: facet("identity"),
+        voice: facet("voice"),
+        psyche: facet("psyche"),
+        relations: facet("relations"),
+        boundaries: facet("boundaries"),
+        texture: facet("texture"),
+        timeline: facet("timeline"),
+      },
+      domains: {},
+      rendered: "# Distilly profile\n\n## Core facets\n\nNo recorded claims.\n",
+      quality: {
+        sourceGroupingVersion: "source-groups-v1",
+        activeClaimCount: 0,
+        contestedClaimCount: 0,
+        userAssertedClaimCount: 0,
+        corroboratedClaimCount: 0,
+        sourceGroupCount: 0,
+        diversityEligibleSourceGroupCount: 0,
+        unknownSourceGroupCount: 0,
+        coveredCoreFacets: [],
+        uncoveredCoreFacets: [
+          "identity",
+          "voice",
+          "psyche",
+          "relations",
+          "boundaries",
+          "texture",
+          "timeline",
+        ],
+        maturity: "sparse",
+      },
+    };
+    const injector = binding.createInjector({ sessionId: "dsh-person", environment: "cli" });
+    const installed = await injector.install(profile as never, {});
+    expect(installed.path).toBe(join(home, "skills", installed.path.split("/").at(-1) ?? ""));
+    expect(await readdir(join(home, "skills"))).toEqual([installed.path.split("/").at(-1)]);
+    expect(await readFile(join(installed.path, "SKILL.md"), "utf8")).toContain("Ada Lovelace");
+    const listed = await listPersonInstalls("dsh" as never, home);
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({ verified: true, install: { id: installed.id } });
+    void manifest;
   });
 });

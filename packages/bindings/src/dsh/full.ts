@@ -25,6 +25,8 @@ const DEFAULT_PROFILE_NAME = "distilly";
 
 /** Profile patch file DSH composes after every bundle layer. */
 const PATCH_FILE = "cordis.patch.yml";
+/** Composed profile DSH itself writes next to the patch layer. */
+const COMPOSED_CONFIG_FILE = "cordis.yml";
 
 /** Platform manifest carrier that the shared installer verifies and rewrites. */
 const PROFILE_MANIFEST = "package.json";
@@ -304,6 +306,8 @@ export const createDshHostBinding = (options: DshHostBindingOptions): HostBindin
           expectedSkillDigest: options.release.canonicalSkillDigest,
           mcpShape: () => ({}),
           preservePlatformManifestFields: true,
+          // DSH composes the profile and writes its own cordis.yml beside the layer we own.
+          hostGeneratedPaths: [COMPOSED_CONFIG_FILE],
           extraOwnedFiles: (launcherPath) =>
             new Map([
               [PATCH_FILE, patchLayer(launcherPath, clientPackage, host)],

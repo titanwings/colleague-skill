@@ -13,15 +13,17 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type {
-  ContentDigest,
-  HostCapabilities,
-  Profile,
-  SubjectId,
-  VersionId,
+import {
+  BUILTIN_HOSTS,
+  type ContentDigest,
+  type HostCapabilities,
+  type Profile,
+  type SubjectId,
+  type VersionId,
 } from "@distilly/protocol";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { listPersonInstalls } from "./full/injector.js";
 import { createClaudeCodeHostBinding } from "./claude-code/full.js";
 import { createCodexHostBinding } from "./codex/full.js";
 import { defaultHostCommandRunner } from "./full/command-runner.js";
@@ -652,5 +654,81 @@ describe("Codex full binding", () => {
     await expect(
       incompatible.doctor({ sessionId: "codex-doctor", environment: "cli" }),
     ).resolves.toMatchObject({ wireCompatible: false });
+  });
+});
+
+describe("person Skill lifecycle", () => {
+  it("updates the install Distilly owns when the same subject is distilled again", async () => {
+    const home = await temporaryHome();
+    const binding = createClaudeCodeHostBinding(sharedOptions(home));
+    const injector = binding.createInjector({ sessionId: "claude-update", environment: "cli" });
+    const first = await injector.install(PROFILE, {});
+    const skillPath = join(first.path, "SKILL.md");
+    const firstSkill = await readFile(skillPath, "utf8");
+
+    const nextVersion = {
+      ...PROFILE,
+      versionId: `version_${"c".repeat(64)}`,
+      rendered: `${PROFILE.rendered}\n\nNew evidence changed the boundaries.\n`,
+    } as typeof PROFILE;
+    const updated = await injector.install(nextVersion, {});
+
+    expect(updated.path).toBe(first.path);
+    expect(updated.versionId).toBe(nextVersion.versionId);
+    expect(updated.contentDigest).not.toBe(first.contentDigest);
+    expect(await readdir(join(home, ".claude", "skills"))).toEqual([basename(first.path)]);
+    const skill = await readFile(skillPath, "utf8");
+    expect(skill).not.toBe(firstSkill);
+    expect(skill).toContain("New evidence changed the boundaries.");
+    const manifest = JSON.parse(
+      await readFile(join(first.path, ".distilly-install.json"), "utf8"),
+    ) as { install: { versionId: string } };
+    expect(manifest.install.versionId).toBe(nextVersion.versionId);
+  });
+
+  it("keeps the Skill path stable when a display-name change moves its directory", async () => {
+    const home = await temporaryHome();
+    const binding = createClaudeCodeHostBinding(sharedOptions(home));
+    const injector = binding.createInjector({ sessionId: "claude-rename", environment: "cli" });
+    const first = await injector.install(PROFILE, {});
+    const renamed = { ...PROFILE, displayName: "Ada B. Lovelace" } as typeof PROFILE;
+    const updated = await injector.install(renamed, {});
+    expect(updated.path).toBe(first.path);
+    expect(await readdir(join(home, ".claude", "skills"))).toEqual([basename(first.path)]);
+    expect(await readFile(join(first.path, "SKILL.md"), "utf8")).toContain("Ada B. Lovelace");
+  });
+
+  it("lists verified installs and reports a modified directory instead of hiding it", async () => {
+    const home = await temporaryHome();
+    const binding = createClaudeCodeHostBinding(sharedOptions(home));
+    const injector = binding.createInjector({ sessionId: "claude-list", environment: "cli" });
+    const installed = await injector.install(PROFILE, {});
+    await mkdir(join(home, ".claude", "skills", "some-other-skill"), { recursive: true });
+    const before = await listPersonInstalls(BUILTIN_HOSTS.claudeCode, home);
+    expect(before).toHaveLength(2);
+    expect(before[0]).toMatchObject({ verified: true, install: { subjectId: SUBJECT_ID } });
+    const unverified = before[1];
+    expect(unverified?.verified).toBe(false);
+
+    await writeFile(join(installed.path, "SKILL.md"), "hand edited\n");
+    const after = await listPersonInstalls(BUILTIN_HOSTS.claudeCode, home);
+    expect(after.filter((entry) => entry.verified)).toHaveLength(0);
+    expect(after.map((entry) => entry.verified)).toEqual([false, false]);
+  });
+
+  it("refuses to replace a modified install and leaves it untouched", async () => {
+    const home = await temporaryHome();
+    const binding = createClaudeCodeHostBinding(sharedOptions(home));
+    const injector = binding.createInjector({ sessionId: "claude-modified", environment: "cli" });
+    const first = await injector.install(PROFILE, {});
+    await writeFile(join(first.path, "SKILL.md"), "hand edited\n");
+    const nextVersion = {
+      ...PROFILE,
+      versionId: `version_${"d".repeat(64)}`,
+    } as typeof PROFILE;
+    await expect(injector.install(nextVersion, {})).rejects.toMatchObject({
+      code: "storage_corrupt",
+    });
+    expect(await readFile(join(first.path, "SKILL.md"), "utf8")).toBe("hand edited\n");
   });
 });

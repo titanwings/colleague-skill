@@ -38,6 +38,14 @@ interface PluginOwnershipManifest {
   readonly runtimeVersion: string;
   readonly launcherPath: string;
   readonly files: readonly OwnedFile[];
+  /**
+   * Root-relative paths the host itself writes inside the plugin root.
+   *
+   * DSH composes a profile and writes `cordis.yml` beside the layer Distilly owns. Such a file
+   * is expected, is never treated as ours, and never fails verification; anything outside this
+   * list still fails as an unowned file.
+   */
+  readonly hostGeneratedPaths?: readonly string[];
 }
 
 interface PreparedPlugin {
@@ -70,6 +78,13 @@ export interface PluginTreeOptions {
    * manifest into the minimal name/version/pointer carrier.
    */
   readonly preservePlatformManifestFields?: boolean;
+  /**
+   * Host-generated paths that may appear inside the plugin root after the host boots.
+   *
+   * They are recorded in the ownership manifest so verification accepts exactly the files this
+   * host is known to write, and removal deletes them with the tree it owns.
+   */
+  readonly hostGeneratedPaths?: readonly string[];
 }
 
 const fail = (message: string, fieldPath?: string): DistillyError =>
@@ -235,6 +250,14 @@ const preparePlugin = async (
     files.set(safeRelativePath(path), bytes);
   }
 
+  const hostGeneratedPaths = (options.hostGeneratedPaths ?? []).map((path) =>
+    safeRelativePath(path),
+  );
+  for (const path of hostGeneratedPaths) {
+    if (files.has(path) || path === OWNERSHIP_FILE) {
+      throw fail("A host-generated plugin path collides with an owned file.", "hostGeneratedPaths");
+    }
+  }
   const ownership: PluginOwnershipManifest = {
     schemaVersion: 1,
     host: options.host,
@@ -243,6 +266,7 @@ const preparePlugin = async (
     files: [...files.entries()]
       .map(([path, bytes]) => ({ path, contentDigest: sha256(bytes) }))
       .sort((left, right) => compareUtf8(left.path, right.path)),
+    ...(hostGeneratedPaths.length === 0 ? {} : { hostGeneratedPaths }),
   };
   files.set(OWNERSHIP_FILE, Buffer.from(`${canonicalJson(ownership)}\n`, "utf8"));
   return { files };
@@ -291,12 +315,30 @@ const parseOwnership = (bytes: Uint8Array): PluginOwnershipManifest => {
   if (unique.size !== files.length || unique.has(OWNERSHIP_FILE)) {
     throw corrupt("The installed plugin ownership manifest contains duplicate paths.");
   }
+  const hostGeneratedPaths =
+    value.hostGeneratedPaths === undefined
+      ? []
+      : Array.isArray(value.hostGeneratedPaths)
+        ? value.hostGeneratedPaths.map((entry) => {
+            if (typeof entry !== "string") {
+              throw corrupt("The installed plugin ownership manifest is invalid.");
+            }
+            const path = safeRelativePath(entry);
+            if (path === OWNERSHIP_FILE || files.some((file) => file.path === path)) {
+              throw corrupt("The installed plugin ownership manifest is invalid.");
+            }
+            return path;
+          })
+        : (() => {
+            throw corrupt("The installed plugin ownership manifest is invalid.");
+          })();
   return {
     schemaVersion: 1,
     host: value.host as HostName,
     runtimeVersion: value.runtimeVersion,
     launcherPath: value.launcherPath,
     files,
+    ...(hostGeneratedPaths.length === 0 ? {} : { hostGeneratedPaths }),
   };
 };
 
@@ -346,11 +388,14 @@ const readVerifiedPluginTree = async (
   }
   await verifyOwnedFiles(pluginRoot, ownership);
   const actualFiles = await walkRegularFiles(pluginRoot);
-  const expectedFiles = new Set([OWNERSHIP_FILE, ...ownership.files.map((file) => file.path)]);
-  if (
-    actualFiles.size !== expectedFiles.size ||
-    [...actualFiles.keys()].some((path) => !expectedFiles.has(path))
-  ) {
+  // Owned files must all be present (checked above). A host-generated file is allowed to be
+  // present, but is not required: a fresh install has none until the host boots once.
+  const allowedFiles = new Set([
+    OWNERSHIP_FILE,
+    ...ownership.files.map((file) => file.path),
+    ...(ownership.hostGeneratedPaths ?? []),
+  ]);
+  if ([...actualFiles.keys()].some((path) => !allowedFiles.has(path))) {
     throw corrupt("The installed plugin contains files not owned by Distilly.");
   }
   return ownership;
