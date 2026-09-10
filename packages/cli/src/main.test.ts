@@ -21,6 +21,7 @@ describe("Developer Preview CLI host boundary", () => {
     ["mcp", ["mcp", "--host", "other-host"]],
     ["panel", ["panel", "--host", "other-host"]],
     ["harvest", ["harvest", "/tmp/evidence", "--host", "other-host", "--name", "Ada"]],
+    ["show", ["show", `subject_${"a".repeat(32)}`, "--host", "other-host"]],
     ["person install", ["install", `subject_${"a".repeat(32)}`, "--host", "other-host"]],
   ])(
     "offers an explicit legacy guide for unsupported %s without switching modes",
@@ -55,6 +56,44 @@ describe("Developer Preview CLI host boundary", () => {
 
     expect(stdout.join("")).toContain("Legacy Skill compatibility path documented in INSTALL.md");
     expect(stderr).toEqual([]);
+  });
+
+  it("requires a subject id or name and a host for show", async () => {
+    const io = {
+      stdout: { write: (value: string) => value },
+      stderr: { write: (value: string) => value },
+    };
+    await expect(runPreviewCli(["show", "--host", "codex"], environment, io)).rejects.toThrow(
+      "This command requires a subject id or display name, then --host <host>.",
+    );
+    await expect(
+      runPreviewCli(["show", `subject_${"a".repeat(32)}`], environment, io),
+    ).rejects.toThrow("This command requires --host.");
+    await expect(
+      runPreviewCli(
+        ["show", `subject_${"a".repeat(32)}`, "--host", "codex", "--nope", "1"],
+        environment,
+        io,
+      ),
+    ).rejects.toThrow("Unknown show option: --nope.");
+  });
+
+  it("requires a host for the subjects listing and rejects unknown options", async () => {
+    const stdout: string[] = [];
+    const io = {
+      stdout: { write: (value: string) => stdout.push(value) },
+      stderr: { write: (value: string) => value },
+    };
+    await expect(runPreviewCli(["subjects"], environment, io)).rejects.toThrow(
+      "This command requires --host.",
+    );
+    await expect(
+      runPreviewCli(["subjects", "--host", "codex", "--nope", "1"], environment, io),
+    ).rejects.toThrow("Unknown subjects option: --nope.");
+    await expect(
+      runPreviewCli(["subjects", "--host", "codex", "--limit", "0"], environment, io),
+    ).rejects.toThrow("--limit must be positive.");
+    expect(stdout).toEqual([]);
   });
 
   it("requires a directory and exactly one subject selector for harvest", async () => {
@@ -97,6 +136,8 @@ describe("Developer Preview CLI host boundary", () => {
 
     expect(stdout.join("")).toContain("distilly panel --host <host>");
     expect(stdout.join("")).toContain("distilly harvest <directory>");
+    expect(stdout.join("")).toContain("distilly subjects --host <host>");
+    expect(stdout.join("")).toContain("distilly show <subject-id|display-name>");
     expect(stdout.join("")).toContain("codex | claude-code | openclaw | hermes | dsh");
     expect(stderr).toEqual([]);
   });

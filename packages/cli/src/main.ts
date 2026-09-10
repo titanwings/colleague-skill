@@ -3,7 +3,17 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { lstat, realpath } from "node:fs/promises";
 
-import { BUILTIN_HOSTS, WIRE_LIMITS, subjectIdSchema, type HostName } from "@distilly/protocol";
+import {
+  BUILTIN_HOSTS,
+  DistillyError,
+  WIRE_LIMITS,
+  subjectIdSchema,
+  type HostName,
+  type SubjectSummary,
+} from "@distilly/protocol";
+import type { Distilly } from "distilly";
+
+import { ambiguousCandidates, reusableSubject } from "./subject-errors.js";
 
 import {
   doctorPreview,
@@ -13,6 +23,13 @@ import {
   type PreviewLifecycleEnvironment,
 } from "./lifecycle.js";
 import { describeHarvestSelection, selectHarvestFiles } from "./harvest.js";
+import {
+  describeAmbiguousSubject,
+  describePendingProfile,
+  describeProfile,
+  describeSubjectList,
+  looksLikeSubjectId,
+} from "./show.js";
 import {
   PREVIEW_PANEL_ASSETS,
   PREVIEW_PLUGIN_SOURCES,
@@ -257,21 +274,199 @@ const runHarvest = async (
     let subjectId: string | undefined = options.subjectId;
     let ingested = 0;
     for (const batch of batches) {
-      const result = await application.distilly.ingestFiles({
-        subject:
+      // Harvest is an explicit user action, so distillation is queued now instead of
+      // waiting for the engine's automatic threshold: a single small file previously
+      // produced no job and no message, which read as nothing having happened.
+      const ingest = async (
+        target:
+          | { readonly kind: "create"; readonly input: { readonly displayName: string } }
+          | { readonly kind: "existing"; readonly subjectId: string },
+      ) =>
+        await application.distilly.ingestFiles({
+          subject:
+            target.kind === "create"
+              ? { kind: "create", input: target.input }
+              : { kind: "existing", subjectId: subjectIdSchema.parse(target.subjectId) },
+          paths: batch.map((file) => file.path),
+          enqueue: "now",
+          ...(options.sensitivity === undefined ? {} : { sensitivity: options.sensitivity }),
+        });
+      let result;
+      try {
+        result = await ingest(
           subjectId === undefined
             ? { kind: "create", input: { displayName: options.displayName ?? "" } }
-            : { kind: "existing", subjectId: subjectIdSchema.parse(subjectId) },
-        paths: batch.map((file) => file.path),
-        enqueue: "auto",
-        ...(options.sensitivity === undefined ? {} : { sensitivity: options.sensitivity }),
-      });
+            : { kind: "existing", subjectId },
+        );
+      } catch (error) {
+        // A second harvest for the same person is normal, not an error: the engine refuses
+        // to guess between people and answers with the exact subject it matched. Reusing
+        // that subject keeps the one-shot flow working instead of failing on a duplicate.
+        const reuse = reusableSubject(error);
+        if (reuse !== undefined) {
+          subjectId = reuse.id;
+          io.stdout.write(
+            `${reuse.displayName} (${reuse.id}) already exists, so this material was added to it.\n`,
+          );
+          result = await ingest({ kind: "existing", subjectId: reuse.id });
+        } else {
+          const candidates = ambiguousCandidates(error);
+          if (candidates === undefined) throw error;
+          for (const line of describeAmbiguousSubject(options.displayName ?? "", candidates)) {
+            io.stdout.write(`${line}\n`);
+          }
+          throw new Error(
+            "More than one subject matches that name. Repeat harvest with --subject <subject-id>.",
+            { cause: error },
+          );
+        }
+      }
       subjectId = result.subject.id;
       ingested += batch.length;
       io.stdout.write(
         `Ingested ${String(ingested)}/${String(selection.files.length)} file(s) as ${result.subject.displayName} (${result.subject.id}).\n`,
       );
     }
+  } finally {
+    await application.close();
+  }
+};
+
+/**
+ * Resolves a name or id argument to one subject, refusing to guess between candidates.
+ *
+ * @param distilly - Connected facade owning the local runtime.
+ * @param argument - Subject id or display name typed by the operator.
+ * @param io - Command output streams, used when a name matches several subjects.
+ * @returns The resolved subject summary.
+ */
+const resolveSubjectArgument = async (
+  distilly: Distilly,
+  argument: string,
+  io: PreviewCliIo,
+): Promise<SubjectSummary> => {
+  const resolution = await distilly.resolve(
+    looksLikeSubjectId(argument)
+      ? { selector: { kind: "id", subjectId: subjectIdSchema.parse(argument) } }
+      : { selector: { kind: "query", query: argument } },
+  );
+  if (resolution.kind === "found") return resolution.subject;
+  if (resolution.kind === "ambiguous") {
+    for (const line of describeAmbiguousSubject(argument, resolution.candidates)) {
+      io.stdout.write(`${line}\n`);
+    }
+    throw new Error(`More than one subject matches "${argument}".`);
+  }
+  throw new Error(
+    `No subject matches "${argument}". Harvest their material first: distilly harvest <directory> --host <host> --name "${argument}".`,
+  );
+};
+
+/**
+ * Prints one profile with its maturity, evidence counts, and missing material.
+ *
+ * @param args - Subject id or display name, plus optional --host and --json.
+ * @param environment - Resolved Preview CLI environment.
+ * @param io - Command output streams.
+ */
+const runShow = async (
+  args: readonly string[],
+  environment: PreviewCliEnvironment,
+  io: PreviewCliIo,
+): Promise<void> => {
+  const [subjectArgument, ...rest] = args;
+  if (subjectArgument === undefined || subjectArgument.startsWith("--")) {
+    throw new Error("This command requires a subject id or display name, then --host <host>.");
+  }
+  let host: HostName | undefined;
+  let asJson = false;
+  for (let index = 0; index < rest.length; index += 1) {
+    const flag = rest[index];
+    if (flag === "--json") {
+      asJson = true;
+      continue;
+    }
+    const value = rest[index + 1];
+    if (value === undefined) throw new Error(`Missing value for ${String(flag)}.`);
+    if (flag === "--host") host = parseHost(value);
+    else throw new Error(`Unknown show option: ${String(flag)}.`);
+    index += 1;
+  }
+  if (host === undefined) throw new Error("This command requires --host.");
+  const application = await openApplication(host, environment);
+  try {
+    const subject = await resolveSubjectArgument(application.distilly, subjectArgument, io);
+    const person = application.distilly.person(subject.id);
+    const status = await person.status();
+    let profile;
+    try {
+      profile = await person.get();
+    } catch (error) {
+      // A harvested person with no committed version is the normal first state, not a fault:
+      // report the queued distillation instead of the engine's not-found message.
+      if (!(error instanceof DistillyError) || error.code !== "not_found") throw error;
+      if (asJson) {
+        io.stdout.write(`${JSON.stringify({ profile: null, status }, undefined, 2)}\n`);
+        return;
+      }
+      io.stdout.write(`${describePendingProfile(subject, status).join("\n")}\n`);
+      return;
+    }
+    if (asJson) {
+      io.stdout.write(`${JSON.stringify({ profile, status }, undefined, 2)}\n`);
+      return;
+    }
+    const report = describeProfile(profile, status);
+    io.stdout.write(`${report.lines.join("\n")}\n`);
+  } finally {
+    await application.close();
+  }
+};
+
+/**
+ * Lists the people this local store knows about, so no one has to remember an id.
+ *
+ * @param args - Optional --host, --query, --limit, --cursor, and --json.
+ * @param environment - Resolved Preview CLI environment.
+ * @param io - Command output streams.
+ */
+const runSubjects = async (
+  args: readonly string[],
+  environment: PreviewCliEnvironment,
+  io: PreviewCliIo,
+): Promise<void> => {
+  let host: HostName | undefined;
+  let asJson = false;
+  const query: { text?: string; limit?: number; cursor?: string } = {};
+  for (let index = 0; index < args.length; index += 1) {
+    const flag = args[index];
+    if (flag === "--json") {
+      asJson = true;
+      continue;
+    }
+    const value = args[index + 1];
+    if (value === undefined) throw new Error(`Missing value for ${String(flag)}.`);
+    if (flag === "--host") host = parseHost(value);
+    else if (flag === "--query") query.text = value;
+    else if (flag === "--cursor") query.cursor = value;
+    else if (flag === "--limit") {
+      const limit = Number.parseInt(value, 10);
+      if (!Number.isSafeInteger(limit) || limit <= 0) throw new Error("--limit must be positive.");
+      query.limit = limit;
+    } else {
+      throw new Error(`Unknown subjects option: ${String(flag)}.`);
+    }
+    index += 1;
+  }
+  if (host === undefined) throw new Error("This command requires --host.");
+  const application = await openApplication(host, environment);
+  try {
+    const page = await application.distilly.list(query);
+    if (asJson) {
+      io.stdout.write(`${JSON.stringify(page, undefined, 2)}\n`);
+      return;
+    }
+    io.stdout.write(`${describeSubjectList(page).join("\n")}\n`);
   } finally {
     await application.close();
   }
@@ -286,6 +481,8 @@ Usage:
   distilly install <subject-id> --host <host>
   distilly uninstall --host <host>
   distilly panel --host <host>
+  distilly subjects --host <host> [--query <text>] [--limit <n>] [--cursor <cursor>] [--json]
+  distilly show <subject-id|display-name> --host <host> [--json]
   distilly harvest <directory> --host <host> --subject <subject-id>|--name <display-name>
                    [--sensitivity private|shareable] [--limit <n>]
   # <host>: codex | claude-code | openclaw | hermes | dsh
@@ -364,8 +561,16 @@ export const runPreviewCli = async (
     await runMcp(host, environment);
     return 0;
   }
+  if (command === "show") {
+    await runShow(args, environment, io);
+    return 0;
+  }
   if (command === "harvest") {
     await runHarvest(args, environment, io);
+    return 0;
+  }
+  if (command === "subjects") {
+    await runSubjects(args, environment, io);
     return 0;
   }
   if (command === "panel") {
