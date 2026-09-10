@@ -1,5 +1,6 @@
 import { DistillyError } from "@distilly/protocol";
 
+import { detectChatExport, renderChatExport } from "./chat-export-parser.js";
 import { parseEmailMessages } from "./email-parser.js";
 
 import type {
@@ -154,15 +155,79 @@ const stableJson = (value: unknown): unknown => {
   );
 };
 
-const parseJson = (text: string): string => {
+/**
+ * Parses one JSON file, rendering a recognized chat export as a conversation transcript.
+ *
+ * A chat export is the most useful JSON a person owns: it carries their own words and the
+ * other side's replies. Detection is structural, so a renamed export still works, and any
+ * other JSON document keeps the previous stable pretty-printed rendering.
+ *
+ * @param text - Decoded UTF-8 file text.
+ * @returns Parsed value or detected export plus the parser's rendering decision.
+ */
+const readJson = (
+  text: string,
+): { readonly value: unknown; readonly kind?: ReturnType<typeof detectChatExport> } => {
   let value: unknown;
   try {
     value = JSON.parse(text);
   } catch {
     throw invalidInput("JSON material must contain one valid JSON value.", "bytes");
   }
-  return JSON.stringify(stableJson(value), null, 2);
+  const kind = detectChatExport(value);
+  return { value, ...(kind === undefined ? {} : { kind }) };
 };
+
+const jsonParser = (id: string, mediaType: string): MaterialParser => ({
+  id,
+  accepts: Object.freeze([mediaType]),
+  parse(input, context) {
+    return Promise.resolve().then(() => {
+      if (input.mediaType !== mediaType) {
+        throw invalidInput(`Parser ${id} does not accept ${input.mediaType}.`, "mediaType");
+      }
+      const parsed = readJson(decodeUtf8(input.bytes));
+      if (parsed.kind === undefined) {
+        return draft(
+          input,
+          JSON.stringify(stableJson(parsed.value), null, 2),
+          "document",
+          { method: "document_text", producer: id },
+          context.maximumOutputBytes,
+        );
+      }
+      const transcript = renderChatExport(parsed.kind, parsed.value, {
+        maximumOutputBytes: context.maximumOutputBytes,
+      });
+      if (transcript.messageCount === 0) {
+        return {
+          warnings: [
+            `The file looks like a ${transcript.kind} export but contained no message text; it was stored as an unparsed file.`,
+          ],
+        };
+      }
+      const result = draft(
+        input,
+        transcript.content,
+        "transcript",
+        { method: "document_text", producer: `${id}:${transcript.kind}` },
+        context.maximumOutputBytes,
+      );
+      const material =
+        result.material === undefined
+          ? undefined
+          : { ...result.material, participants: transcript.participants };
+      const warnings = [
+        ...transcript.warnings,
+        `Rendered ${String(transcript.messageCount)} message(s) from ${String(transcript.conversationCount)} conversation(s).`,
+      ];
+      return {
+        ...(material === undefined ? {} : { material }),
+        warnings,
+      };
+    });
+  },
+});
 
 const TIMING_LINE =
   /^\s*(?:\d{1,2}:)?\d{2}:\d{2}[.,]\d{3}\s+-->\s+(?:\d{1,2}:)?\d{2}:\d{2}[.,]\d{3}(?:\s+.*)?$/u;
@@ -225,7 +290,7 @@ export const createBuiltinParserRegistry = (): ParserRegistry => {
   for (const parser of [
     emailParser("distilly-eml", "message/rfc822", false),
     emailParser("distilly-mbox", "application/mbox", true),
-    documentParser("distilly-json", "application/json", parseJson),
+    jsonParser("distilly-json", "application/json"),
     subtitleParser("distilly-srt", "application/x-subrip"),
     documentParser("distilly-markdown", "text/markdown", (text) => text),
     documentParser("distilly-text", "text/plain", (text) => text),
