@@ -687,6 +687,32 @@ describe("local record budget", () => {
   });
 });
 
+describe("unsplittable parsed text", () => {
+  it("keeps the raw file and warns when a whitespace run cannot become a legal part", async () => {
+    const root = await temporaryRoot();
+    const inputRoot = await temporaryRoot();
+    const path = join(inputRoot, "spaces.txt");
+    // One 1.2 MiB run of spaces is longer than a material, so no legal part exists; the file
+    // must be kept as raw evidence with a warning instead of failing the whole call.
+    await writeFile(path, `a${" ".repeat(1_200_000)}b\n`);
+
+    const runtime = await open(root);
+    const client = await connect(runtime, "unsplittable");
+    const result = await client.call(
+      "materials.ingestFiles",
+      {
+        subject: { kind: "create" as const, input: { displayName: "Spaces", identityHints: [] } },
+        paths: [path],
+        enqueue: "now" as const,
+      },
+      { requestId: request() },
+    );
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.kind).toBe("unparsed");
+    expect(result.items[0]?.warnings.join(" ")).toContain("whitespace longer than one material");
+  });
+});
+
 describe("split reassembly through the engine", () => {
   it("briefs every part of a split file and reproduces the parsed text byte for byte", async () => {
     const root = await temporaryRoot();

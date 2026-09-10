@@ -11,6 +11,7 @@ const environment: PreviewCliEnvironment = {
     pathValue: "",
   },
   panelAssetsPath: "/tmp/distilly-preview-panel",
+  dshHomeDirectory: "/tmp/distilly-preview-home/.dsh",
 };
 
 describe("Developer Preview CLI host boundary", () => {

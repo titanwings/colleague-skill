@@ -62,6 +62,13 @@ export interface PreviewCliIo {
 export interface PreviewCliEnvironment {
   readonly lifecycle: PreviewLifecycleEnvironment;
   readonly panelAssetsPath: string;
+  /**
+   * DSH's own home directory.
+   *
+   * DSH reads `$DSH_HOME`, or `~/.dsh` when that variable is unset, so its profile tree and
+   * skills root do not live under the ordinary user home and must not be guessed from it.
+   */
+  readonly dshHomeDirectory: string;
 }
 
 const parseHost = (value: string | undefined): HostName => {
@@ -82,6 +89,19 @@ const hostOption = (args: readonly string[], required: boolean): HostName | unde
   }
   return parseHost(args[1]);
 };
+
+/**
+ * Names the home directory one command must target for a host.
+ *
+ * DSH keeps its profile tree and skills root under `$DSH_HOME` (default `~/.dsh`), not under
+ * the ordinary user home, so the two are resolved separately.
+ *
+ * @param host - Selected host.
+ * @param environment - Resolved Preview CLI environment.
+ * @returns Absolute host home directory.
+ */
+const hostHome = (host: HostName, environment: PreviewCliEnvironment): string =>
+  host === BUILTIN_HOSTS.dsh ? environment.dshHomeDirectory : environment.lifecycle.homeDirectory;
 
 const openApplication = async (host: HostName, environment: PreviewCliEnvironment) => {
   const binding = await requireInstalledPreviewBinding(environment.lifecycle, host);
@@ -169,9 +189,15 @@ export const resolvePreviewCliEnvironment = async (): Promise<PreviewCliEnvironm
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
       throw error;
     });
+  const dshHomeDirectory = resolve(
+    process.env["DSH_HOME"] !== undefined && process.env["DSH_HOME"].trim().length > 0
+      ? process.env["DSH_HOME"]
+      : join(configuredHome, ".dsh"),
+  );
   return {
     lifecycle: {
       homeDirectory: resolve(configuredHome),
+      dshHomeDirectory,
       nodePath: await realpath(process.execPath),
       entryPath,
       pluginSourcesPath: await realpath(
@@ -185,6 +211,7 @@ export const resolvePreviewCliEnvironment = async (): Promise<PreviewCliEnvironm
     panelAssetsPath: await realpath(
       packaged ? join(runtimeRoot, PREVIEW_PANEL_ASSETS) : resolve(packageRoot, "../panel/web"),
     ),
+    dshHomeDirectory,
   };
 };
 
@@ -454,7 +481,13 @@ const runHarvest = async (
       }
     };
     const recordResult = (
-      result: { subject: { id: string; displayName: string } },
+      result: {
+        readonly subject: { readonly id: string; readonly displayName: string };
+        readonly items: readonly {
+          readonly pathLabel: string;
+          readonly warnings: readonly string[];
+        }[];
+      },
       count: number,
       batch: readonly (typeof files)[number][],
     ) => {
@@ -464,6 +497,13 @@ const runHarvest = async (
       io.stdout.write(
         `Ingested ${String(ingested)}/${String(files.length)} new file(s) as ${result.subject.displayName} (${result.subject.id}).\n`,
       );
+      // A file can be stored and still not be usable as evidence: the parser may have skipped
+      // parts, refused to split it, or found no text. Those observations must reach the user,
+      // or a harvest looks complete while the material is not what they expect.
+      for (const item of result.items) {
+        if (item.warnings.length === 0) continue;
+        io.stdout.write(`  ${item.pathLabel}: ${item.warnings.join(" ")}\n`);
+      }
     };
     for (const batch of batches) {
       try {
@@ -709,7 +749,7 @@ const runPersonas = async (
     index += 1;
   }
   if (host === undefined) throw new Error("This command requires --host.");
-  const summaries = await listPersonInstalls(host, environment.lifecycle.homeDirectory);
+  const summaries = await listPersonInstalls(host, hostHome(host, environment));
   if (asJson) {
     io.stdout.write(`${JSON.stringify({ host, installs: summaries }, undefined, 2)}\n`);
     return;
@@ -757,7 +797,7 @@ const runRemove = async (
   const application = await openApplication(host, environment);
   try {
     const subject = await resolveSubjectArgument(application.distilly, subjectArgument, io);
-    const summaries = await listPersonInstalls(host, environment.lifecycle.homeDirectory);
+    const summaries = await listPersonInstalls(host, hostHome(host, environment));
     const install = summaries.find(
       (summary): summary is Extract<PersonInstallSummary, { verified: true }> =>
         summary.verified && summary.install.subjectId === subject.id,

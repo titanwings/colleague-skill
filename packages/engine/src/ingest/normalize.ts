@@ -83,14 +83,61 @@ const normalizeArtifact = (
  * @returns The canonical material body.
  */
 const normalizeTextV1 = (value: string, maximumBytes: number, fieldPath: string): string => {
-  const normalized = value
-    .replace(/\r\n?/g, "\n")
-    .normalize("NFC")
-    .replace(/[ \t]+(?=\n|$)/g, "");
+  const normalized = canonicalizeMaterialText(value);
   if (!/[^\p{White_Space}]/u.test(normalized)) {
     throw invalidInput("Canonical text cannot be whitespace-only.", fieldPath);
   }
   return enforceCanonicalUtf8Limit(normalized, maximumBytes, fieldPath);
+};
+
+/**
+ * Applies the frozen material-text-v1 canonicalization without any size or content check.
+ *
+ * The trailing-whitespace rule is implemented as a single forward scan rather than a
+ * back-tracking regular expression: `/[ \t]+(?=\n|$)/` retries the whole run at every
+ * position of a long run, which made a file with a megabyte of spaces take minutes. Splitting
+ * a large parsed text needs exactly this canonical form (so a part is stored unchanged), and
+ * it must be linear for the same reason.
+ *
+ * @param value - Raw material text.
+ * @returns Canonical text: CRLF and CR to LF, NFC, and no spaces or tabs before a line end.
+ */
+export const canonicalizeMaterialText = (value: string): string => {
+  const lineEnded = value.includes("\r") ? value.replace(/\r\n?/g, "\n") : value;
+  const composed = lineEnded.normalize("NFC");
+  return stripTrailingHorizontalWhitespace(composed);
+};
+
+/**
+ * Removes spaces and tabs that sit immediately before a newline or the end of the text.
+ *
+ * @param text - Text already converted to LF line endings and NFC.
+ * @returns Text without trailing horizontal whitespace.
+ */
+const stripTrailingHorizontalWhitespace = (text: string): string => {
+  const pieces: string[] = [];
+  let copyFrom = 0;
+  let index = 0;
+  while (index < text.length) {
+    const code = text.charCodeAt(index);
+    if (code !== 0x20 && code !== 0x09) {
+      index += 1;
+      continue;
+    }
+    let runEnd = index;
+    while (runEnd < text.length) {
+      const runCode = text.charCodeAt(runEnd);
+      if (runCode !== 0x20 && runCode !== 0x09) break;
+      runEnd += 1;
+    }
+    const next = runEnd < text.length ? text.charCodeAt(runEnd) : -1;
+    if (next === 0x0a || next === -1) {
+      pieces.push(text.slice(copyFrom, index));
+      copyFrom = runEnd;
+    }
+    index = runEnd;
+  }
+  return pieces.length === 0 ? text : `${pieces.join("")}${text.slice(copyFrom)}`;
 };
 
 /**

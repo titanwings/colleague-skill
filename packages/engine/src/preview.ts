@@ -554,6 +554,8 @@ class PreviewEngineRuntimeImplementation implements PreviewEngineRuntime {
  * @param options - Root owned exclusively by this in-process runtime.
  * @returns The opened Preview runtime.
  */
+export { canonicalizeMaterialText } from "./ingest/normalize.js";
+
 export const openPreviewEngine = async (
   options: OpenPreviewEngineOptions,
 ): Promise<PreviewEngineRuntime> => {

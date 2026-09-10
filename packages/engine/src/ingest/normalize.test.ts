@@ -62,6 +62,20 @@ describe("material normalization v1", () => {
     expect(normalizeMaterialTextV1("\ufeff")).toBe("\ufeff");
   });
 
+  it("canonicalizes a long run of spaces or tabs in linear time", () => {
+    // The previous regular expression retried the whole run at every position, so a single
+    // megabyte of spaces took minutes and made the whole ingest call appear to hang.
+    for (const filler of [" ".repeat(700_000), "\t".repeat(200_000), "\u00a0".repeat(500_000)]) {
+      const text = `a${filler}b`;
+      const started = Date.now();
+      const normalized = normalizeMaterialTextV1(text);
+      expect(Date.now() - started).toBeLessThan(2_000);
+      expect(normalized === text).toBe(true);
+    }
+    const trailing = `${"a".repeat(500_000)}${" ".repeat(300_000)}`;
+    expect(normalizeMaterialTextV1(trailing)).toBe("a".repeat(500_000));
+  });
+
   it("reapplies content and provenance byte bounds after NFC expansion", () => {
     const expandingLabel = `${"x".repeat(WIRE_LIMITS.labelBytes - 2)}\u0344`;
     const expandingContent = `${"x".repeat(WIRE_LIMITS.materialContentBytes - 2)}\u0344`;

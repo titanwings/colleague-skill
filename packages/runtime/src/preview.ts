@@ -221,10 +221,24 @@ const createLocalFileLoader = () => {
             new TextEncoder().encode(parsed.material.content).byteLength >
               WIRE_LIMITS.materialContentBytes
           ) {
-            const parts = splitParsedText(
-              parsed.material.content,
-              WIRE_LIMITS.materialContentBytes,
-            );
+            let parts: readonly string[];
+            try {
+              parts = splitParsedText(parsed.material.content, WIRE_LIMITS.materialContentBytes);
+            } catch (error) {
+              // A whitespace run larger than one material cannot become a legal part. Keep the
+              // raw file and warn, so one pathological file cannot fail the whole selection.
+              return {
+                pathLabel,
+                mediaType,
+                bytes,
+                source,
+                warnings: [
+                  error instanceof DistillyError
+                    ? error.message
+                    : "The parsed text could not be split into materials.",
+                ],
+              };
+            }
             if (parts.length > WIRE_LIMITS.ingestMaterials) {
               // More parts than one ingest call can carry: refuse rather than drop any.
               return {

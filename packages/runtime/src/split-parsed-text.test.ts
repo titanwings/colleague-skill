@@ -1,3 +1,4 @@
+import { canonicalizeMaterialText } from "@distilly/engine/preview";
 import { describe, expect, it } from "vitest";
 
 import { splitParsedText } from "./split-parsed-text.js";
@@ -6,26 +7,21 @@ const encoder = new TextEncoder();
 const bytes = (text: string): number => encoder.encode(text).byteLength;
 const maximumBytes = 1_048_576;
 
-/**
- * Mirrors the engine's frozen material-text-v1 canonicalization so parts can be checked.
- *
- * @param text - Text to canonicalize.
- * @returns Canonical text.
- */
-const canonicalize = (text: string): string =>
-  text
-    .replace(/\r\n?/gu, "\n")
-    .normalize("NFC")
-    .replace(/[ \t]+(?=\n|$)/gu, "");
+/** The engine's own canonicalization, so a test cannot drift from what is stored. */
+const canonicalize = canonicalizeMaterialText;
 
 const expectPartsOfCanonicalText = (text: string, parts: readonly string[]): void => {
   const canonical = canonicalize(text);
-  expect(parts.join("")).toBe(canonical);
+  const joined = parts.join("");
+  // Compare lengths first: a failing byte-equality assertion on a megabyte string makes the
+  // test runner print a megabyte diff, which reads as a hang instead of a failure.
+  expect(joined.length).toBe(canonical.length);
+  expect(joined === canonical).toBe(true);
   for (const part of parts) {
     expect(part.length).toBeGreaterThan(0);
     expect(bytes(part)).toBeLessThanOrEqual(maximumBytes);
     // A part is stored unchanged only when it already equals its own canonical form.
-    expect(canonicalize(part)).toBe(part);
+    expect(canonicalize(part) === part).toBe(true);
   }
 };
 
@@ -69,8 +65,8 @@ describe("parsed text splitting", () => {
     const text = line.repeat(maximumBytes / line.length);
     expect(bytes(text)).toBe(maximumBytes);
     const parts = splitParsedText(text, maximumBytes);
-    expect(parts).toEqual([text]);
-    expect(parts.some((part) => part.length === 0)).toBe(false);
+    expect(parts.length).toBe(1);
+    expect(parts[0] === text).toBe(true);
 
     const doubled = text.repeat(2);
     const doubledParts = splitParsedText(doubled, maximumBytes);
@@ -84,9 +80,11 @@ describe("parsed text splitting", () => {
     expectPartsOfCanonicalText(text, parts);
     for (const part of parts) expect(loneSurrogates(part)).toBe(0);
     // Round-tripping through UTF-8 must not introduce a replacement character.
-    expect(parts.map((part) => new TextDecoder().decode(encoder.encode(part))).join("")).toBe(
-      canonicalize(text),
-    );
+    const roundTripped = parts
+      .map((part) => new TextDecoder().decode(encoder.encode(part)))
+      .join("");
+    expect(roundTripped.length).toBe(canonicalize(text).length);
+    expect(roundTripped === canonicalize(text)).toBe(true);
     expect(parts.join("")).not.toContain("\uFFFD");
   });
 
@@ -98,7 +96,7 @@ describe("parsed text splitting", () => {
       const parts = splitParsedText(text, 4);
       expect(Date.now() - started).toBeLessThan(1_000);
       for (const part of parts) expect(bytes(part)).toBeLessThanOrEqual(4);
-      expect(parts.join("")).toBe(canonicalize(text));
+      expect(parts.join("") === canonicalize(text)).toBe(true);
     }
 
     const long = `a${"\u0301".repeat(600_000)}`;
@@ -117,7 +115,7 @@ describe("parsed text splitting", () => {
       timings.push(Date.now() - started);
       expect(parts).toHaveLength(mebibytes);
       expect(parts.every((part) => bytes(part) === maximumBytes)).toBe(true);
-      expect(parts.join("")).toBe(text);
+      expect(parts.join("") === text).toBe(true);
     }
     // Linear growth means doubling the input roughly doubles the work; the previous
     // implementation re-scanned the whole remaining line for each part.
@@ -165,7 +163,57 @@ describe("parsed text splitting", () => {
     const text = "ab😀cd\u0301ef\ngh";
     const parts = splitParsedText(text, 4);
     for (const part of parts) expect(bytes(part)).toBeLessThanOrEqual(4);
-    expect(parts.join("")).toBe(canonicalize(text));
+    expect(parts.join("") === canonicalize(text)).toBe(true);
+  });
+
+  it("terminates and stays byte-exact on long runs of spaces or tabs", () => {
+    // These shapes hung or silently dropped bytes before: the canonicalization regular
+    // expression backtracked over the whole run, and a bounded cut back-off left spaces at a
+    // part end that the engine then stripped.
+    for (const filler of [" ".repeat(2_000), "\t".repeat(32_000), " ".repeat(700_000)]) {
+      const text = `a${filler}b`;
+      const started = Date.now();
+      const parts = splitParsedText(text, maximumBytes);
+      expect(Date.now() - started).toBeLessThan(2_000);
+      expectPartsOfCanonicalText(text, parts);
+    }
+
+    const atCut = `${"a".repeat(maximumBytes - 36)}${" ".repeat(40)}b`;
+    const parts = splitParsedText(atCut, maximumBytes);
+    expectPartsOfCanonicalText(atCut, parts);
+    expect(parts.join("") === atCut).toBe(true);
+
+    const tabsAtCut = `${"a".repeat(maximumBytes - 36)}${"\t".repeat(40)}b`;
+    const tabParts = splitParsedText(tabsAtCut, maximumBytes);
+    expectPartsOfCanonicalText(tabsAtCut, tabParts);
+    expect(tabParts.join("") === tabsAtCut).toBe(true);
+  });
+
+  it("refuses a whitespace run no legal part could hold instead of failing the call", () => {
+    for (const text of [
+      `a${" ".repeat(maximumBytes + 24)}b`,
+      `a${"\u00a0".repeat(1_200_000)}b`,
+      "\n".repeat(maximumBytes + 1),
+    ]) {
+      expect(() => splitParsedText(text, maximumBytes)).toThrowError(
+        /whitespace longer than one material/u,
+      );
+    }
+  });
+
+  it("never separates a combining mark from the base it modifies", () => {
+    const filler = `${"a".repeat(63)}\n`.repeat(16_383);
+    const text = `${filler}\u0301${"b".repeat(99)}\n`;
+    const parts = splitParsedText(text, maximumBytes);
+    expectPartsOfCanonicalText(text, parts);
+    for (let index = 1; index < parts.length; index += 1) {
+      const first = parts[index]?.codePointAt(0) ?? 0;
+      if (!/^\p{M}$/u.test(String.fromCodePoint(first))) continue;
+      // A part may begin with a mark only when the mark run continues from the part before it.
+      const previous = parts[index - 1] ?? "";
+      const last = previous.codePointAt(previous.length - 1) ?? 0;
+      expect(/^\p{M}$/u.test(String.fromCodePoint(last))).toBe(true);
+    }
   });
 
   it("returns no parts for empty text", () => {

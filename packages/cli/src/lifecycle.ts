@@ -119,6 +119,13 @@ interface LifecyclePaths {
 /** Trusted local paths used by the repo-local Developer Preview lifecycle. */
 export interface PreviewLifecycleEnvironment {
   readonly homeDirectory: string;
+  /**
+   * DSH's own home directory when the selected host is DSH.
+   *
+   * DSH boots profiles from `$DSH_HOME` (default `~/.dsh`), which is not the ordinary user
+   * home, so the binding must be rooted there or the installed profile is never read.
+   */
+  readonly dshHomeDirectory?: string;
   readonly nodePath: string;
   readonly entryPath: string;
   readonly pluginSourcesPath: string;
@@ -681,7 +688,10 @@ const createBinding = (
   allowUnverifiedHost = false,
 ): HostBinding => {
   const options = {
-    homeDirectory: environment.homeDirectory,
+    homeDirectory:
+      host === BUILTIN_HOSTS.dsh
+        ? (environment.dshHomeDirectory ?? environment.homeDirectory)
+        : environment.homeDirectory,
     forms,
     provider: {
       load: (context: { readonly environment: "desktop" | "cli" | "ci" }) => {
@@ -729,6 +739,7 @@ const createBinding = (
 
 const pluginSource = (pluginSourcesPath: string, host: HostName): string => {
   if (host === BUILTIN_HOSTS.codex) return join(pluginSourcesPath, "codex");
+  if (host === BUILTIN_HOSTS.dsh) return join(pluginSourcesPath, "dsh");
   if (host === BUILTIN_HOSTS.hermes) return join(pluginSourcesPath, "shared", "skills", "distilly");
   return join(pluginSourcesPath, "claude-code");
 };

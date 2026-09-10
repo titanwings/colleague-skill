@@ -1,28 +1,29 @@
+import { canonicalizeMaterialText } from "@distilly/engine/preview";
+import { DistillyError } from "@distilly/protocol";
+
 /**
  * Splits one oversized parsed text into parts that each fit the local material byte limit.
  *
- * The text is first canonicalized exactly the way the engine canonicalizes stored material
- * (CRLF/CR to LF, NFC, trailing spaces and tabs before a line end removed), so a part is stored
- * unchanged and a mid-line cut cannot create a seam the engine would rewrite. Parts are then
+ * The text is first canonicalized by the engine's own material-text-v1 rule (CRLF and CR to
+ * LF, NFC, and no spaces or tabs before a line end), so a stored part equals the slice that
+ * produced it and a mid-line cut cannot create a seam the engine would rewrite. Parts are then
  * consecutive slices of that canonical text: joining them with an empty string reproduces it,
  * no byte is added or dropped, and no part is empty.
  *
  * A cut prefers a line boundary. Only a single line that cannot fit in one part is cut inside
  * the line, at a Unicode code point boundary, never between a high and a low surrogate, never
- * immediately before a combining mark, and never where the part would end in spaces or tabs
- * that the engine would strip. The scan is linear in the text length, including for a single
- * line larger than the limit.
+ * between a base character and its combining marks, and never inside a run of spaces or tabs.
+ * The scan is linear in the text length, including for one line larger than the limit.
  *
  * @param text - Rendered material text.
  * @param maximumBytes - Largest UTF-8 byte length one part may have.
  * @returns One or more part texts, in order; no parts for empty text.
+ * @throws DistillyError when the text contains a whitespace run no legal part could hold.
  */
 export const splitParsedText = (text: string, maximumBytes: number): readonly string[] => {
   if (maximumBytes < 4) throw new Error("A part must be able to hold one code point.");
-  const canonical = text
-    .replace(/\r\n?/gu, "\n")
-    .normalize("NFC")
-    .replace(/[ \t]+(?=\n|$)/gu, "");
+  const canonical = canonicalizeMaterialText(text);
+  assertNoOversizedWhitespaceRun(canonical, maximumBytes);
   const parts: string[] = [];
   let partStart = 0;
   let partBytes = 0;
@@ -64,9 +65,9 @@ export const splitParsedText = (text: string, maximumBytes: number): readonly st
         end += codePoint > 0xffff ? 2 : 1;
       }
       if (end === index) throw new Error("A part must be able to hold one code point.");
-      const cut = trimCut(canonical, index, end, lineEnd, bytes);
-      parts.push(canonical.slice(index, cut.end));
-      index = cut.end;
+      const cut = trimCut(canonical, index, end);
+      parts.push(canonical.slice(index, cut));
+      index = cut;
     }
     partStart = index;
     cursor = index;
@@ -76,20 +77,70 @@ export const splitParsedText = (text: string, maximumBytes: number): readonly st
   return parts;
 };
 
-/** Matches one combining mark, which must not be the first code point of a part. */
+/** Matches one combining mark, which must not be separated from the base it modifies. */
 const COMBINING_MARK = /^\p{M}$/u;
 
 /**
- * Largest number of code points a cut may move back to avoid a seam the engine would rewrite.
+ * Reports whether one code point is whitespace the engine would reject a part for.
  *
- * The bound keeps the scan linear when a pathological line is one long run of combining marks
- * or spaces: past it the cut is taken as computed, which can leave a detached mark or a
- * stripped space in that one place instead of scanning the whole run again for every part.
+ * @param code - UTF-16 code unit or code point value.
+ * @returns True for the Unicode White_Space set.
  */
-const MAXIMUM_CUT_BACKOFF = 32;
+const isEngineWhitespace = (code: number): boolean =>
+  (code >= 0x09 && code <= 0x0d) ||
+  code === 0x20 ||
+  code === 0x85 ||
+  code === 0xa0 ||
+  code === 0x1680 ||
+  (code >= 0x2000 && code <= 0x200a) ||
+  code === 0x2028 ||
+  code === 0x2029 ||
+  code === 0x202f ||
+  code === 0x205f ||
+  code === 0x3000;
 
-/** Matches the whitespace the engine strips at the end of a part. */
-const TRIMMED_AT_PART_END = /^[ \t]$/u;
+/**
+ * Reports whether one code point is the horizontal whitespace the engine strips at a part end.
+ *
+ * @param code - UTF-16 code unit or code point value.
+ * @returns True for space or tab.
+ */
+const isHorizontalWhitespace = (code: number): boolean => code === 0x20 || code === 0x09;
+
+/**
+ * Refuses text whose whitespace run is longer than any legal part could hold.
+ *
+ * A part made only of whitespace is rejected by the engine, so a run longer than the limit
+ * cannot be split into legal materials at all. Refusing here lets the caller keep the raw file
+ * and warn, instead of failing the whole ingest call with a bare canonicalization error.
+ *
+ * @param text - Canonical text.
+ * @param maximumBytes - Largest UTF-8 byte length one part may have.
+ */
+const assertNoOversizedWhitespaceRun = (text: string, maximumBytes: number): void => {
+  let runBytes = 0;
+  let index = 0;
+  while (index < text.length) {
+    const codePoint = text.codePointAt(index) ?? 0;
+    if (isEngineWhitespace(codePoint)) {
+      runBytes += utf8Width(codePoint);
+      if (runBytes > maximumBytes) {
+        throw new DistillyError({
+          code: "context_too_large",
+          message:
+            "Parsed text contains a run of whitespace longer than one material, which cannot be split into legal parts.",
+          retryable: false,
+          fieldPath: "material.content",
+          remediation: "Narrow the selected file and try again.",
+          details: { maximumBytes, whitespaceRunBytes: runBytes },
+        });
+      }
+    } else {
+      runBytes = 0;
+    }
+    index += codePoint > 0xffff ? 2 : 1;
+  }
+};
 
 /**
  * Moves a line-boundary cut forward over combining marks that begin the next line.
@@ -122,40 +173,30 @@ const extendOverMarks = (
 /**
  * Chooses where a mid-line cut ends so the stored part equals the slice.
  *
- * A part must not end in spaces or tabs (the engine strips them) and the next part must not
- * begin with a combining mark, but a part always keeps at least one code point so the scan
- * always advances.
+ * The cut moves back while it would separate a base character from its combining marks or
+ * leave spaces or tabs at the end of the part, which the engine would strip. It always keeps
+ * at least one code point, so the scan advances even for pathological input; a whitespace run
+ * longer than a part is refused before splitting rather than silently trimmed.
  *
  * @param text - Canonical text.
  * @param start - First index of the part.
  * @param end - Largest index that fits the byte ceiling.
- * @param lineEnd - Exclusive end of the line being cut.
- * @param bytes - Byte length of the untrimmed slice.
- * @returns The chosen end index and its byte length.
+ * @returns The chosen end index.
  */
-const trimCut = (
-  text: string,
-  start: number,
-  end: number,
-  lineEnd: number,
-  bytes: number,
-): { readonly end: number; readonly bytes: number } => {
-  let trimmedEnd = end;
-  let trimmedBytes = bytes;
-  let steps = 0;
-  while (trimmedEnd < lineEnd && trimmedEnd > start && steps < MAXIMUM_CUT_BACKOFF) {
-    const next = text.codePointAt(trimmedEnd) ?? 0;
-    const previousStart = previousCodePointStart(text, trimmedEnd, start);
-    if (previousStart <= start) break;
+const trimCut = (text: string, start: number, end: number): number => {
+  let cut = end;
+  while (cut > start) {
+    const after = text.codePointAt(cut);
+    const previousStart = previousCodePointStart(text, cut, start);
     const previous = text.codePointAt(previousStart) ?? 0;
-    const startsWithMark = COMBINING_MARK.test(String.fromCodePoint(next));
-    const endsWithTrimmed = TRIMMED_AT_PART_END.test(String.fromCodePoint(previous));
-    if (!startsWithMark && !endsWithTrimmed) break;
-    trimmedEnd = previousStart;
-    trimmedBytes -= utf8Width(previous);
-    steps += 1;
+    const detachesMark =
+      after !== undefined &&
+      COMBINING_MARK.test(String.fromCodePoint(after)) &&
+      !COMBINING_MARK.test(String.fromCodePoint(previous));
+    if (!detachesMark && !isHorizontalWhitespace(previous)) break;
+    cut = previousStart;
   }
-  return { end: trimmedEnd, bytes: trimmedBytes };
+  return cut === start ? end : cut;
 };
 
 /**
