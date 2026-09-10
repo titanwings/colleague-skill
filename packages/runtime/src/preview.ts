@@ -94,6 +94,11 @@ const mediaTypeForPath = (path: string): string => {
       return "text/markdown";
     case ".json":
       return "application/json";
+    case ".eml":
+      return "message/rfc822";
+    case ".mbox":
+    case ".mbx":
+      return "application/mbox";
     case ".srt":
       return "application/x-subrip";
     case ".vtt":

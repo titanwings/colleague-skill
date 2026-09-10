@@ -156,7 +156,7 @@ describe("builtin local material parsers", () => {
     });
   });
 
-  it("exposes only the five Preview media types through a fresh registry", () => {
+  it("exposes only the reviewed Preview media types through a fresh registry", () => {
     const first = createBuiltinParserRegistry();
     const second = createBuiltinParserRegistry();
 
@@ -168,7 +168,9 @@ describe("builtin local material parsers", () => {
         .sort(),
     ).toEqual([
       "application/json",
+      "application/mbox",
       "application/x-subrip",
+      "message/rfc822",
       "text/markdown",
       "text/plain",
       "text/vtt",

@@ -1,5 +1,7 @@
 import { DistillyError } from "@distilly/protocol";
 
+import { parseEmailMessages } from "./email-parser.js";
+
 import type {
   MaterialParser,
   ParsedMaterial,
@@ -88,6 +90,39 @@ const documentParser = (
         { method: "document_text", producer: id },
         context.maximumOutputBytes,
       );
+    });
+  },
+});
+
+const emailParser = (id: string, mediaType: string, mbox: boolean): MaterialParser => ({
+  id,
+  accepts: Object.freeze([mediaType]),
+  parse(input, context) {
+    return Promise.resolve().then(() => {
+      if (input.mediaType !== mediaType) {
+        throw invalidInput(`Parser ${id} does not accept ${input.mediaType}.`, "mediaType");
+      }
+      // Parse the bytes directly: decoding the container first would double-decode
+      // any 8-bit part whose declared charset is not UTF-8.
+      const parsed = parseEmailMessages(input.bytes, mbox);
+      const rendered = parsed.messages.map((message) => message.body).join("\n\n---\n\n");
+      const warnings: string[] = [];
+      if (parsed.skippedAttachments > 0) {
+        warnings.push(
+          `${parsed.skippedAttachments} non-text part(s) were not included as evidence.`,
+        );
+      }
+      if (parsed.undecodableParts > 0) {
+        warnings.push(`${parsed.undecodableParts} part(s) could not be decoded as text.`);
+      }
+      const result = draft(
+        input,
+        rendered,
+        "document",
+        { method: "document_text", producer: id },
+        context.maximumOutputBytes,
+      );
+      return { ...result, warnings };
     });
   },
 });
@@ -183,6 +218,8 @@ const subtitleParser = (id: string, mediaType: string): MaterialParser => ({
 export const createBuiltinParserRegistry = (): ParserRegistry => {
   const registry = new ParserRegistry();
   for (const parser of [
+    emailParser("distilly-eml", "message/rfc822", false),
+    emailParser("distilly-mbox", "application/mbox", true),
     documentParser("distilly-json", "application/json", parseJson),
     subtitleParser("distilly-srt", "application/x-subrip"),
     documentParser("distilly-markdown", "text/markdown", (text) => text),
