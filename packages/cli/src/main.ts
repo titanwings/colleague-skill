@@ -24,6 +24,14 @@ import {
 } from "./lifecycle.js";
 import { describeHarvestSelection, recordBudgetExceeded, selectHarvestFiles } from "./harvest.js";
 import {
+  hashFile,
+  loadHarvestState,
+  planHarvest,
+  recordHarvest,
+  saveHarvestState,
+  type HashedHarvestFile,
+} from "./harvest-state.js";
+import {
   describeAmbiguousSubject,
   describePendingProfile,
   describeProfile,
@@ -187,6 +195,7 @@ const harvestOptions = (
   readonly displayName?: string;
   readonly sensitivity?: "private" | "shareable";
   readonly maximumFiles?: number;
+  readonly force: boolean;
 } => {
   const [directory, ...rest] = args;
   if (directory === undefined || directory.startsWith("--")) {
@@ -198,9 +207,14 @@ const harvestOptions = (
     displayName?: string;
     sensitivity?: "private" | "shareable";
     maximumFiles?: number;
+    force?: boolean;
   } = {};
-  for (let index = 0; index < rest.length; index += 2) {
+  for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
+    if (flag === "--force") {
+      parsed.force = true;
+      continue;
+    }
     const value = rest[index + 1];
     if (value === undefined) throw new Error(`Missing value for ${String(flag)}.`);
     if (flag === "--host") host = parseHost(value);
@@ -218,12 +232,13 @@ const harvestOptions = (
     } else {
       throw new Error(`Unknown harvest option: ${String(flag)}.`);
     }
+    index += 1;
   }
   if (host === undefined) throw new Error("This command requires --host.");
   if ((parsed.subjectId === undefined) === (parsed.displayName === undefined)) {
     throw new Error("Pass exactly one of --subject <subject-id> or --name <display-name>.");
   }
-  return { directory, host, ...parsed };
+  return { directory, host, force: parsed.force === true, ...parsed };
 };
 
 /**
@@ -252,11 +267,74 @@ const runHarvest = async (
   }
   const application = await openApplication(options.host, environment);
   try {
+    let subjectId: string | undefined = options.subjectId;
+    if (subjectId === undefined) {
+      // Resolve the name before creating anything. The engine answers with the one subject it
+      // matched, several candidates, or none, and the CLI acts on that answer instead of
+      // discovering a conflict after a create attempt.
+      const resolution = await application.distilly.resolve({
+        selector: { kind: "query", query: options.displayName ?? "" },
+      });
+      if (resolution.kind === "found") {
+        subjectId = resolution.subject.id;
+        io.stdout.write(
+          `${resolution.subject.displayName} (${resolution.subject.id}) already exists in ${resolution.subject.space.displayName}, so this material is added to it.\n`,
+        );
+      } else if (resolution.kind === "ambiguous") {
+        for (const line of describeAmbiguousSubject(
+          options.displayName ?? "",
+          resolution.candidates,
+        )) {
+          io.stdout.write(`${line}\n`);
+        }
+        throw new Error(
+          "More than one subject matches that name. Repeat harvest with --subject <subject-id>.",
+        );
+      } else {
+        // The engine treats differently capitalized names as different people, so a new
+        // subject is correct here; say so when a near-duplicate exists instead of silently
+        // splitting one person's material across two subjects.
+        const page = await application.distilly.list({
+          text: options.displayName ?? "",
+          limit: 32,
+        });
+        const nearDuplicate = page.items.find(
+          (candidate) =>
+            candidate.displayName.toLowerCase() === (options.displayName ?? "").toLowerCase(),
+        );
+        if (nearDuplicate !== undefined) {
+          io.stdout.write(
+            `Note: ${nearDuplicate.displayName} (${nearDuplicate.id}) already exists in ${nearDuplicate.space.displayName} with different capitalization; a new subject is created. Pass --subject ${nearDuplicate.id} to add to that one instead.\n`,
+          );
+        }
+      }
+    }
+    const statePath = join(environment.lifecycle.homeDirectory, ".distilly", "harvest-state.json");
+    const state = await loadHarvestState(statePath);
+    let files: HashedHarvestFile[] = await Promise.all(
+      selection.files.map(async (file) => ({ ...file, sha256: await hashFile(file.path) })),
+    );
+    const recorded = subjectId === undefined ? [] : (state.entries[subjectId] ?? []);
+    if (!options.force && recorded.length > 0) {
+      const plan = planHarvest(files, recorded);
+      if (plan.alreadyIngested.length > 0) {
+        for (const file of plan.alreadyIngested) {
+          io.stdout.write(
+            `Skipped ${file.pathLabel}: already ingested for this subject; pass --force to ingest it again.\n`,
+          );
+        }
+      }
+      files = [...plan.ingest];
+    }
+    if (files.length === 0) {
+      io.stdout.write("Nothing new to ingest.\n");
+      return;
+    }
     // A file larger than one material is split by the runtime into parts, so it must travel
     // alone: a batch of several oversized files could exceed the wire limit for one result.
-    const batches: (readonly (typeof selection.files)[number][])[] = [];
-    let pending: (typeof selection.files)[number][] = [];
-    for (const file of selection.files) {
+    const batches: (readonly (typeof files)[number][])[] = [];
+    let pending: (typeof files)[number][] = [];
+    for (const file of files) {
       if (file.sizeBytes > WIRE_LIMITS.materialContentBytes) {
         if (pending.length > 0) batches.push(pending);
         batches.push([file]);
@@ -271,8 +349,8 @@ const runHarvest = async (
     }
     if (pending.length > 0) batches.push(pending);
 
-    let subjectId: string | undefined = options.subjectId;
     let ingested = 0;
+    let recordedState = state;
     const failures: string[] = [];
     // Harvest is an explicit user action, so distillation is queued now instead of waiting for
     // the engine's automatic threshold: a single small file previously produced no job and no
@@ -281,14 +359,14 @@ const runHarvest = async (
       target:
         | { readonly kind: "create"; readonly input: { readonly displayName: string } }
         | { readonly kind: "existing"; readonly subjectId: string },
-      files: readonly (typeof selection.files)[number][],
+      batch: readonly (typeof files)[number][],
     ) =>
       await application.distilly.ingestFiles({
         subject:
           target.kind === "create"
             ? { kind: "create", input: target.input }
             : { kind: "existing", subjectId: subjectIdSchema.parse(target.subjectId) },
-        paths: files.map((file) => file.path),
+        paths: batch.map((file) => file.path),
         enqueue: "now",
         ...(options.sensitivity === undefined ? {} : { sensitivity: options.sensitivity }),
       });
@@ -296,9 +374,9 @@ const runHarvest = async (
       subjectId === undefined
         ? ({ kind: "create", input: { displayName: options.displayName ?? "" } } as const)
         : ({ kind: "existing", subjectId } as const);
-    const ingestWithSubjectReuse = async (files: readonly (typeof selection.files)[number][]) => {
+    const ingestWithSubjectReuse = async (batch: readonly (typeof files)[number][]) => {
       try {
-        return await ingest(ingestTarget(), files);
+        return await ingest(ingestTarget(), batch);
       } catch (error) {
         // A second harvest for the same person is normal, not an error: the engine refuses to
         // guess between people and answers with the exact subject it matched. Reusing that
@@ -309,7 +387,7 @@ const runHarvest = async (
           io.stdout.write(
             `${reuse.displayName} (${reuse.id}) already exists, so this material was added to it.\n`,
           );
-          return await ingest({ kind: "existing", subjectId: reuse.id }, files);
+          return await ingest({ kind: "existing", subjectId: reuse.id }, batch);
         }
         const candidates = ambiguousCandidates(error);
         if (candidates === undefined) throw error;
@@ -322,19 +400,29 @@ const runHarvest = async (
         );
       }
     };
+    const store = async (): Promise<void> => {
+      try {
+        await saveHarvestState(statePath, recordedState);
+      } catch {
+        // The record is a local convenience, never evidence: failing to write it must not
+        // fail a harvest that already stored its material.
+      }
+    };
     const recordResult = (
       result: { subject: { id: string; displayName: string } },
       count: number,
+      batch: readonly (typeof files)[number][],
     ) => {
       subjectId = result.subject.id;
       ingested += count;
+      recordedState = recordHarvest(recordedState, result.subject.id, batch);
       io.stdout.write(
-        `Ingested ${String(ingested)}/${String(selection.files.length)} file(s) as ${result.subject.displayName} (${result.subject.id}).\n`,
+        `Ingested ${String(ingested)}/${String(files.length)} new file(s) as ${result.subject.displayName} (${result.subject.id}).\n`,
       );
     };
     for (const batch of batches) {
       try {
-        recordResult(await ingestWithSubjectReuse(batch), batch.length);
+        recordResult(await ingestWithSubjectReuse(batch), batch.length, batch);
       } catch (error) {
         // A batch can exceed the record budget because one file splits into several records.
         // Retry that batch one file per call so one expanding file cannot lose the others.
@@ -344,7 +432,7 @@ const runHarvest = async (
         );
         for (const file of batch) {
           try {
-            recordResult(await ingestWithSubjectReuse([file]), 1);
+            recordResult(await ingestWithSubjectReuse([file]), 1, [file]);
           } catch (fileError) {
             const reason = fileError instanceof Error ? fileError.message : "unknown failure";
             failures.push(`${file.pathLabel}: ${reason}`);
@@ -353,9 +441,10 @@ const runHarvest = async (
         }
       }
     }
+    await store();
     if (failures.length > 0) {
       throw new Error(
-        `${String(failures.length)} of ${String(selection.files.length)} file(s) could not be ingested:\n${failures.join("\n")}`,
+        `${String(failures.length)} of ${String(files.length)} file(s) could not be ingested:\n${failures.join("\n")}`,
       );
     }
   } finally {
@@ -376,12 +465,18 @@ const resolveSubjectArgument = async (
   argument: string,
   io: PreviewCliIo,
 ): Promise<SubjectSummary> => {
+  const asId = looksLikeSubjectId(argument);
   const resolution = await distilly.resolve(
-    looksLikeSubjectId(argument)
+    asId
       ? { selector: { kind: "id", subjectId: subjectIdSchema.parse(argument) } }
       : { selector: { kind: "query", query: argument } },
   );
   if (resolution.kind === "found") return resolution.subject;
+  if (asId) {
+    throw new Error(
+      `No subject exists with id ${argument}. Run distilly subjects --host <host> to list what exists.`,
+    );
+  }
   if (resolution.kind === "ambiguous") {
     for (const line of describeAmbiguousSubject(argument, resolution.candidates)) {
       io.stdout.write(`${line}\n`);
@@ -406,7 +501,11 @@ const runShow = async (
   io: PreviewCliIo,
 ): Promise<void> => {
   const [subjectArgument, ...rest] = args;
-  if (subjectArgument === undefined || subjectArgument.startsWith("--")) {
+  if (
+    subjectArgument === undefined ||
+    subjectArgument.startsWith("--") ||
+    subjectArgument.trim().length === 0
+  ) {
     throw new Error("This command requires a subject id or display name, then --host <host>.");
   }
   let host: HostName | undefined;
@@ -497,7 +596,7 @@ const runSubjects = async (
       io.stdout.write(`${JSON.stringify(page, undefined, 2)}\n`);
       return;
     }
-    io.stdout.write(`${describeSubjectList(page).join("\n")}\n`);
+    io.stdout.write(`${describeSubjectList(page, query.text).join("\n")}\n`);
   } finally {
     await application.close();
   }
@@ -515,7 +614,7 @@ Usage:
   distilly subjects --host <host> [--query <text>] [--limit <n>] [--cursor <cursor>] [--json]
   distilly show <subject-id|display-name> --host <host> [--json]
   distilly harvest <directory> --host <host> --subject <subject-id>|--name <display-name>
-                   [--sensitivity private|shareable] [--limit <n>]
+                   [--sensitivity private|shareable] [--limit <n>] [--force]
   # <host>: codex | claude-code | openclaw | hermes | dsh
 
 The host bindings share the same five-tool MCP contract. Setup remains

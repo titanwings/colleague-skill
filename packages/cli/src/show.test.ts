@@ -121,6 +121,13 @@ describe("subject argument and listing", () => {
     expect(lines.join("\n")).toContain("distilly harvest <directory> --host <host> --name");
   });
 
+  it("says nothing matched the filter instead of claiming the store is empty", () => {
+    const filtered = describeSubjectList({ items: [] }, "Nobody").join("\n");
+    expect(filtered).toContain('No subject matches "Nobody".');
+    expect(filtered).toContain("distilly subjects --host <host>");
+    expect(filtered).not.toContain("No subjects yet.");
+  });
+
   it("reports a harvested person with no committed profile as a normal state", () => {
     const lines = describePendingProfile(summary("Ada Lovelace", "a", false), {
       subject: summary("Ada Lovelace", "a", false),

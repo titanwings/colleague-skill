@@ -141,17 +141,23 @@ export const describeSubject = (subject: SubjectSummary): string => {
 };
 
 /**
- * Renders a subject listing, including what to run when nothing exists yet.
+ * Renders a subject listing, including what to run when nothing matches.
  *
  * @param page - One page of subjects in canonical order.
+ * @param query - Optional text filter the page was requested with.
  * @returns Stable report lines.
  */
-export const describeSubjectList = (page: SubjectPage): readonly string[] => {
+export const describeSubjectList = (page: SubjectPage, query?: string): readonly string[] => {
   if (page.items.length === 0) {
-    return [
-      "No subjects yet.",
-      "Create one from a directory of your own files: distilly harvest <directory> --host <host> --name <display-name>",
-    ];
+    return query === undefined || query.length === 0
+      ? [
+          "No subjects yet.",
+          "Create one from a directory of your own files: distilly harvest <directory> --host <host> --name <display-name>",
+        ]
+      : [
+          `No subject matches "${query}".`,
+          "List every subject with: distilly subjects --host <host>",
+        ];
   }
   const lines = page.items.map((subject) => describeSubject(subject));
   lines.push(
