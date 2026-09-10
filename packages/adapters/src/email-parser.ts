@@ -47,17 +47,19 @@ const HEADER_LINE = /^([!-9;-~]+):\s*(.*)$/u;
  * silently merge every message written in another shape, so the rule keeps the sender
  * token and the remainder and lets the caller judge the remainder instead.
  */
-const MBOX_SEPARATOR = /^From (\S+)(?: (.*))?$/u;
+const MBOX_SEPARATOR = /^From (\S+)(?:[ \t]+(.*))?$/u;
 
 /**
  * Matches the date part of an mbox `from_` line at its start.
  *
- * Weekday-month-day (ctime), day-month (RFC 2822), ISO 8601, and epoch seconds are the
- * shapes writers emit. Requiring the date at the start rejects prose that merely contains
- * a digit later, such as "From the desk of Bob, 2nd floor".
+ * Writers emit ctime (`Fri Sep  1 10:00:00 2026`), day-month (`11 Sep 2026`), hyphenated
+ * or slashed dates, ISO 8601, a compact date, a leading time, or epoch seconds, sometimes
+ * after a padded sender. The shape must begin where the remainder begins, so prose that
+ * merely contains a digit later (`From the desk of Bob, 2nd floor`) and a bare year
+ * (`From 2026 we will change everything.`) stay body text.
  */
 const MBOX_DATE =
-  /^(?:[A-Z][a-z]{2},? )?(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)|\d{1,2} )|^\d{4}-\d{2}-\d{2}|^\d{9,}/u;
+  /^[ \t]*(?:[A-Za-z]{3,},?[ \t]+)?(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[ \t]+\d{1,2}|\d{1,2}[ \t]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{8}|\d{1,2}:\d{2}|\d{9,}|<\d+>)/u;
 
 /**
  * Maps bytes to a code-point-preserving string so structural scanning never confuses a
@@ -225,7 +227,7 @@ const decodeHeaderWords = (value: string): string =>
     );
 
 /**
- * Removes `script` and `style` element regions in one linear pass.
+ * Removes comments plus `script` and `style` element regions in one linear pass.
  *
  * A back-reference regular expression is quadratic when a document holds many openers and
  * no closer, and re-searching for a closer each time is quadratic for the same reason, so
@@ -234,8 +236,13 @@ const decodeHeaderWords = (value: string): string =>
  * are compared instead of lowercasing the document, because lowercasing can change a
  * string's length and misalign every later index.
  *
+ * Comments and raw-text elements are handled in the same scan because their order matters:
+ * a commented-out opener must not act as markup, while a `<!--` inside `script` or `style`
+ * is script text rather than a comment. Removing comments in a separate earlier pass would
+ * let an unclosed `<!--` inside a script swallow every later visible character.
+ *
  * @param html - Raw HTML text.
- * @returns HTML with script and style regions removed.
+ * @returns HTML with comments and script and style regions removed.
  */
 const removeScriptAndStyle = (html: string): string => {
   const noCloserLeft: Record<"script" | "style", boolean> = { script: false, style: false };
@@ -245,6 +252,14 @@ const removeScriptAndStyle = (html: string): string => {
     const open = html.indexOf("<", index);
     if (open === -1) return result + html.slice(index);
     const head = html.slice(open, open + 9).toLowerCase();
+    if (head.startsWith("<!--")) {
+      result += html.slice(index, open);
+      const end = html.indexOf("-->", open + 4);
+      // An unterminated comment hides the rest of the document, as HTML defines it.
+      if (end === -1) return result;
+      index = end + 3;
+      continue;
+    }
     // The element name must end at the tag boundary, so <scripty> is not <script>.
     const named = (name: string): boolean => {
       if (!head.startsWith(`<${name}`)) return false;
@@ -293,25 +308,6 @@ const removeScriptAndStyle = (html: string): string => {
   return result;
 };
 
-/**
- * Removes HTML comments in one linear pass.
- *
- * @param html - Raw HTML text.
- * @returns HTML with comment regions removed.
- */
-const removeComments = (html: string): string => {
-  let result = "";
-  let index = 0;
-  for (;;) {
-    const start = html.indexOf("<!--", index);
-    if (start === -1) return result + html.slice(index);
-    result += html.slice(index, start);
-    const end = html.indexOf("-->", start + 4);
-    if (end === -1) return result;
-    index = end + 3;
-  }
-};
-
 /** Element names recognized as markup, so prose angle brackets are never removed. */
 const HTML_TAGS =
   /<\/?(?:a|abbr|address|area|article|aside|audio|b|base|bdi|bdo|big|blink|blockquote|body|br|button|canvas|caption|center|cite|code|col|colgroup|dd|del|details|dfn|dialog|div|dl|dt|em|embed|fieldset|figcaption|figure|font|footer|form|h[1-6]|head|header|hgroup|hr|html|i|iframe|img|input|ins|kbd|label|legend|li|link|main|map|mark|marquee|menu|meta|meter|nav|nobr|noscript|object|ol|optgroup|option|output|p|param|picture|pre|progress|q|rp|rt|ruby|s|samp|section|select|slot|small|source|span|strike|strong|sub|summary|sup|table|tbody|td|template|textarea|tfoot|th|thead|time|title|tr|track|tt|u|ul|var|video|wbr)\b[^<>]*>/giu;
@@ -329,8 +325,7 @@ const decodeNumericEntities = (text: string): string =>
 
 const stripHtml = (html: string): string =>
   decodeNumericEntities(
-    // Comments are removed first so a commented-out opener cannot swallow real text.
-    removeScriptAndStyle(removeComments(html))
+    removeScriptAndStyle(html)
       .replaceAll(/<br\s*\/?>/giu, "\n")
       .replaceAll(/<\/(p|div|tr|li|h[1-6])>/giu, "\n")
       .replaceAll(HTML_TAGS, " "),

@@ -601,6 +601,50 @@ describe("mail material parsing", () => {
       expect(Date.now() - started).toBeLessThan(3_000);
     });
 
+    it("splits every date shape real writers emit", () => {
+      for (const separator of [
+        "From x@y\t",
+        "From x@y\t ",
+        "From x@y  Fri Sep 11 02:31:00 2026",
+        "From x@y  2026-09-11 02:31:00",
+        "From x@y Friday, 11 Sep 2026 02:31:00 +0000",
+        "From x@y 11-Sep-2026 02:31:00",
+        "From x@y 11/09/2026 02:31:00",
+        "From x@y 02:31:00 2026",
+        "From x@y 20260911",
+        "From x@y 1789000000",
+        "From x@y <1789000000>",
+      ]) {
+        const mailbox = [
+          separator,
+          "From: A <a@example.com>",
+          "Subject: one",
+          "",
+          "First body.",
+          "",
+          "From b@example.com Fri Sep 11 10:00:00 2026",
+          "From: B <b@example.com>",
+          "Subject: two",
+          "",
+          "Second body.",
+          "",
+        ].join("\n");
+        const parsed = parseEmailMessages(bytes(mailbox), true);
+        expect(parsed.messages.length, separator).toBe(2);
+        expect(parsed.messages[1]?.subject, separator).toBe("two");
+      }
+    });
+
+    it("keeps visible text when raw-text markup contains a comment opener", () => {
+      for (const inner of [
+        "<script>\n<!-- hide\n</script>VISIBLE-CONTENT",
+        "<script>if(a<!--b){c()}</script>VISIBLE-CONTENT",
+      ]) {
+        const body = parseEmailMessages(bytes(htmlMessage(inner)), false).messages[0]?.body ?? "";
+        expect(body, inner).toContain("VISIBLE-CONTENT");
+      }
+    });
+
     it("splits a date-less separator that carries trailing whitespace", () => {
       for (const separator of ["From x@y ", "From x@y  ", "From MAILER-DAEMON ", "From - "]) {
         const mailbox = [
