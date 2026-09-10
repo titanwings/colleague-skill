@@ -311,6 +311,36 @@ exit 0
     });
   });
 
+  it("accepts a source-install provenance suffix on the Hermes version line", async () => {
+    // A real source install prints "Hermes Agent v0.19.0 (2026.7.20) · upstream 01906e99".
+    // The suffix is dropped so a rebuild of the same release is not read as an upgrade and
+    // the host is not rejected as an invalid version.
+    const home = await mkdtemp(join(tmpdir(), "distilly-hermes-version-"));
+    temporaryRoots.push(home);
+    const bin = join(home, "bin");
+    await mkdir(bin, { recursive: true });
+    const hermes = join(bin, "hermes");
+    await executable(hermes, "Hermes Agent v0.19.0 (2026.7.20) · upstream 01906e99");
+
+    const failure = await setupPreviewHost(
+      BUILTIN_HOSTS.hermes,
+      {
+        homeDirectory: home,
+        nodePath: process.execPath,
+        entryPath: join(home, "entry.js"),
+        pluginSourcesPath: join(home, "plugins"),
+        pathValue: bin,
+      },
+      { allowUnverifiedHost: true },
+    ).then(
+      () => undefined,
+      (error: unknown) => (error instanceof Error ? error.message : String(error)),
+    );
+    // The probe must not be the failing step; whatever fails later, it is never the version.
+    expect(failure).toBeDefined();
+    expect(failure).not.toMatch(/invalid version/u);
+  });
+
   it("fails before writing when the observed host version has no exact fixture", async () => {
     const { root, home, environment } = await fixture();
     await executable(join(root, "host-bin", "codex"), "codex-cli 99.0.0");

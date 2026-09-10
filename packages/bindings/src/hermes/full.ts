@@ -722,7 +722,13 @@ export const createHermesHostBinding = (options: HermesHostBindingOptions): Host
       if (config === null)
         throw corrupt("Hermes config.yaml has an unreadable Distilly MCP entry.");
       const expected = expectedMcpEntry(wrapper);
-      if (config !== undefined && !mcpEqual(config, expected)) {
+      // An entry whose command is our own wrapper belongs to this install even when its
+      // tool toggles are not the expected ones yet: an interrupted setup can leave the host
+      // having written the command without the toggles, and refusing it dead-ended both
+      // setup and uninstall with no recovery but manual host surgery.
+      const oursByCommand =
+        config !== undefined && config.command === wrapper && config.args.length === 0;
+      if (config !== undefined && !oursByCommand && !mcpEqual(config, expected)) {
         throw invalid(
           "Hermes already has a different MCP server named distilly; rename it explicitly.",
         );
@@ -829,7 +835,29 @@ export const createHermesHostBinding = (options: HermesHostBindingOptions): Host
             lastObservedConfig = afterSet;
           }
         }
-        const finalConfig = await readHermesMcpEntry(homeDirectory);
+        let finalConfig = await readHermesMcpEntry(homeDirectory);
+        if (finalConfig !== undefined && finalConfig !== null && !mcpEqual(finalConfig, expected)) {
+          // The entry names our wrapper but is missing the exact shape: repair it with the
+          // host's own config command instead of failing, so an interrupted setup converges.
+          if (finalConfig.command !== wrapper || finalConfig.args.length > 0) {
+            throw commandFailed("configure");
+          }
+          configuredByDistilly = true;
+          for (const [key, value] of [
+            ["enabled", "true"],
+            ["tools.resources", "false"],
+            ["tools.prompts", "false"],
+          ] as const) {
+            const repaired = await runHost(options, homeDirectory, [
+              "config",
+              "set",
+              `mcp_servers.distilly.${key}`,
+              value,
+            ]);
+            if (repaired.exitCode !== 0) throw commandFailed("configure");
+          }
+          finalConfig = await readHermesMcpEntry(homeDirectory);
+        }
         if (finalConfig === undefined || finalConfig === null || !mcpEqual(finalConfig, expected)) {
           throw commandFailed("configure");
         }

@@ -607,11 +607,15 @@ const normalizeHostVersion = (host: HostName, stdout: string): string => {
     .split(/\r?\n/u)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
-  // Hermes prints a short version line followed by diagnostic metadata. Keep
-  // only the stable first line so an upgrade does not make the manifest noisy.
+  // Hermes prints a short version line followed by diagnostic metadata. Keep only the
+  // stable first line so an upgrade does not make the manifest noisy.
   if (host === BUILTIN_HOSTS.hermes) {
     const first = lines[0] ?? "";
-    return /^Hermes Agent v\S+(?:\s+\([^\r\n]+\))?$/u.test(first) ? first : "";
+    // A source install appends provenance ("· upstream 01906e99") to that line. It is
+    // dropped rather than matched so a rebuild of the same release does not read as a host
+    // upgrade, and a host whose line carries it is not rejected outright.
+    const match = /^(Hermes Agent v\S+(?:\s+\([^\r\n]+\))?)(?:\s+·.*)?$/u.exec(first);
+    return match === null ? "" : match[1]!;
   }
   return lines.length === 1 ? lines[0]! : "";
 };

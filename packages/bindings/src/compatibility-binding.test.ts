@@ -508,6 +508,71 @@ describe("Hermes compatibility binding", () => {
     await expect(readFile(configPath, "utf8")).resolves.toBe("mcp_servers:\n");
   });
 
+  it("repairs its own interrupted Hermes entry instead of dead-ending", async () => {
+    // An interrupted setup leaves the host having written the entry with our wrapper but
+    // without the tool toggles. The second run must converge by re-applying them, because
+    // refusing left both setup and uninstall with no recovery but manual host surgery.
+    const parent = await temporaryHome();
+    const home = join(parent, "home");
+    await mkdir(home, { recursive: true });
+    const launcherPath = await launcher(home);
+    const wrapper = join(home, ".distilly", "bin", "distilly-hermes");
+    const configPath = join(home, ".hermes", "config.yaml");
+    const entry = (tools: boolean, enabled: boolean): string =>
+      `_config_version: 33\nmcp_servers:\n  distilly:\n    command: ${hermesCommandScalar(wrapper)}\n    enabled: ${enabled ? "true" : "false"}\n${
+        tools ? "    tools:\n      resources: false\n      prompts: false\n" : ""
+      }`;
+    const run: HostCommandRunner = {
+      run: async ({ args }) => {
+        const command = args.join(" ");
+        if (command === "mcp add distilly --command " + wrapper + " --connect-timeout 20") {
+          await writeFile(configPath, entry(false, true), { mode: 0o600 });
+        } else if (command.startsWith("config set")) {
+          const content = await readFile(configPath, "utf8");
+          const key = command.split(" ").at(-2)!;
+          const value = command.split(" ").at(-1)!;
+          if (key.endsWith("enabled")) {
+            await writeFile(
+              configPath,
+              content.replace(/enabled: (true|false)/u, `enabled: ${value}`),
+            );
+          } else {
+            await writeFile(
+              configPath,
+              content.includes("tools:")
+                ? content
+                : `${content}    tools:\n      resources: false\n      prompts: false\n`,
+            );
+          }
+        }
+        return command === "mcp test distilly" ? success("Tools discovered: 5") : success();
+      },
+    };
+    const binding = createHermesHostBinding(options("hermes", home, run));
+    const context = {
+      launcherPath,
+      pluginSourcePath: join(REPOSITORY_ROOT, "plugins", "shared", "skills", "distilly"),
+      runtimeVersion: releaseVersion,
+    };
+    // First run installs the Skill and a complete entry.
+    await binding.installPlugin(context);
+    // Simulate the interrupted state a killed setup leaves on disk: the entry still names
+    // our wrapper and the Skill is ours, but the tool toggles never landed.
+    await writeFile(configPath, entry(false, false), { mode: 0o600 });
+
+    // A second run must repair that entry rather than refuse it.
+    const repaired = await binding.installPlugin(context);
+    expect(repaired.host).toBe("hermes");
+    const content = await readFile(configPath, "utf8");
+    expect(content).toContain("enabled: true");
+    expect(content).toContain("resources: false");
+    expect(content).toContain("prompts: false");
+    expect(await binding.doctor({ sessionId: "hermes-repair", environment: "cli" })).toMatchObject({
+      installed: true,
+      warnings: [],
+    });
+  });
+
   it("retains a consistent Hermes install when rollback cannot remove its MCP entry", async () => {
     const home = await temporaryHome();
     const launcherPath = await launcher(home);
