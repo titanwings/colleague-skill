@@ -451,6 +451,14 @@ const readHermesMcpEntry = async (
       } else if (key === "tools") {
         if (value.length > 0 && value !== "{}") return null;
         section = "tools";
+      } else if (HOST_OWNED_ENTRY_KEYS.has(key)) {
+        // Hermes writes its own scalar keys into the entry it owns, such as the
+        // `connect_timeout` added in v0.19.0. Distilly never writes them, never reads
+        // them, and never removes them: the entry is still recognized as managed only
+        // because its command matches the owned wrapper byte for byte, and uninstall
+        // compares the whole snapshot it recorded. Rejecting the entry outright made
+        // every newer host version unconfigurable.
+        if (value.length === 0) return null;
       } else {
         return null;
       }
@@ -484,6 +492,17 @@ const readHermesMcpEntry = async (
     prompts: prompts ?? true,
   };
 };
+
+/**
+ * Entry keys Hermes writes for its own transport configuration.
+ *
+ * Distilly reads none of them and writes none of them. The set stays deliberately tiny
+ * and evidence-based: `connect_timeout` was observed on a real Hermes v0.19.0 entry,
+ * whose presence otherwise made every newer host unconfigurable. Any other unknown key
+ * still makes the entry unreadable and setup fails closed, which keeps a hand-edited
+ * entry from being silently adopted or removed.
+ */
+const HOST_OWNED_ENTRY_KEYS = new Set(["connect_timeout"]);
 
 const expectedMcpEntry = (wrapper: string): HermesMcpEntry => ({
   command: wrapper,
