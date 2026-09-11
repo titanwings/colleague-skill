@@ -12,7 +12,6 @@ from scripts.sync_design_chapters import (
     V3,
     Corpus,
     DesignSyncError,
-    chapters_for,
     expected_chapters,
     verify,
     write,
