@@ -1150,6 +1150,22 @@ const runRollback = async (
     }
     const reason = flags.reason ?? `User rolled back to ${target_.id} from the distilly CLI.`;
     const rolled = await person.rollback({ versionId: target_.id, reason });
+    if (flags.asJson) {
+      io.stdout.write(
+        `${JSON.stringify(
+          {
+            subjectId: target.subject.id,
+            rolledBackTo: target_.id,
+            currentVersionId: rolled.id,
+            status: rolled.status,
+            reason,
+          },
+          undefined,
+          2,
+        )}\n`,
+      );
+      return;
+    }
     io.stdout.write(
       `Rolled ${target.subject.displayName} back to ${target_.id}.\nNew current version: ${rolled.id} (${statusLabel(rolled.status)}).\nReason recorded: ${reason}\n`,
     );
