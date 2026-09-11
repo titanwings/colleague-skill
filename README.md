@@ -95,6 +95,18 @@ On Codex, the complete flow below is verified. OpenClaw `2026.3.24` and Hermes `
 7. lets you promote, reject, or roll back the candidate in the local Panel; and
 8. installs the approved profile as a self-contained host Skill when you ask it to.
 
+The direct-user surface around that flow is the same CLI on every host:
+
+| Command | What it does |
+| --- | --- |
+| `distilly harvest <directory> --host <host> --name <name>` | stores a directory of local files as evidence, queues distillation, and is safe to repeat: a file whose bytes this person already stored is skipped, `--force` re-ingests it |
+| `distilly import <directory> --host <host>` | migrates a store written by the older `dot-skill` release (a person folder, or a `skills/` tree of them) without modifying it |
+| `distilly subjects --host <host>` | lists what this store knows, so no one has to remember a subject id |
+| `distilly show <subject-id\|name> --host <host>` | prints the profile, its maturity, covered and missing core facets, and what material would cover each gap |
+| `distilly versions` / `diff` / `rollback` | reads immutable version history, shows the semantic difference between two versions, and restores an earlier one as a new current version |
+| `distilly install <subject-id\|name> --host <host>` | installs the profile as a person Skill; re-running after a re-distill updates it in place |
+| `distilly personas` / `remove` | lists the person Skills installed for a host and removes one without touching the host integration |
+
 The model-facing surface remains exactly five MCP tools:
 
 `distilly_get` · `distilly_ingest` · `distilly_pending` · `distilly_commit` · `distilly_correct`
@@ -106,10 +118,10 @@ Distilly never silently truncates a complete briefing or profile prompt. If a ve
 | Host | Native Plugin | Current compatibility route |
 | --- | --- | --- |
 | Codex | Fully verified in this release branch | Native Plugin |
-| Claude Code | Binding included; exact host fixture still needed | Explicit `dot-skill` Legacy Skill |
-| OpenClaw | Transport-capacity fixture recorded for `2026.3.24` (65,536-byte net budget); lifecycle pending | Claude-compatible bundle + discovery smoke |
-| Hermes | Transport-capacity fixture recorded for `v0.9.0` (49,752-byte net budget); lifecycle pending | Managed Skill + MCP configuration |
-| DeepSeek Harness (DSH) | Community binding planned | Explicit `dot-skill` Legacy Skill |
+| Claude Code | Binding verified against the real `2.1.268` binary: the host loads the plugin and reports our MCP server connected. No capacity fixture for that version yet, so setup needs `--allow-unverified-host` and runs on the conservative floor | Native Plugin |
+| OpenClaw | Binding verified against the real `2026.9.2` binary: the host loads the bundle with `skills` + `mcpServers` and lists the Skill as ready. Capacity fixture recorded for `2026.3.24` (65,536-byte net budget); a fixture for `2026.9.2` still needs a measured model session | Native Plugin |
+| Hermes | Lifecycle verified against a real `v0.19.0` install: install, doctor, MCP tool surface, persona install, and uninstall. Capacity fixture recorded for `v0.9.0` (49,752-byte net budget); the newer version runs on the conservative floor with an explicit `--allow-unverified-host` | Native Plugin |
+| DeepSeek Harness (DSH) | Binding verified against the real harness: `dsh --profile distilly --dump-config` mounts our server, the MCP handshake exposes exactly five tools, and the full install/persona/uninstall cycle passes. No measured capacity fixture yet, so setup needs `--allow-unverified-host` | Native Plugin |
 | Pi agent | Community binding planned | Explicit `dot-skill` Legacy Skill |
 | Grok Build | Community binding planned | Explicit `dot-skill` Legacy Skill |
 | OpenCode | Community binding planned | Explicit `dot-skill` Legacy Skill |
@@ -119,7 +131,11 @@ Host compatibility is a binding concern. Legacy Skill discovery is useful contin
 
 ## Local material formats
 
-The first Preview accepts explicit local `TXT`, `Markdown`, `JSON`, and `SRT/VTT` files. It also accepts pasted text and public URLs through the host's visible research flow. Files are read only from the paths or sources the user supplies; symlinked selected files and duplicate file names are rejected. PDF, email, provider exports, and hosted connectors are follow-up work.
+The Preview accepts explicit local `TXT`, `Markdown`, `JSON`, `EML`, `MBOX`/`MBX`, and `SRT`/`VTT` files. JSON chat exports from ChatGPT, Claude, Telegram, Slack, and Discord are recognized structurally and stored as transcripts with their participants; a renamed export still works, every omission (branches outside the conversation path, attachments, textless messages) is reported, and the rendered text keeps each message verbatim so claims can quote it. Email containers are parsed with their attachments skipped and reported.
+
+A single parsed file larger than the per-material limit is split into consecutive parts at code point boundaries; joining the parts reproduces the canonical text, and a part never separates a character from its combining marks. A file whose whitespace run is longer than one material cannot become legal parts, so it is kept as raw evidence with a printed warning instead of failing the whole selection.
+
+It also accepts pasted text and public URLs through the host's visible research flow. Files are read only from the paths or sources the user supplies; symlinked selected files and duplicate file names are rejected, and a file the person already stored is skipped unless `--force` is given. A store written by the older `dot-skill` release can be migrated with `distilly import`. PDF and hosted connectors remain follow-up work.
 
 ## 📣 2026-09 update: help expand coding-agent Plugins
 

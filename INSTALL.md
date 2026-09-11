@@ -49,14 +49,45 @@ node packages/cli/lib/bin.js uninstall --host codex
 
 This removes Distilly's verified host Plugin and runtime projection. It keeps `~/.distilly/` person data, source materials, profiles, and separately installed person Skills. A modified or foreign installation is left untouched and reported for manual review.
 
-## OpenClaw and Hermes compatibility bindings
+## Claude Code, OpenClaw, Hermes, and DSH bindings
 
-The Preview includes local lifecycle bindings for two additional hosts:
+Each supported host installs its own owned projection and can be removed without touching person data:
 
-- **OpenClaw:** installs a Claude-compatible bundle at `~/.openclaw/extensions/distilly` with an owned `.mcp.json`. Verify discovery with `openclaw plugins inspect distilly --json`.
+- **Claude Code:** installs a skills-directory plugin at `~/.claude/skills/distilly`. Verify with `claude plugin list` (the plugin must be `loaded`) and `claude mcp list` (the distilly server must be `Connected`).
+- **OpenClaw:** installs a Claude-compatible bundle at `~/.openclaw/extensions/distilly` with an owned `.mcp.json`. Verify discovery with `openclaw plugins inspect distilly` and `openclaw skills list`.
 - **Hermes:** installs the canonical Skill at `~/.hermes/skills/distilly`, a managed wrapper at `~/.distilly/bin/distilly-hermes`, and the `distilly` MCP entry in `~/.hermes/config.yaml`. The optional `resources` and `prompts` surfaces are disabled; verify five tools with `hermes mcp test distilly`.
+- **DeepSeek Harness:** owns a profile under `$DSH_HOME/profiles/distilly` (default `~/.dsh`), which the harness composes from its own layers plus our patch. Verify with `dsh --profile distilly --dump-config`. Note that the harness home is `$DSH_HOME`, not the ordinary user home.
 
-The CLI accepts `setup --host openclaw` and `setup --host hermes` when their installed versions match the recorded real-host transport fixtures: OpenClaw `2026.3.24` has a 65,536-byte net budget and Hermes `v0.9.0` has a 49,752-byte net budget. These measurements use a deterministic synthetic fixture server through the real host executable, `openai-codex/gpt-5.4`, and MCP transport in an isolated clean session; they prove the recorded briefing/tool-result path, not the complete packaged lifecycle. Unknown versions or changed release/tool tuples return `host_unsupported` before writing files. Setup never falls back to `dot-skill` automatically.
+`setup --host <host>` verifies the installed host version against a recorded real-host transport fixture before writing anything:
+
+| Host version | Recorded net budget |
+| --- | --- |
+| Codex `0.146.0` | 65,536 bytes |
+| OpenClaw `2026.3.24` | 65,536 bytes |
+| Hermes `v0.9.0` | 49,752 bytes |
+
+Those measurements use a deterministic synthetic fixture server through the real host executable, `openai-codex/gpt-5.4`, and MCP transport in an isolated clean session; they prove the recorded briefing/tool-result path.
+
+A host version with no recorded fixture stops setup with `host_unsupported` before any file is written and names both ways forward: install a version that has a fixture, or re-run with `--allow-unverified-host` to install on the conservative floor. That flag is an explicit operator decision: the install is recorded as unverified, `doctor` keeps reporting it, and it never falls back to `dot-skill` automatically.
+
+## The direct-user commands
+
+The same CLI works on every host without going through the model:
+
+```bash
+node packages/cli/lib/bin.js harvest <directory> --host codex --name "<display name>"
+node packages/cli/lib/bin.js subjects --host codex
+node packages/cli/lib/bin.js show "<subject id or name>" --host codex
+node packages/cli/lib/bin.js versions "<subject id or name>" --host codex
+node packages/cli/lib/bin.js diff "<subject id or name>" --host codex --from <version> --to <version>
+node packages/cli/lib/bin.js rollback "<subject id or name>" --host codex --to <version>
+node packages/cli/lib/bin.js install "<subject id or name>" --host codex
+node packages/cli/lib/bin.js personas --host codex
+node packages/cli/lib/bin.js remove "<subject id or name>" --host codex
+node packages/cli/lib/bin.js import <legacy skills directory> --host codex
+```
+
+`harvest` is safe to repeat: a file whose bytes this person already stored is skipped unless `--force` is given, and a second harvest for the same name adds to the same subject. `import` reads a store written by the older `dot-skill` release and never modifies it. `rollback` creates a new current version from an earlier one, so history is never rewritten.
 
 ## Run the packaged preview
 
