@@ -1363,6 +1363,10 @@ Usage:
                    [--sensitivity private|shareable] [--limit <n>] [--force]
   # <host>: codex | claude-code | openclaw | hermes | dsh
 
+harvest --limit and import --limit cap the files ingested for one person per run.
+import reads a store written by the older dot-skill release and never modifies it.
+rollback creates a new current version from an earlier one; history is immutable.
+
 The host bindings share the same five-tool MCP contract. Setup remains
 fail-closed until this release has an exact verified capacity fixture for the
 selected host version; no synthetic capacity is used. --allow-unverified-host
