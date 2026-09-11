@@ -19,16 +19,18 @@
     "test:boundaries": "node --test tests/check_package_boundaries.test.mjs",
     "test:build-artifacts": "node --test tests/build_artifacts.test.mjs",
     "test:plugins": "python3 -B -m unittest tests.test_assemble_plugins",
+    "test:release": "node --test tests/release_manifest.test.mjs",
     "check:boundaries": "node scripts/check_package_boundaries.mjs .",
     "check:engine-pack": "node scripts/check_engine_pack.mjs .",
     "check:plugins": "python3 -B scripts/assemble_plugins.py --check",
     "package:preview:codex": "pnpm run build && node packages/cli/scripts/assemble-preview-package.mjs --output artifacts/distilly-0.1.0-preview.1-codex --force",
     "snapshots": "pnpm -r --if-present run snapshots",
     "docs": "python3 -B scripts/verify_docs.py",
+    "release:check": "node scripts/check_release.mjs",
     "build": "node scripts/clean_build_outputs.mjs . && tsc -b --force",
     "smoke:built": "pnpm -r --if-present run smoke:built",
-    "hygiene": "pnpm run check:boundaries && pnpm run check:plugins && knip && pnpm run smoke:built && pnpm run check:engine-pack && pnpm -r exec publint && pnpm -r exec attw --pack --profile esm-only .",
-    "gates": "pnpm run gates:fast && pnpm run typecheck && pnpm run test && pnpm run test:coverage && pnpm run snapshots && pnpm run docs && pnpm run build && pnpm run hygiene"
+    "hygiene": "pnpm run release:check && pnpm run check:boundaries && pnpm run check:plugins && knip && pnpm run smoke:built && pnpm run check:engine-pack && pnpm -r exec publint && pnpm -r exec attw --pack --profile esm-only .",
+    "gates": "pnpm run gates:fast && pnpm run typecheck && pnpm run test && pnpm run test:coverage && pnpm run snapshots && pnpm run docs && pnpm run release:check && pnpm run build && pnpm run hygiene"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
