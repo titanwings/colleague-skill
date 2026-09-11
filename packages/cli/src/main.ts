@@ -11,7 +11,11 @@ import {
   type HostName,
   type SubjectSummary,
 } from "@distilly/protocol";
-import { listPersonInstalls, type PersonInstallSummary } from "@distilly/bindings";
+import {
+  listPersonInstalls,
+  personSkillsRoot,
+  type PersonInstallSummary,
+} from "@distilly/bindings";
 import type { Distilly } from "distilly";
 
 import { ambiguousCandidates, reusableSubject } from "./subject-errors.js";
@@ -887,13 +891,7 @@ const runPersonas = async (
     io.stdout.write(`${JSON.stringify({ host, installs: summaries }, undefined, 2)}\n`);
     return;
   }
-  const root = summaries.find((summary) => (summary.verified ? true : summary.host === host));
-  const skillsRoot =
-    root === undefined
-      ? "<no skills root found>"
-      : root.verified
-        ? dirname(root.install.path)
-        : dirname(root.path);
+  const skillsRoot = personSkillsRoot(host, hostHome(host, environment));
   io.stdout.write(`${describePersonInstalls(summaries, skillsRoot).join("\n")}\n`);
 };
 

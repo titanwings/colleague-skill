@@ -342,3 +342,14 @@ describe("Developer Preview CLI host boundary", () => {
     expect(stdout).toEqual([]);
   });
 });
+
+describe("person Skill listing root", () => {
+  it("names the real skills root even when nothing is installed", async () => {
+    const { personSkillsRoot } = await import("@distilly/bindings");
+    expect(personSkillsRoot("codex" as never, "/home/u")).toBe("/home/u/.codex/skills");
+    expect(personSkillsRoot("claude-code" as never, "/home/u")).toBe("/home/u/.claude/skills");
+    expect(personSkillsRoot("openclaw" as never, "/home/u")).toBe("/home/u/.openclaw/skills");
+    expect(personSkillsRoot("hermes" as never, "/home/u")).toBe("/home/u/.hermes/skills");
+    expect(personSkillsRoot("dsh" as never, "/dsh")).toBe("/dsh/skills");
+  });
+});

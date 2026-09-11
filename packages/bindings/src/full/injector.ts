@@ -171,6 +171,9 @@ const renderPersonSkill = (profile: Profile, name: string): string => {
   );
 };
 
+export const personSkillsRoot = (host: HostName, homeDirectory: string): string =>
+  defaultSkillsRoot(host, homeDirectory);
+
 const defaultSkillsRoot = (host: HostName, homeDirectory: string): string => {
   if (host === "codex") return join(homeDirectory, ".codex", "skills");
   if (host === "claude-code") return join(homeDirectory, ".claude", "skills");

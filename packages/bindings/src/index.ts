@@ -8,7 +8,7 @@ export { createHermesCapabilityBinding } from "./hermes/capability.js";
 export { createHermesHostBinding } from "./hermes/full.js";
 export { createOpenClawCapabilityBinding } from "./openclaw/capability.js";
 export { createOpenClawHostBinding } from "./openclaw/full.js";
-export { listPersonInstalls } from "./full/injector.js";
+export { listPersonInstalls, personSkillsRoot } from "./full/injector.js";
 export { HostRegistry } from "./registry.js";
 export type { PersonInstallSummary } from "./full/injector.js";
 export type {
