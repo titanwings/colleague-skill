@@ -23,7 +23,12 @@ import {
   uninstallPreviewHost,
   type PreviewLifecycleEnvironment,
 } from "./lifecycle.js";
-import { describeHarvestSelection, recordBudgetExceeded, selectHarvestFiles } from "./harvest.js";
+import {
+  describeHarvestSelection,
+  recordBudgetExceeded,
+  selectHarvestFiles,
+  type HarvestFile,
+} from "./harvest.js";
 import {
   hashFile,
   loadHarvestState,
@@ -40,6 +45,7 @@ import {
   describeSubjectList,
   looksLikeSubjectId,
 } from "./show.js";
+import { listLegacyPeople } from "./legacy-import.js";
 import {
   describeProfileDiff,
   describeVersions,
@@ -300,15 +306,72 @@ const runHarvest = async (
     io.stdout.write("Nothing to ingest.\n");
     return;
   }
-  const application = await openApplication(options.host, environment);
+  await ingestFileSelection(
+    {
+      command: "harvest",
+      host: options.host,
+      files: selection.files,
+      force: options.force,
+      ...(options.displayName === undefined ? {} : { displayName: options.displayName }),
+      ...(options.subjectId === undefined ? {} : { subjectId: options.subjectId }),
+      ...(options.sensitivity === undefined ? {} : { sensitivity: options.sensitivity }),
+      ...(options.maximumFiles === undefined ? {} : { maximumFiles: options.maximumFiles }),
+    },
+    environment,
+    io,
+  );
+};
+
+/**
+ * One selected batch of local files plus how it should reach a subject.
+ *
+ * Harvest and import share this request so both keep the same subject resolution, the same
+ * already-ingested record, the same wire batching, and the same per-file failure reporting.
+ */
+interface IngestRequest {
+  /** Command name used in operator-facing messages. */
+  readonly command: string;
+  readonly host: HostName;
+  readonly files: readonly HarvestFile[];
+  /** Create-or-reuse target: set exactly one, or neither to let the engine create one. */
+  readonly displayName?: string;
+  readonly subjectId?: string;
+  /** Aliases used only when this request creates the subject. */
+  readonly aliases?: readonly string[];
+  readonly sensitivity?: "private" | "shareable";
+  readonly force: boolean;
+  readonly maximumFiles?: number;
+}
+
+/** What one ingest request stored, so a caller importing several people can report per person. */
+interface IngestOutcome {
+  readonly subjectId?: string;
+  readonly ingested: number;
+  readonly failures: readonly string[];
+}
+
+/**
+ * Ingests one selected batch of local files into a resolved, reused, or new subject.
+ *
+ * @param request - Selected files plus the subject target and limits.
+ * @param environment - Resolved Preview CLI environment.
+ * @param io - Command output streams.
+ * @returns The subject that received the material and what failed.
+ */
+const ingestFileSelection = async (
+  request: IngestRequest,
+  environment: PreviewCliEnvironment,
+  io: PreviewCliIo,
+): Promise<IngestOutcome> => {
+  const application = await openApplication(request.host, environment);
   try {
-    let subjectId: string | undefined = options.subjectId;
+    let subjectId: string | undefined = request.subjectId;
     if (subjectId === undefined) {
       // Resolve the name before creating anything. The engine answers with the one subject it
       // matched, several candidates, or none, and the CLI acts on that answer instead of
       // discovering a conflict after a create attempt.
       const resolution = await application.distilly.resolve({
-        selector: { kind: "query", query: options.displayName ?? "" },
+        selector: { kind: "query", query: request.displayName ?? "" },
       });
       if (resolution.kind === "found") {
         subjectId = resolution.subject.id;
@@ -317,26 +380,26 @@ const runHarvest = async (
         );
       } else if (resolution.kind === "ambiguous") {
         for (const line of describeAmbiguousSubject(
-          options.displayName ?? "",
+          request.displayName ?? "",
           resolution.candidates,
         )) {
           io.stdout.write(`${line}\n`);
         }
         throw new Error(
-          "More than one subject matches that name. Repeat harvest with --subject <subject-id>.",
+          `More than one subject matches that name. Repeat ${request.command} with --subject <subject-id>.`,
         );
       } else {
         // The engine treats differently capitalized names as different people, so a new
         // subject is correct here; say so when a near-duplicate exists instead of silently
         // splitting one person's material across two subjects.
-        const wanted = (options.displayName ?? "").toLowerCase();
+        const wanted = (request.displayName ?? "").toLowerCase();
         let nearDuplicate: SubjectSummary | undefined;
         let cursor: string | undefined;
         // Page through the whole filtered listing: the case-variant may sort past any fixed
         // window, and a missed warning silently splits one person across two subjects.
         for (let page = 0; page < 20 && nearDuplicate === undefined; page += 1) {
           const listed = await application.distilly.list({
-            text: options.displayName ?? "",
+            text: request.displayName ?? "",
             limit: 200,
             ...(cursor === undefined ? {} : { cursor }),
           });
@@ -357,7 +420,7 @@ const runHarvest = async (
     const state = await loadHarvestState(statePath);
     const failures: string[] = [];
     const hashed: HashedHarvestFile[] = [];
-    for (const file of selection.files) {
+    for (const file of request.files) {
       try {
         hashed.push({
           ...file,
@@ -372,7 +435,7 @@ const runHarvest = async (
     }
     let files = hashed;
     const recorded = subjectId === undefined ? [] : (state.entries[subjectId] ?? []);
-    if (!options.force && recorded.length > 0) {
+    if (!request.force && recorded.length > 0) {
       const plan = planHarvest(files, recorded);
       if (plan.alreadyIngested.length > 0) {
         for (const file of plan.alreadyIngested) {
@@ -382,26 +445,26 @@ const runHarvest = async (
         }
       }
       files = [...plan.ingest];
-    } else if (options.force && files.length > 0) {
+    } else if (request.force && files.length > 0) {
       io.stdout.write(
         `--force re-ingests ${String(files.length)} file(s) even if they are unchanged, so the store gains a new material record for each one.\n`,
       );
     }
-    if (options.maximumFiles !== undefined && files.length > options.maximumFiles) {
-      const remaining = files.length - options.maximumFiles;
-      files = files.slice(0, options.maximumFiles);
+    if (request.maximumFiles !== undefined && files.length > request.maximumFiles) {
+      const remaining = files.length - request.maximumFiles;
+      files = files.slice(0, request.maximumFiles);
       io.stdout.write(
-        `Reached --limit ${String(options.maximumFiles)}; ${String(remaining)} more file(s) still need ingesting. Re-run to continue.\n`,
+        `Reached --limit ${String(request.maximumFiles)}; ${String(remaining)} more file(s) still need ingesting. Re-run to continue.\n`,
       );
     }
     if (files.length === 0) {
       io.stdout.write("Nothing new to ingest.\n");
       if (failures.length > 0) {
         throw new Error(
-          `${String(failures.length)} of ${String(selection.files.length)} file(s) could not be ingested:\n${failures.join("\n")}`,
+          `${String(failures.length)} of ${String(request.files.length)} file(s) could not be ingested:\n${failures.join("\n")}`,
         );
       }
-      return;
+      return { ingested: 0, failures };
     }
     // A file larger than one material is split by the runtime into parts, so it must travel
     // alone: a batch of several oversized files could exceed the wire limit for one result.
@@ -440,11 +503,17 @@ const runHarvest = async (
             : { kind: "existing", subjectId: subjectIdSchema.parse(target.subjectId) },
         paths: batch.map((file) => file.path),
         enqueue: "now",
-        ...(options.sensitivity === undefined ? {} : { sensitivity: options.sensitivity }),
+        ...(request.sensitivity === undefined ? {} : { sensitivity: request.sensitivity }),
       });
     const ingestTarget = () =>
       subjectId === undefined
-        ? ({ kind: "create", input: { displayName: options.displayName ?? "" } } as const)
+        ? ({
+            kind: "create",
+            input: {
+              displayName: request.displayName ?? "",
+              ...(request.aliases === undefined ? {} : { aliases: [...request.aliases] }),
+            },
+          } as const)
         : ({ kind: "existing", subjectId } as const);
     const ingestWithSubjectReuse = async (batch: readonly (typeof files)[number][]) => {
       try {
@@ -463,11 +532,11 @@ const runHarvest = async (
         }
         const candidates = ambiguousCandidates(error);
         if (candidates === undefined) throw error;
-        for (const line of describeAmbiguousSubject(options.displayName ?? "", candidates)) {
+        for (const line of describeAmbiguousSubject(request.displayName ?? "", candidates)) {
           io.stdout.write(`${line}\n`);
         }
         throw new Error(
-          "More than one subject matches that name. Repeat harvest with --subject <subject-id>.",
+          `More than one subject matches that name. Repeat ${request.command} with --subject <subject-id>.`,
           { cause: error },
         );
       }
@@ -532,6 +601,11 @@ const runHarvest = async (
         `${String(failures.length)} of ${String(files.length)} file(s) could not be ingested:\n${failures.join("\n")}`,
       );
     }
+    return {
+      ...(subjectId === undefined ? {} : { subjectId }),
+      ingested,
+      failures,
+    };
   } finally {
     await application.close();
   }
@@ -1025,6 +1099,180 @@ const runRollback = async (
   }
 };
 
+/**
+ * Reads one path plus host, subject, and limit options for the legacy import command.
+ *
+ * @param args - Legacy directory plus options.
+ * @returns Parsed options.
+ */
+const importOptions = (
+  args: readonly string[],
+): {
+  readonly directory: string;
+  readonly host: HostName;
+  readonly displayName?: string;
+  readonly subjectId?: string;
+  readonly sensitivity?: "private" | "shareable";
+  readonly maximumFiles?: number;
+  readonly force: boolean;
+  readonly asJson: boolean;
+} => {
+  const [directory, ...rest] = args;
+  if (directory === undefined || directory.startsWith("--")) {
+    throw new Error(
+      "This command requires a legacy person or skills directory, then --host <host>.",
+    );
+  }
+  let host: HostName | undefined;
+  let asJson = false;
+  const parsed: {
+    displayName?: string;
+    subjectId?: string;
+    sensitivity?: "private" | "shareable";
+    maximumFiles?: number;
+    force?: boolean;
+  } = {};
+  for (let index = 0; index < rest.length; index += 1) {
+    const flag = rest[index];
+    if (flag === "--force") {
+      parsed.force = true;
+      continue;
+    }
+    if (flag === "--json") {
+      asJson = true;
+      continue;
+    }
+    const value = rest[index + 1];
+    if (value === undefined) throw new Error(`Missing value for ${String(flag)}.`);
+    if (flag === "--host") host = parseHost(value);
+    else if (flag === "--name") parsed.displayName = value;
+    else if (flag === "--subject") parsed.subjectId = value;
+    else if (flag === "--sensitivity") {
+      if (value !== "private" && value !== "shareable") {
+        throw new Error("--sensitivity must be private or shareable.");
+      }
+      parsed.sensitivity = value;
+    } else if (flag === "--limit") {
+      const limit = Number.parseInt(value, 10);
+      if (!Number.isSafeInteger(limit) || limit <= 0) throw new Error("--limit must be positive.");
+      parsed.maximumFiles = limit;
+    } else {
+      throw new Error(`Unknown import option: ${String(flag)}.`);
+    }
+    index += 1;
+  }
+  if (host === undefined) throw new Error("This command requires --host.");
+  return { directory, host, force: parsed.force === true, asJson, ...parsed };
+};
+
+/**
+ * Imports people written by the legacy Skill release as Distilly material.
+ *
+ * The legacy release kept each person as a folder of Markdown beside a `meta.json` descriptor.
+ * Migration reads that layout as it is, creates or reuses one subject per person, and ingests
+ * every supported file as evidence, so the host can distill a V3 profile from the same material
+ * the old Skill used. Nothing is deleted and the legacy directory is never modified.
+ *
+ * @param args - Legacy directory plus host and subject options.
+ * @param environment - Resolved Preview CLI environment.
+ * @param io - Command output streams.
+ */
+const runImport = async (
+  args: readonly string[],
+  environment: PreviewCliEnvironment,
+  io: PreviewCliIo,
+): Promise<void> => {
+  const options = importOptions(args);
+  const people = await listLegacyPeople(options.directory);
+  if (people.length === 0) {
+    throw new Error(
+      `No legacy person directory was found under ${options.directory}. Expected a folder with persona.md, work.md, or meta.json, or a parent folder of such folders.`,
+    );
+  }
+  if (people.length > 1 && (options.displayName !== undefined || options.subjectId !== undefined)) {
+    throw new Error(
+      `${String(people.length)} legacy people were found, so --name and --subject cannot choose one. Point the command at a single person directory instead.`,
+    );
+  }
+  const single = people.length === 1 ? people[0] : undefined;
+  const displayName = options.displayName ?? single?.displayName;
+  const outcomes: {
+    readonly directory: string;
+    readonly displayName: string;
+    readonly subjectId?: string;
+    readonly ingested: number;
+  }[] = [];
+  const failures: string[] = [];
+  for (const person of people) {
+    io.stdout.write(`\n${person.displayName} (${person.directory})\n`);
+    for (const note of person.descriptorNotes) io.stdout.write(`  ${note}\n`);
+    if (!person.described) {
+      io.stdout.write("  No meta.json was read; the directory name was used as the name.\n");
+    }
+    const selection = await selectHarvestFiles(person.directory);
+    for (const line of describeHarvestSelection(selection)) io.stdout.write(`  ${line}\n`);
+    if (selection.files.length === 0) {
+      io.stdout.write("  No supported evidence file was found; this person was skipped.\n");
+      failures.push(`${person.displayName}: no supported evidence file`);
+      continue;
+    }
+    const isSingle = single !== undefined;
+    // Every person keeps its own name; only a single-directory import can override it, and only
+    // a single-directory import may target an existing subject.
+    const personName = isSingle && displayName !== undefined ? displayName : person.displayName;
+    const personSubjectId = isSingle ? options.subjectId : undefined;
+    const personAliases = options.displayName === undefined ? person.aliases : [];
+    try {
+      const outcome = await ingestFileSelection(
+        {
+          command: "import",
+          host: options.host,
+          files: selection.files,
+          force: options.force,
+          ...(personSubjectId === undefined
+            ? { displayName: personName }
+            : { subjectId: personSubjectId }),
+          ...(personAliases.length === 0 ? {} : { aliases: personAliases }),
+          ...(options.sensitivity === undefined ? {} : { sensitivity: options.sensitivity }),
+          ...(options.maximumFiles === undefined ? {} : { maximumFiles: options.maximumFiles }),
+        },
+        environment,
+        io,
+      );
+      outcomes.push({
+        directory: person.directory,
+        displayName: personName,
+        ...(outcome.subjectId === undefined ? {} : { subjectId: outcome.subjectId }),
+        ingested: outcome.ingested,
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "unknown failure";
+      failures.push(`${person.displayName}: ${reason}`);
+      io.stdout.write(`  Could not import ${person.displayName}: ${reason}\n`);
+    }
+  }
+  if (options.asJson) {
+    io.stdout.write(`${JSON.stringify({ people: outcomes, failures }, undefined, 2)}\n`);
+  } else {
+    io.stdout.write(
+      `\nImported ${String(outcomes.length)} of ${String(people.length)} legacy person(s).\n`,
+    );
+    for (const outcome of outcomes) {
+      io.stdout.write(
+        `  ${outcome.displayName} -> ${outcome.subjectId ?? "(unchanged target)"} (${String(outcome.ingested)} file(s))\n`,
+      );
+    }
+    io.stdout.write(
+      "Next: ask the host that has Distilly installed to distill these people, then review the profiles with distilly show.\n",
+    );
+  }
+  if (failures.length > 0) {
+    throw new Error(
+      `${String(failures.length)} of ${String(people.length)} legacy person(s) could not be imported:\n${failures.join("\n")}`,
+    );
+  }
+};
+
 const help = `Distilly Developer Preview
 
 Usage:
@@ -1032,6 +1280,8 @@ Usage:
   distilly setup --host claude-code|openclaw|hermes|dsh [--allow-unverified-host]
   distilly doctor [--host <host>]
   distilly install <subject-id|display-name> --host <host>
+  distilly import <legacy-directory> --host <host> [--name <display-name>|--subject <id>]
+                  [--sensitivity private|shareable] [--limit <n>] [--force] [--json]
   distilly versions <subject-id|display-name> --host <host> [--limit <n>] [--cursor <cursor>] [--json]
   distilly diff <subject-id|display-name> --host <host> --from <version> --to <version> [--json]
   distilly rollback <subject-id|display-name> --host <host> --to <version> [--reason <text>]
@@ -1113,6 +1363,10 @@ export const runPreviewCli = async (
     } finally {
       await application.close();
     }
+    return 0;
+  }
+  if (command === "import") {
+    await runImport(args, environment, io);
     return 0;
   }
   if (command === "versions") {

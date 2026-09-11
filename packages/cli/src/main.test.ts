@@ -200,6 +200,67 @@ describe("Developer Preview CLI host boundary", () => {
     expect(stdout).toEqual([]);
   });
 
+  it("requires a legacy directory and a host for import", async () => {
+    const stdout: string[] = [];
+    const io = {
+      stdout: { write: (value: string) => stdout.push(value) },
+      stderr: { write: (value: string) => value },
+    };
+    await expect(runPreviewCli(["import", "--host", "codex"], environment, io)).rejects.toThrow(
+      "This command requires a legacy person or skills directory, then --host <host>.",
+    );
+    await expect(runPreviewCli(["import", "/tmp/legacy-skills"], environment, io)).rejects.toThrow(
+      "This command requires --host.",
+    );
+    await expect(
+      runPreviewCli(
+        ["import", "/tmp/legacy-skills", "--host", "codex", "--nope", "1"],
+        environment,
+        io,
+      ),
+    ).rejects.toThrow("Unknown import option: --nope.");
+    await expect(
+      runPreviewCli(
+        ["import", "/tmp/legacy-skills", "--host", "codex", "--sensitivity", "public"],
+        environment,
+        io,
+      ),
+    ).rejects.toThrow("--sensitivity must be private or shareable.");
+    await expect(
+      runPreviewCli(
+        ["import", "/tmp/legacy-skills", "--host", "codex", "--limit", "0"],
+        environment,
+        io,
+      ),
+    ).rejects.toThrow("--limit must be positive.");
+    expect(stdout).toEqual([]);
+  });
+
+  it("rejects an import path that does not exist before opening the host", async () => {
+    const io = {
+      stdout: { write: (value: string) => value },
+      stderr: { write: (value: string) => value },
+    };
+    await expect(
+      runPreviewCli(
+        ["import", "/tmp/distilly-missing-legacy-dir", "--host", "codex"],
+        environment,
+        io,
+      ),
+    ).rejects.toThrow("The import path must be an existing directory.");
+  });
+
+  it("documents the legacy import command", async () => {
+    const stdout: string[] = [];
+    await expect(
+      runPreviewCli(["--help"], environment, {
+        stdout: { write: (value: string) => stdout.push(value) },
+        stderr: { write: (value: string) => value },
+      }),
+    ).resolves.toBe(0);
+    expect(stdout.join("")).toContain("distilly import <legacy-directory> --host <host>");
+  });
+
   it("documents the version commands", async () => {
     const stdout: string[] = [];
     await expect(
