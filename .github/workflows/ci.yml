@@ -124,6 +124,9 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+          # The repository keeps its Python dependencies in requirements-dev.txt; without an
+          # explicit path the cache step fails on a repository with no requirements.txt.
+          cache-dependency-path: requirements-dev.txt
       - name: Install lint dependencies
         run: pip install -r requirements-dev.txt
       - name: Run Ruff

@@ -11,7 +11,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "gates:fast": "pnpm run format:check && pnpm run lint",
-    "typecheck": "pnpm -r exec tsc --noEmit -p tsconfig.json && pnpm -r --if-present run typecheck && tsc --noEmit -p tsconfig.tools.json",
+    "typecheck": "tsc -b && pnpm -r exec tsc --noEmit -p tsconfig.json && pnpm -r --if-present run typecheck && tsc --noEmit -p tsconfig.tools.json",
     "test": "vitest run && pnpm run test:panel-browser && pnpm run test:boundaries && pnpm run test:build-artifacts && pnpm run test:plugins",
     "test:coverage": "vitest run --coverage",
     "test:panel-http": "vitest run packages/panel/src/server-http.test.ts packages/panel/src/web-client.test.ts packages/panel/src/server-launcher.test.ts packages/panel/src/web-boundaries.test.ts",
