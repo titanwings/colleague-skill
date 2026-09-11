@@ -732,3 +732,52 @@ describe("person Skill lifecycle", () => {
     expect(await readFile(join(first.path, "SKILL.md"), "utf8")).toBe("hand edited\n");
   });
 });
+
+describe("Claude Code person Skill registration", () => {
+  it("writes the plugin marker Claude Code needs and removes it again", async () => {
+    const home = await temporaryHome();
+    const binding = createClaudeCodeHostBinding(sharedOptions(home));
+    const injector = binding.createInjector({ sessionId: "claude-marker", environment: "cli" });
+    const installed = await injector.install(PROFILE, {});
+    const marker = join(installed.path, ".claude-plugin", "plugin.json");
+    const originalMarker = await readFile(marker);
+    const parsed = JSON.parse(originalMarker.toString("utf8")) as {
+      name: string;
+      version: string;
+      skills: string[];
+      description: string;
+    };
+    expect(parsed.name).toBe(basename(installed.path));
+    expect(parsed.version).toBe(`0.0.0-${VERSION_ID.replace(/^version_/u, "").slice(0, 12)}`);
+    expect(parsed.skills).toEqual(["./"]);
+    expect(parsed.description).toContain("Ada Lovelace");
+
+    const manifest = JSON.parse(
+      await readFile(join(installed.path, ".distilly-install.json"), "utf8"),
+    ) as { files: { path: string }[] };
+    expect(manifest.files.map((file) => file.path).sort()).toEqual([
+      ".claude-plugin/plugin.json",
+      "SKILL.md",
+    ]);
+
+    // A tampered marker is a modified install, exactly like a tampered SKILL.md.
+    await writeFile(marker, "{}\n");
+    await expect(injector.uninstall(installed)).rejects.toMatchObject({ code: "storage_corrupt" });
+
+    await writeFile(marker, originalMarker);
+    await injector.uninstall(installed);
+    await expect(readFile(marker)).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await readdir(join(home, ".claude", "skills"))).toEqual([]);
+  });
+
+  it("keeps other hosts free of the Claude Code marker", async () => {
+    const home = await temporaryHome();
+    const binding = createCodexHostBinding({
+      ...sharedOptions(home),
+      executablePath: "/usr/bin/codex",
+    });
+    const injector = binding.createInjector({ sessionId: "codex-marker", environment: "cli" });
+    const installed = await injector.install(PROFILE, {});
+    expect(await readdir(installed.path)).toEqual([".distilly-install.json", "SKILL.md"]);
+  });
+});

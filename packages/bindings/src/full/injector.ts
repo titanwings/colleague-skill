@@ -31,12 +31,58 @@ import type { HostInjector, HostSpawnRequest, Injection } from "../protocol.js";
 
 const INSTALL_MANIFEST = ".distilly-install.json";
 const SKILL_FILE = "SKILL.md";
+/**
+ * Registration marker Claude Code needs before it adopts a skills-directory plugin.
+ *
+ * The host's own `claude plugin init` writes exactly this file beside `SKILL.md`; a bare
+ * `SKILL.md` directory is not registered (verified against the real binary), so a person Skill
+ * installed for Claude Code carries one too. The version is the profile's immutable version
+ * prefix, which keeps every install a distinct valid prerelease without inventing a release.
+ */
+const CLAUDE_CODE_PLUGIN_FILE = ".claude-plugin/plugin.json";
 
 interface PersonInstallManifest {
   readonly schemaVersion: 1;
   readonly install: InstallRef;
-  readonly files: readonly [{ readonly path: "SKILL.md"; readonly contentDigest: ContentDigest }];
+  /** Every file this install owns, verified byte for byte; SKILL.md is always present. */
+  readonly files: readonly {
+    readonly path: string;
+    readonly contentDigest: ContentDigest;
+  }[];
 }
+
+/** Paths an owned person Skill may contain besides SKILL.md. */
+const ALLOWED_PERSON_FILES: ReadonlySet<string> = new Set([CLAUDE_CODE_PLUGIN_FILE]);
+
+/**
+ * Builds the host registration marker for one person Skill, when the host needs one.
+ *
+ * @param host - Host the Skill is installed for.
+ * @param name - Skill directory name the host will register.
+ * @param profile - Profile being installed.
+ * @returns The file to write, or undefined when this host registers a bare SKILL.md.
+ */
+const personRegistrationFile = (
+  host: HostName,
+  name: string,
+  profile: Profile,
+): { readonly path: string; readonly bytes: Uint8Array } | undefined => {
+  if (host !== "claude-code") return undefined;
+  const version = profile.versionId.replace(/^version_/u, "").slice(0, 12);
+  return {
+    path: CLAUDE_CODE_PLUGIN_FILE,
+    bytes: Buffer.from(
+      `${canonicalJson({
+        $schema: "https://anthropic.com/claude-code/plugin.schema.json",
+        name,
+        version: `0.0.0-${version}`,
+        description: `Use ${profile.displayName}'s evidence-grounded Distilly Person Profile when the user explicitly selects it.`,
+        skills: ["./"],
+      })}\n`,
+      "utf8",
+    ),
+  };
+};
 
 const invalid = (message: string, fieldPath?: string): DistillyError =>
   new DistillyError({
@@ -176,30 +222,47 @@ const parseManifest = (bytes: Uint8Array): PersonInstallManifest => {
   if (value === null || typeof value !== "object" || Array.isArray(value)) throw modified();
   const manifest = value as Record<string, unknown>;
   const parsedInstall = installRefSchema.safeParse(manifest.install);
-  const files = manifest.files;
-  const file: unknown = Array.isArray(files) ? (files as unknown[])[0] : undefined;
+  const rawFiles = manifest.files;
   if (
     !hasExactKeys(manifest, ["schemaVersion", "install", "files"]) ||
     manifest.schemaVersion !== 1 ||
     !parsedInstall.success ||
-    !Array.isArray(files) ||
-    files.length !== 1 ||
-    file === null ||
-    typeof file !== "object" ||
-    Array.isArray(file) ||
-    !hasExactKeys(file as Record<string, unknown>, ["path", "contentDigest"]) ||
-    (file as Record<string, unknown>).path !== SKILL_FILE ||
-    !contentDigestSchema.safeParse((file as Record<string, unknown>).contentDigest).success
+    !Array.isArray(rawFiles) ||
+    rawFiles.length === 0
   ) {
     throw modified();
   }
-  const contentDigest = (file as { contentDigest: ContentDigest }).contentDigest;
-  if (parsedInstall.data.contentDigest !== contentDigest) throw modified();
-  return {
-    schemaVersion: 1,
-    install: parsedInstall.data,
-    files: [{ path: SKILL_FILE, contentDigest }],
-  };
+  const files: { path: string; contentDigest: ContentDigest }[] = [];
+  const paths = new Set<string>();
+  for (const entry of rawFiles) {
+    if (
+      entry === null ||
+      typeof entry !== "object" ||
+      Array.isArray(entry) ||
+      !hasExactKeys(entry as Record<string, unknown>, ["path", "contentDigest"])
+    ) {
+      throw modified();
+    }
+    const path = (entry as { path: unknown }).path;
+    if (
+      typeof path !== "string" ||
+      (path !== SKILL_FILE && !ALLOWED_PERSON_FILES.has(path)) ||
+      paths.has(path) ||
+      !contentDigestSchema.safeParse((entry as { contentDigest: unknown }).contentDigest).success
+    ) {
+      throw modified();
+    }
+    paths.add(path);
+    files.push({
+      path,
+      contentDigest: (entry as { contentDigest: ContentDigest }).contentDigest,
+    });
+  }
+  const skill = files.find((file) => file.path === SKILL_FILE);
+  if (skill === undefined || parsedInstall.data.contentDigest !== skill.contentDigest) {
+    throw modified();
+  }
+  return { schemaVersion: 1, install: parsedInstall.data, files };
 };
 
 const readRegularFile = async (path: string): Promise<Uint8Array> => {
@@ -242,7 +305,11 @@ const readVerifiedInstall = async (
   ) {
     throw modified();
   }
-  if (digest(await readRegularFile(skillPath)) !== install.contentDigest) throw modified();
+  for (const file of manifest.files) {
+    const path = resolve(root, file.path);
+    if (!isInside(root, path)) throw modified();
+    if (digest(await readRegularFile(path)) !== file.contentDigest) throw modified();
+  }
   return manifest;
 };
 
@@ -296,11 +363,29 @@ const installProfile = async (
       path: destination,
       installedAt: isoDateTimeSchema.parse(now().toISOString()),
     };
-    await replaceInstall(destination, homeDirectory, host, skill, {
-      schemaVersion: 1,
-      install: replaced,
-      files: [{ path: SKILL_FILE, contentDigest }],
-    });
+    const replacementRegistration = personRegistrationFile(host, name, profile);
+    await replaceInstall(
+      destination,
+      homeDirectory,
+      host,
+      skill,
+      {
+        schemaVersion: 1,
+        install: replaced,
+        files: [
+          { path: SKILL_FILE, contentDigest },
+          ...(replacementRegistration === undefined
+            ? []
+            : [
+                {
+                  path: replacementRegistration.path,
+                  contentDigest: digest(replacementRegistration.bytes),
+                },
+              ]),
+        ],
+      },
+      replacementRegistration,
+    );
     return replaced;
   }
 
@@ -309,10 +394,16 @@ const installProfile = async (
     ...identity,
     installedAt: isoDateTimeSchema.parse(now().toISOString()),
   };
+  const registration = personRegistrationFile(host, name, profile);
   const manifest: PersonInstallManifest = {
     schemaVersion: 1,
     install,
-    files: [{ path: SKILL_FILE, contentDigest }],
+    files: [
+      { path: SKILL_FILE, contentDigest },
+      ...(registration === undefined
+        ? []
+        : [{ path: registration.path, contentDigest: digest(registration.bytes) }]),
+    ],
   };
 
   await mkdir(dirname(root), { recursive: true });
@@ -322,6 +413,10 @@ const installProfile = async (
   try {
     await mkdir(staging);
     await writeFile(join(staging, SKILL_FILE), skill, { mode: 0o644 });
+    if (registration !== undefined) {
+      await mkdir(dirname(join(staging, registration.path)), { recursive: true });
+      await writeFile(join(staging, registration.path), registration.bytes, { mode: 0o644 });
+    }
     await writeFile(join(staging, INSTALL_MANIFEST), `${canonicalJson(manifest)}\n`, {
       mode: 0o600,
     });
@@ -345,6 +440,9 @@ const installProfile = async (
  * @param host - Host the Skill belongs to.
  * @param skill - New SKILL.md content.
  * @param manifest - New install manifest.
+ * @param registration - Host registration marker to write beside SKILL.md, when the host needs one.
+ * @param registration.path - Root-relative path of the marker.
+ * @param registration.bytes - Exact marker bytes.
  */
 const replaceInstall = async (
   destination: string,
@@ -352,6 +450,7 @@ const replaceInstall = async (
   host: HostName,
   skill: string,
   manifest: PersonInstallManifest,
+  registration?: { readonly path: string; readonly bytes: Uint8Array },
 ): Promise<void> => {
   const transactionRoot = join(homeDirectory, ".distilly", "host-install");
   await mkdir(transactionRoot, { recursive: true });
@@ -359,6 +458,10 @@ const replaceInstall = async (
   const backup = join(transactionRoot, `${host}-person-previous-${randomUUID()}`);
   await mkdir(staging);
   await writeFile(join(staging, SKILL_FILE), skill, { mode: 0o644 });
+  if (registration !== undefined) {
+    await mkdir(dirname(join(staging, registration.path)), { recursive: true });
+    await writeFile(join(staging, registration.path), registration.bytes, { mode: 0o644 });
+  }
   await writeFile(join(staging, INSTALL_MANIFEST), `${canonicalJson(manifest)}\n`, { mode: 0o600 });
   let movedAside = false;
   try {
@@ -425,6 +528,9 @@ export const listPersonInstalls = async (
   const summaries: PersonInstallSummary[] = [];
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+    // Claude Code keeps the Distilly integration Skill itself in the same skills root. It is
+    // not a person Skill, so listing it as an unverifiable one would only confuse the report.
+    if (entry.name === "distilly") continue;
     const path = join(root, entry.name);
     try {
       const manifest = await readVerifiedInstall(path, host);
@@ -466,9 +572,27 @@ const uninstallProfile = async (host: HostName, ref: InstallRef): Promise<void> 
   if (existing === undefined) return;
   const manifest = await readVerifiedInstall(root, host);
   if (canonicalJson(manifest.install) !== canonicalJson(parsedRef.data)) throw modified();
-  const skillPath = resolve(root, SKILL_FILE);
-  await unlink(skillPath);
+  for (const file of manifest.files) {
+    const path = resolve(root, file.path);
+    if (!isInside(root, path)) throw modified();
+    await unlink(path);
+  }
   await unlink(join(root, INSTALL_MANIFEST));
+  // A registration marker sits in its own directory, so clear the directories it leaves behind.
+  const directories = new Set<string>();
+  for (const file of manifest.files) {
+    let directory = dirname(resolve(root, file.path));
+    while (isInside(root, directory) && directory !== root) {
+      directories.add(directory);
+      directory = dirname(directory);
+    }
+  }
+  for (const directory of [...directories].sort((left, right) => right.length - left.length)) {
+    await rmdir(directory).catch((error: unknown) => {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== "ENOTEMPTY" && code !== "ENOENT") throw error;
+    });
+  }
   await rmdir(root).catch((error: unknown) => {
     if ((error as NodeJS.ErrnoException).code !== "ENOTEMPTY") throw error;
   });
