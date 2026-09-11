@@ -61,6 +61,8 @@ export interface PluginInstallResult {
   readonly manifestPath: string;
   readonly installedPaths: readonly string[];
   readonly restartRequired: boolean;
+  /** Where a repaired damaged tree was preserved, when the operator asked for a repair. */
+  readonly repairBackupPath?: string;
 }
 
 /** Sanitized health report from a production host binding. */
@@ -144,6 +146,14 @@ export interface FullHostBindingOptions extends HostCapabilityBindingOptions {
   readonly homeDirectory: string;
   readonly forms: HostFormPresenter;
   readonly now?: () => Date;
+  /**
+   * Rebuilds a damaged Distilly plugin tree after moving it aside.
+   *
+   * The operator asks for this explicitly, and only a directory that carries Distilly's own
+   * ownership manifest is moved: the previous tree is preserved under a timestamped name, so
+   * a repair never deletes anything it cannot prove it wrote.
+   */
+  readonly repairDamagedHost?: boolean;
 }
 
 /** Codex full-binding inputs, including the checked host executable. */

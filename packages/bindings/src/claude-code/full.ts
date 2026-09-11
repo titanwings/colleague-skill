@@ -59,6 +59,7 @@ export const createClaudeCodeHostBinding = (options: ClaudeCodeHostBindingOption
         transactionRoot: join(homeDirectory, ".distilly", "host-install"),
         platformManifestPath: PLATFORM_MANIFEST,
         expectedSkillDigest: options.release.canonicalSkillDigest,
+        repairDamaged: options.repairDamagedHost === true,
         mcpShape: (launcherPath) => ({
           mcpServers: {
             distilly: { command: launcherPath, args: ["mcp", "--host", host] },

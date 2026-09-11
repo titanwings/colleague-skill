@@ -1376,7 +1376,7 @@ const help = `Distilly Developer Preview
 
 Usage:
   distilly setup --host codex
-  distilly setup --host claude-code|openclaw|hermes|dsh [--allow-unverified-host]
+  distilly setup --host claude-code|openclaw|hermes|dsh [--allow-unverified-host] [--repair]
   distilly doctor [--host <host>]
   distilly install <subject-id|display-name> --host <host>
   distilly import <legacy-directory> --host <host> [--name <display-name>|--subject <id>]
@@ -1426,12 +1426,21 @@ export const runPreviewCli = async (
   }
   if (command === "setup") {
     const allowUnverifiedHost = args.includes("--allow-unverified-host");
+    const repairDamagedHost = args.includes("--repair");
     const host = hostOption(
-      args.filter((argument) => argument !== "--allow-unverified-host"),
+      args.filter((argument) => argument !== "--allow-unverified-host" && argument !== "--repair"),
       true,
     );
     if (host === undefined) throw new Error("This command requires --host.");
-    const result = await setupPreviewHost(host, environment.lifecycle, { allowUnverifiedHost });
+    const result = await setupPreviewHost(host, environment.lifecycle, {
+      allowUnverifiedHost,
+      repairDamagedHost,
+    });
+    if (result.repairBackupPath !== undefined) {
+      io.stdout.write(
+        `The damaged Distilly plugin tree was preserved at ${result.repairBackupPath}.\n`,
+      );
+    }
     io.stdout.write(
       `Installed Distilly ${result.releaseVersion} for ${result.host}. Restart the host to discover it.\n`,
     );

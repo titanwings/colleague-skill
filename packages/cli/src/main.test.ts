@@ -250,6 +250,30 @@ describe("Developer Preview CLI host boundary", () => {
     ).rejects.toThrow("The import path must be an existing directory.");
   });
 
+  it("accepts an explicit repair flag and rejects unknown setup flags", async () => {
+    const io = {
+      stdout: { write: (value: string) => value },
+      stderr: { write: (value: string) => value },
+    };
+    await expect(
+      runPreviewCli(["setup", "--repair", "--host", "codex"], environment, io),
+    ).rejects.toThrow();
+    await expect(
+      runPreviewCli(["setup", "--host", "codex", "--nope"], environment, io),
+    ).rejects.toThrow();
+  });
+
+  it("documents the repair flag", async () => {
+    const stdout: string[] = [];
+    await expect(
+      runPreviewCli(["--help"], environment, {
+        stdout: { write: (value: string) => stdout.push(value) },
+        stderr: { write: (value: string) => value },
+      }),
+    ).resolves.toBe(0);
+    expect(stdout.join("")).toContain("[--repair]");
+  });
+
   it("documents the legacy import command", async () => {
     const stdout: string[] = [];
     await expect(

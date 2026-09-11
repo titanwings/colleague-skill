@@ -304,6 +304,7 @@ export const createDshHostBinding = (options: DshHostBindingOptions): HostBindin
           transactionRoot: join(homeDirectory, ".distilly", "host-install"),
           platformManifestPath: PROFILE_MANIFEST,
           expectedSkillDigest: options.release.canonicalSkillDigest,
+          repairDamaged: options.repairDamagedHost === true,
           mcpShape: () => ({}),
           preservePlatformManifestFields: true,
           // DSH composes the profile and writes its own cordis.yml beside the layer we own.

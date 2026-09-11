@@ -46,6 +46,13 @@ interface PluginOwnershipManifest {
    * list still fails as an unowned file.
    */
   readonly hostGeneratedPaths?: readonly string[];
+  /**
+   * Moves a damaged Distilly tree aside and installs fresh instead of failing closed.
+   *
+   * Only a directory that carries Distilly's ownership manifest is moved, and it is preserved
+   * under a timestamped sibling name, so the operator can inspect or restore it.
+   */
+  readonly repairDamaged?: boolean;
 }
 
 interface PreparedPlugin {
@@ -85,6 +92,13 @@ export interface PluginTreeOptions {
    * host is known to write, and removal deletes them with the tree it owns.
    */
   readonly hostGeneratedPaths?: readonly string[];
+  /**
+   * Moves a damaged Distilly tree aside and installs fresh instead of failing closed.
+   *
+   * Only a directory that carries Distilly's ownership manifest is moved, and it is preserved
+   * under a timestamped sibling name, so the operator can inspect or restore it.
+   */
+  readonly repairDamaged?: boolean;
 }
 
 const fail = (message: string, fieldPath?: string): DistillyError =>
@@ -498,6 +512,7 @@ export const installPluginTree = async (
   const backup = join(options.transactionRoot, `${options.host}-${transactionId}-backup`);
   let installed = false;
   let backedUp = false;
+  let repairBackupPath: string | undefined;
   try {
     await mkdir(staging, { recursive: false });
     for (const [path, bytes] of prepared.files) {
@@ -510,9 +525,30 @@ export const installPluginTree = async (
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
       throw error;
     });
-    const existingOwnership = await readVerifiedPluginTree(options.pluginRoot, options.host);
+    let existingOwnership: PluginOwnershipManifest | undefined;
+    let verificationFailed = false;
+    try {
+      existingOwnership = await readVerifiedPluginTree(options.pluginRoot, options.host);
+    } catch (error) {
+      // A damaged tree throws instead of returning undefined; that is exactly the state an
+      // explicit repair is meant to recover from, so the failure is remembered, not rethrown.
+      verificationFailed = true;
+      if (options.repairDamaged !== true) throw error;
+    }
     if (existingMetadata !== undefined && existingOwnership === undefined) {
-      throw fail("The host plugin destination is not owned by Distilly.");
+      // A damaged install used to be a dead end: doctor, uninstall, and setup all refused it.
+      // An explicit repair moves it aside, but only when Distilly's own manifest proves it is
+      // ours; anything else is left exactly where it is.
+      const damaged =
+        options.repairDamaged === true &&
+        verificationFailed &&
+        (await hasOwnershipManifest(options.pluginRoot));
+      if (!damaged) throw fail("The host plugin destination is not owned by Distilly.");
+      repairBackupPath = join(options.transactionRoot, `${options.host}-repaired-${transactionId}`);
+      await mkdir(options.transactionRoot, { recursive: true });
+      await rename(options.pluginRoot, repairBackupPath);
+      existingOwnership = undefined;
+      backedUp = false;
     }
     if (existingOwnership !== undefined) {
       await rename(options.pluginRoot, backup);
@@ -537,6 +573,9 @@ export const installPluginTree = async (
     }
   } catch (error) {
     if (installed) await rm(options.pluginRoot, { recursive: true, force: true });
+    if (repairBackupPath !== undefined) {
+      await rename(repairBackupPath, options.pluginRoot).catch(() => undefined);
+    }
     if (backedUp) await rename(backup, options.pluginRoot);
     await rm(staging, { recursive: true, force: true });
     throw error;
@@ -544,6 +583,7 @@ export const installPluginTree = async (
   return {
     host: options.host,
     manifestPath: join(options.pluginRoot, options.platformManifestPath),
+    ...(repairBackupPath === undefined ? {} : { repairBackupPath }),
     installedPaths: [
       options.pluginRoot,
       join(options.pluginRoot, INSTALLED_MCP_FILE),
@@ -551,6 +591,24 @@ export const installPluginTree = async (
     ],
     restartRequired: true,
   };
+};
+
+/**
+ * Reports whether a directory carries a Distilly ownership manifest, valid or not.
+ *
+ * A repair is allowed for a directory Distilly wrote and that later lost or changed files; it
+ * is never allowed for a directory that has no manifest at all.
+ *
+ * @param pluginRoot - Candidate host plugin directory.
+ * @returns True when the ownership manifest exists as a regular file.
+ */
+const hasOwnershipManifest = async (pluginRoot: string): Promise<boolean> => {
+  try {
+    const metadata = await lstat(join(pluginRoot, OWNERSHIP_FILE));
+    return metadata.isFile() && !metadata.isSymbolicLink();
+  } catch {
+    return false;
+  }
 };
 
 const launcherReachable = async (path: string): Promise<boolean> => {

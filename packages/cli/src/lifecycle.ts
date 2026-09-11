@@ -141,6 +141,8 @@ export interface PreviewSetupResult {
   readonly launcherPath: string;
   readonly releaseVersion: string;
   readonly restartRequired: true;
+  /** Where the damaged tree was preserved when the operator asked for a repair. */
+  readonly repairBackupPath?: string;
 }
 
 /** Narrow lifecycle plus binding health; it deliberately excludes deep Engine doctor. */
@@ -686,8 +688,10 @@ const createBinding = (
   release: ReleaseManifest,
   executablePath: string,
   allowUnverifiedHost = false,
+  repairDamagedHost = false,
 ): HostBinding => {
   const options = {
+    ...(repairDamagedHost ? { repairDamagedHost: true } : {}),
     homeDirectory:
       host === BUILTIN_HOSTS.dsh
         ? (environment.dshHomeDirectory ?? environment.homeDirectory)
@@ -813,12 +817,14 @@ const assertEnvironment = (environment: PreviewLifecycleEnvironment): void => {
  * @param options - Install policy.
  * @param options.allowUnverifiedHost - Accepts an unrecorded host version on the
  * conservative floor instead of failing closed.
+ * @param options.repairDamagedHost - Moves a damaged Distilly plugin tree aside and installs
+ * fresh, preserving the previous tree for inspection.
  * @returns The installed host and restart requirement.
  */
 export const setupPreviewHost = async (
   hostValue: HostName,
   environment: PreviewLifecycleEnvironment,
-  options: { readonly allowUnverifiedHost?: boolean } = {},
+  options: { readonly allowUnverifiedHost?: boolean; readonly repairDamagedHost?: boolean } = {},
 ): Promise<PreviewSetupResult> => {
   assertEnvironment(environment);
   const host = previewHost(hostValue);
@@ -869,6 +875,7 @@ export const setupPreviewHost = async (
     release,
     executablePath,
     options.allowUnverifiedHost === true,
+    options.repairDamagedHost === true,
   );
   const preflight = await binding.preflight({ sessionId: `setup-${host}`, environment: "cli" });
   if (!preflight.ok) {
@@ -1006,6 +1013,9 @@ export const setupPreviewHost = async (
       launcherPath: paths.launcher,
       releaseVersion: release.releaseVersion,
       restartRequired: true,
+      ...(installed.repairBackupPath === undefined
+        ? {}
+        : { repairBackupPath: installed.repairBackupPath }),
     };
   } catch (error) {
     // Restore the manifest this attempt replaced, so a failed projection leaves no entry

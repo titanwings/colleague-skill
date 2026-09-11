@@ -781,3 +781,58 @@ describe("Claude Code person Skill registration", () => {
     expect(await readdir(installed.path)).toEqual([".distilly-install.json", "SKILL.md"]);
   });
 });
+
+describe("damaged install repair", () => {
+  it("refuses a damaged tree by default and repairs it only when asked", async () => {
+    const home = await temporaryHome();
+    const manifest = JSON.parse(
+      await readFile(join(REPOSITORY_ROOT, "plugins", "release-manifest.json"), "utf8"),
+    ) as { releaseVersion: string };
+    const install = async (options: FullHostBindingOptions) => {
+      const binding = createClaudeCodeHostBinding(options);
+      return await binding.installPlugin({
+        launcherPath: join(home, ".distilly", "bin", "distilly"),
+        pluginSourcePath: join(REPOSITORY_ROOT, "plugins", "claude-code"),
+        runtimeVersion: manifest.releaseVersion,
+      });
+    };
+    const installed = await install(sharedOptions(home));
+    const ownedFile = join(installed.installedPaths[0]!, "skills", "distilly", "SKILL.md");
+    await rm(ownedFile);
+
+    await expect(install(sharedOptions(home))).rejects.toMatchObject({ code: "storage_corrupt" });
+
+    const repaired = await install({ ...sharedOptions(home), repairDamagedHost: true });
+    expect(repaired.repairBackupPath).toBeDefined();
+    // The damaged tree is preserved rather than deleted, so nothing the operator had is lost.
+    expect(
+      await readFile(join(repaired.repairBackupPath!, "skills", "distilly", "SKILL.md")).catch(
+        () => undefined,
+      ),
+    ).toBeUndefined();
+    expect(await readdir(repaired.repairBackupPath!)).toContain("skills");
+    expect(await readFile(ownedFile, "utf8")).toContain("Distilly");
+  });
+
+  it("never claims a directory that has no Distilly ownership manifest", async () => {
+    const home = await temporaryHome();
+    const manifest = JSON.parse(
+      await readFile(join(REPOSITORY_ROOT, "plugins", "release-manifest.json"), "utf8"),
+    ) as { releaseVersion: string };
+    const pluginRoot = join(home, ".claude", "skills", "distilly");
+    await mkdir(pluginRoot, { recursive: true });
+    await writeFile(join(pluginRoot, "foreign.txt"), "someone else's skill\n");
+    const binding = createClaudeCodeHostBinding({
+      ...sharedOptions(home),
+      repairDamagedHost: true,
+    });
+    await expect(
+      binding.installPlugin({
+        launcherPath: join(home, ".distilly", "bin", "distilly"),
+        pluginSourcePath: join(REPOSITORY_ROOT, "plugins", "claude-code"),
+        runtimeVersion: manifest.releaseVersion,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_input" });
+    expect(await readFile(join(pluginRoot, "foreign.txt"), "utf8")).toBe("someone else's skill\n");
+  });
+});
