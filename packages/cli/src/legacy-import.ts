@@ -23,9 +23,6 @@ export interface LegacyPerson {
 /** How deep the legacy search descends below the given directory. */
 const LEGACY_SEARCH_DEPTH = 4;
 
-/** Files the legacy release always wrote for one person. */
-const LEGACY_PERSON_FILES = ["persona.md", "work.md", "meta.json"] as const;
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -54,16 +51,25 @@ const isDirectory = async (path: string): Promise<boolean> => {
  * @returns True when the directory carries the legacy person files.
  */
 export const isLegacyPersonDirectory = async (directory: string): Promise<boolean> => {
-  for (const name of LEGACY_PERSON_FILES) {
-    if (await isDirectory(join(directory, name))) continue;
+  const hasFile = async (name: string): Promise<boolean> => {
     try {
       const metadata = await lstat(join(directory, name));
-      if (metadata.isFile() && !metadata.isSymbolicLink()) return true;
+      return metadata.isFile() && !metadata.isSymbolicLink();
     } catch {
-      // Try the next legacy file.
+      return false;
     }
+  };
+  // persona.md or work.md are written only for a person, so they settle it immediately.
+  if ((await hasFile("persona.md")) || (await hasFile("work.md"))) return true;
+  if (!(await hasFile("meta.json"))) return false;
+  // A directory that holds only a descriptor but also contains person directories is a
+  // category, not a person: treating it as a person would swallow everyone below it.
+  const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.isSymbolicLink() || entry.name.startsWith(".")) continue;
+    if (await isLegacyPersonDirectory(join(directory, entry.name))) return false;
   }
-  return false;
+  return true;
 };
 
 /**

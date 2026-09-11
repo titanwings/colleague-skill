@@ -43,10 +43,18 @@ export interface HarvestFile {
 export interface HarvestSelection {
   readonly files: readonly HarvestFile[];
   readonly skipped: Readonly<Partial<Record<HarvestSkipReason, number>>>;
+  /** Why each individual path was left out, in walk order, bounded for reporting. */
+  readonly skippedEntries: readonly {
+    readonly relativePath: string;
+    readonly reason: HarvestSkipReason;
+  }[];
   readonly directoriesVisited: number;
   /** True when the selection cap stopped the walk before every entry was considered. */
   readonly truncated: boolean;
 }
+
+/** How many individual skip reasons one selection keeps for reporting. */
+const MAXIMUM_SKIP_DETAILS = 200;
 
 /** Selection limits; a caller may lower them but never silently exceed them. */
 export interface HarvestOptions {
@@ -134,13 +142,17 @@ export const selectHarvestFiles = async (
 ): Promise<HarvestSelection> => {
   const maximumFiles = options.maximumFiles ?? DEFAULT_MAXIMUM_FILES;
   const skipped: Partial<Record<HarvestSkipReason, number>> = {};
+  const skippedEntries: { relativePath: string; reason: HarvestSkipReason }[] = [];
   const files: HarvestFile[] = [];
   const labels = new Set<string>();
   let directoriesVisited = 0;
   let truncated = false;
 
-  const skip = (reason: HarvestSkipReason): void => {
+  const skip = (reason: HarvestSkipReason, relativePath?: string): void => {
     skipped[reason] = (skipped[reason] ?? 0) + 1;
+    if (relativePath !== undefined && skippedEntries.length < MAXIMUM_SKIP_DETAILS) {
+      skippedEntries.push({ relativePath, reason });
+    }
   };
 
   const walk = async (directory: string): Promise<void> => {
@@ -155,12 +167,12 @@ export const selectHarvestFiles = async (
       if (entry.isSymbolicLink()) {
         // A directory entry for a symlink does not reveal its target, and following it is
         // exactly what this boundary must not do, so every link is reported as one kind.
-        skip("symlink");
+        skip("symlink", relativePath);
         continue;
       }
       if (entry.isDirectory()) {
         if (entry.name.startsWith(".") || IGNORED_DIRECTORIES.has(entry.name)) {
-          skip("dependency-or-build");
+          skip("dependency-or-build", relativePath);
           continue;
         }
         await walk(path);
@@ -169,28 +181,28 @@ export const selectHarvestFiles = async (
       // Credentials are checked first so a dotfile such as `.env` is reported as a
       // credential rather than lumped in with ordinary hidden files.
       if (isCredentialName(entry.name)) {
-        skip("credential");
+        skip("credential", relativePath);
         continue;
       }
       if (entry.name.startsWith(".")) {
-        skip("hidden");
+        skip("hidden", relativePath);
         continue;
       }
       const mediaType = SUPPORTED_EXTENSIONS.get(extname(entry.name).toLowerCase());
       if (mediaType === undefined) {
-        skip("unsupported-format");
+        skip("unsupported-format", relativePath);
         continue;
       }
       const metadata = await lstat(path).catch(() => undefined);
       if (metadata === undefined || !metadata.isFile() || metadata.isSymbolicLink()) {
-        skip("not-a-regular-file");
+        skip("not-a-regular-file", relativePath);
         continue;
       }
       const pathLabel = basename(path);
       if (pathLabel.length === 0 || labels.has(pathLabel)) {
         // The engine records one label per file and rejects duplicates, so a repeated
         // basename is reported rather than silently overwriting another file's evidence.
-        skip("duplicate-name");
+        skip("duplicate-name", relativePath);
         continue;
       }
       if (files.length >= maximumFiles) {
@@ -206,7 +218,26 @@ export const selectHarvestFiles = async (
   // The walk already emits entries in order, but a directory boundary can interleave a
   // deeper path before a sibling file, so the final order is fixed explicitly.
   files.sort((left, right) => compareUtf8(left.relativePath, right.relativePath));
-  return { files, skipped, directoriesVisited, truncated };
+  return { files, skipped, skippedEntries, directoriesVisited, truncated };
+};
+
+/**
+ * Renders the individual files a selection left out, so lost evidence is visible by name.
+ *
+ * @param selection - Result of one directory selection.
+ * @param limit - Largest number of entries to render.
+ * @returns One line per skipped path, plus a count when more were left out.
+ */
+export const describeSkippedEntries = (
+  selection: HarvestSelection,
+  limit = 20,
+): readonly string[] => {
+  const lines = selection.skippedEntries
+    .slice(0, limit)
+    .map((entry) => `  skipped ${entry.relativePath}: ${entry.reason}`);
+  const remaining = selection.skippedEntries.length - lines.length;
+  if (remaining > 0) lines.push(`  ... and ${String(remaining)} more skipped entry(ies).`);
+  return lines;
 };
 
 /**

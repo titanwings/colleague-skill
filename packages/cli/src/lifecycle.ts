@@ -871,7 +871,16 @@ export const setupPreviewHost = async (
     options.allowUnverifiedHost === true,
   );
   const preflight = await binding.preflight({ sessionId: `setup-${host}`, environment: "cli" });
-  if (!preflight.ok) throw fail(preflight.error.message);
+  if (!preflight.ok) {
+    // A host version with no recorded fixture is the common case after a host update. Say what
+    // was measured for what, and name the flag that installs anyway, instead of dead-ending.
+    if (preflight.error.code === "host_unsupported") {
+      throw fail(
+        `${preflight.error.message} ${host} ${hostVersion} has no recorded capacity fixture in this release. Install a host version that has one, or re-run this command with --allow-unverified-host to install on the conservative floor (doctor keeps reporting it).`,
+      );
+    }
+    throw fail(preflight.error.message);
+  }
   const unverifiedHost =
     preflight.evidence.kind === "unverified_host_version" ? (true as const) : undefined;
   await ensureRoot(paths.root);

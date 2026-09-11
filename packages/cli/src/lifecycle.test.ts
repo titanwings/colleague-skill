@@ -346,7 +346,11 @@ exit 0
     await executable(join(root, "host-bin", "codex"), "codex-cli 99.0.0");
 
     await expect(setupPreviewHost(BUILTIN_HOSTS.codex, environment)).rejects.toThrow(
-      /verified Distilly briefing capacity/u,
+      /codex-cli 99\.0\.0 has no recorded capacity fixture/u,
+    );
+    // The message must name the way forward, or a host update is a dead end.
+    await expect(setupPreviewHost(BUILTIN_HOSTS.codex, environment)).rejects.toThrow(
+      /--allow-unverified-host/u,
     );
     await expect(readFile(join(home, ".distilly", "install.json"))).rejects.toMatchObject({
       code: "ENOENT",

@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -22,7 +22,9 @@ const person = async (
   const directory = join(parent, name);
   await mkdir(directory, { recursive: true });
   for (const [file, content] of Object.entries(files)) {
-    await writeFile(join(directory, file), content);
+    const target = join(directory, file);
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, content);
   }
   return directory;
 };
@@ -109,6 +111,26 @@ describe("legacy person detection", () => {
     expect(people.map((entry) => entry.displayName)).toEqual(["example_star", "佳秀（示例）"]);
     const jiaxiu = people.find((entry) => entry.slug === "example_jiaxiu");
     expect(jiaxiu?.directory.endsWith(join("colleague", "example_jiaxiu"))).toBe(true);
+  });
+
+  it("does not treat a category directory with a descriptor as one person", async () => {
+    const root = await temporaryRoot();
+    // A category that happens to carry a meta.json must not swallow the people below it.
+    await person(join(root, "cat"), "colleague", {
+      "meta.json": JSON.stringify({ name: "Colleague Category", slug: "cat" }),
+    });
+    await person(join(root, "cat"), "colleague/alice", {
+      "persona.md": "# Alice\n",
+      "meta.json": JSON.stringify({ name: "Alice", slug: "alice" }),
+    });
+    // A real person directory with a subfolder of notes stays one person.
+    await person(join(root, "cat"), "bob", {
+      "persona.md": "# Bob\n",
+      "notes/extra.md": "# note\n",
+    });
+    const people = await listLegacyPeople(join(root, "cat"));
+    // `bob` has no meta.json, so its directory name is the person name.
+    expect(people.map((entry) => entry.displayName).sort()).toEqual(["Alice", "bob"]);
   });
 
   it("rejects a path that is not a directory", async () => {

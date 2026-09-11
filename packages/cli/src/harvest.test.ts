@@ -5,7 +5,12 @@ import { join } from "node:path";
 import { DistillyError } from "@distilly/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { describeHarvestSelection, recordBudgetExceeded, selectHarvestFiles } from "./harvest.js";
+import {
+  describeHarvestSelection,
+  describeSkippedEntries,
+  recordBudgetExceeded,
+  selectHarvestFiles,
+} from "./harvest.js";
 
 const temporaryRoots: string[] = [];
 
@@ -119,6 +124,27 @@ describe("directory harvest selection", () => {
 
     expect(lines[0]).toBe("Selected 1 file(s) from 1 director(ies).");
     expect(lines.slice(1)).toEqual(["  skipped credential: 1", "  skipped unsupported-format: 1"]);
+  });
+});
+
+describe("skip details", () => {
+  it("keeps the path and reason of every skipped entry for reporting", async () => {
+    const root = await temporaryDirectory();
+    await writeFile(join(root, "keep.md"), "# keep\n");
+    await writeFile(join(root, "credentials.json"), "TOKEN=1\n");
+    await writeFile(join(root, ".hidden.md"), "# hidden\n");
+    await writeFile(join(root, "clip.mp4"), "binary\n");
+    const selection = await selectHarvestFiles(root);
+    expect(selection.files.map((file) => file.pathLabel)).toEqual(["keep.md"]);
+    const skipped = selection.skippedEntries.map(
+      (entry) => `${entry.relativePath}:${entry.reason}`,
+    );
+    expect(skipped).toContain("credentials.json:credential");
+    expect(skipped).toContain(".hidden.md:hidden");
+    expect(skipped).toContain("clip.mp4:unsupported-format");
+    const lines = describeSkippedEntries(selection);
+    expect(lines.join("\n")).toContain("skipped credentials.json: credential");
+    expect(describeSkippedEntries(selection, 1).join("\n")).toContain("more skipped entry(ies)");
   });
 });
 
