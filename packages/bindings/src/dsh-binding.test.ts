@@ -313,3 +313,29 @@ describe("DSH person Skill root", () => {
     void manifest;
   });
 });
+
+describe("DSH host-composed state", () => {
+  it("keeps the profile file DSH writes when Distilly installs again", async () => {
+    const home = await temporaryHome();
+    const manifest = JSON.parse(
+      await readFile(join(REPOSITORY_ROOT, "plugins", "release-manifest.json"), "utf8"),
+    ) as { releaseVersion: string };
+    const first = createDshHostBinding(await options(home));
+    const installed = await first.installPlugin({
+      launcherPath: await launcher(home),
+      pluginSourcePath: join(REPOSITORY_ROOT, "plugins", "dsh"),
+      runtimeVersion: manifest.releaseVersion,
+    });
+    const composed = join(installed.installedPaths[0]!, "cordis.yml");
+    // DSH composes this file when it boots the profile; a re-install must not delete it.
+    await writeFile(composed, "# composed by dsh\n");
+
+    const second = createDshHostBinding(await options(home));
+    await second.installPlugin({
+      launcherPath: await launcher(home),
+      pluginSourcePath: join(REPOSITORY_ROOT, "plugins", "dsh"),
+      runtimeVersion: manifest.releaseVersion,
+    });
+    expect(await readFile(composed, "utf8")).toBe("# composed by dsh\n");
+  });
+});

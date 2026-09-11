@@ -63,13 +63,28 @@ export const isLegacyPersonDirectory = async (directory: string): Promise<boolea
   if ((await hasFile("persona.md")) || (await hasFile("work.md"))) return true;
   if (!(await hasFile("meta.json"))) return false;
   // A directory that holds only a descriptor but also contains person directories is a
-  // category, not a person: treating it as a person would swallow everyone below it.
+  // category, not a person: treating it as a person would swallow everyone below it. The search
+  // has to match the walker's depth, or an intermediate folder hides the people under it.
+  return !(await containsPersonDirectory(directory, 1));
+};
+
+/**
+ * Reports whether any person directory exists below one directory, within the search depth.
+ *
+ * @param directory - Directory to search.
+ * @param depth - Current depth below the original path.
+ * @returns True when a person directory was found.
+ */
+const containsPersonDirectory = async (directory: string, depth: number): Promise<boolean> => {
+  if (depth > LEGACY_SEARCH_DEPTH) return false;
   const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.isSymbolicLink() || entry.name.startsWith(".")) continue;
-    if (await isLegacyPersonDirectory(join(directory, entry.name))) return false;
+    const child = join(directory, entry.name);
+    if (await isLegacyPersonDirectory(child)) return true;
+    if (await containsPersonDirectory(child, depth + 1)) return true;
   }
-  return true;
+  return false;
 };
 
 /**

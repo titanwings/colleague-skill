@@ -187,6 +187,7 @@ const readChatGpt = (
   if (!Array.isArray(value)) return { conversations, warnings };
   let skippedBranches = 0;
   let skippedMessages = 0;
+  let attachments = 0;
   for (const entry of value) {
     if (!isRecord(entry)) continue;
     const mapping = entry["mapping"];
@@ -208,6 +209,17 @@ const readChatGpt = (
       const content: unknown = message["content"];
       const read = isRecord(content) ? chatGptContent(content) : {};
       if (read.text === undefined) {
+        const parts = isRecord(content) ? asArray(content["parts"]) : undefined;
+        if (
+          parts?.some(
+            (part) =>
+              isRecord(part) &&
+              (asText(part["content_type"]) === "image_asset_pointer" ||
+                asText(part["content_type"]) === "audio_asset_pointer"),
+          ) === true
+        ) {
+          attachments += 1;
+        }
         skippedMessages += 1;
         continue;
       }
@@ -231,6 +243,9 @@ const readChatGpt = (
   if (skippedMessages > 0) {
     warnings.push(`${String(skippedMessages)} message(s) carried no text and were skipped.`);
   }
+  if (attachments > 0) {
+    warnings.push(`${String(attachments)} image or audio part(s) were not included as evidence.`);
+  }
   return { conversations, warnings };
 };
 
@@ -247,6 +262,7 @@ const readClaude = (
   const conversations: TranscriptConversation[] = [];
   if (!Array.isArray(value)) return { conversations, warnings };
   let skipped = 0;
+  let attachments = 0;
   for (const entry of value) {
     if (!isRecord(entry)) continue;
     const rawMessages = asArray(entry["chat_messages"]);
@@ -255,6 +271,8 @@ const readClaude = (
     for (const raw of rawMessages) {
       if (!isRecord(raw)) continue;
       const text = asText(raw["text"]);
+      attachments +=
+        (asArray(raw["attachments"])?.length ?? 0) + (asArray(raw["files"])?.length ?? 0);
       if (text === undefined) {
         skipped += 1;
         continue;
@@ -269,6 +287,9 @@ const readClaude = (
     conversations.push({ title, ...(at === undefined ? {} : { at }), messages });
   }
   if (skipped > 0) warnings.push(`${String(skipped)} message(s) carried no text and were skipped.`);
+  if (attachments > 0) {
+    warnings.push(`${String(attachments)} attachment(s) were not included as evidence.`);
+  }
   return { conversations, warnings };
 };
 
@@ -286,9 +307,11 @@ const readSlack = (
   if (rawMessages === undefined) return { conversations: [], warnings };
   const messages: TranscriptMessage[] = [];
   let skipped = 0;
+  let attachments = 0;
   for (const raw of rawMessages) {
     if (!isRecord(raw)) continue;
     const text = asText(raw["text"]);
+    attachments += asArray(raw["files"])?.length ?? 0;
     if (text === undefined) {
       skipped += 1;
       continue;
@@ -303,6 +326,9 @@ const readSlack = (
     });
   }
   if (skipped > 0) warnings.push(`${String(skipped)} message(s) carried no text and were skipped.`);
+  if (attachments > 0) {
+    warnings.push(`${String(attachments)} file(s) were not included as evidence.`);
+  }
   const channel = isRecord(value) ? asText(value["channel"]) : undefined;
   const channelName = isRecord(value) ? asText(value["name"]) : undefined;
   if (messages.length === 0) return { conversations: [], warnings };
@@ -383,12 +409,12 @@ const readDiscord = (
     const speaker = isRecord(author)
       ? (asText(author["nickname"]) ?? asText(author["name"]) ?? asText(author["id"]) ?? "unknown")
       : "unknown";
+    attachments += asArray(raw["attachments"])?.length ?? 0;
     const text = asText(raw["content"]);
     if (text === undefined) {
       skipped += 1;
       continue;
     }
-    attachments += asArray(raw["attachments"])?.length ?? 0;
     const at = normalizeInstant(raw["timestamp"]);
     messages.push({ speaker, ...(at === undefined ? {} : { at }), text });
   }
@@ -413,12 +439,14 @@ const readDiscord = (
 export const detectChatExport = (value: unknown): ChatExportKind | undefined => {
   const entries = Array.isArray(value) ? value : [];
   if (
-    entries.some(
-      (entry) =>
-        isRecord(entry) &&
-        isRecord(entry["mapping"]) &&
-        (asText(entry["current_node"]) !== undefined || asText(entry["title"]) !== undefined),
-    )
+    entries.some((entry) => {
+      if (!isRecord(entry) || !isRecord(entry["mapping"])) return false;
+      // A ChatGPT export stores conversation nodes whose `message` carries an author and
+      // content. Requiring one keeps a generic object with a `mapping` key out.
+      return Object.values(entry["mapping"]).some(
+        (node) => isRecord(node) && isRecord(node["message"]),
+      );
+    })
   ) {
     return "chatgpt";
   }
@@ -442,6 +470,9 @@ export const detectChatExport = (value: unknown): ChatExportKind | undefined => 
     messages.some(
       (message) =>
         isRecord(message) &&
+        // Real Slack messages declare their type; an event log with `ts`, `user`, and `text`
+        // does not, and treating one as a conversation would invent a person's words.
+        asText(message["type"]) === "message" &&
         asText(message["ts"]) !== undefined &&
         (asText(message["user"]) !== undefined ||
           asText(message["username"]) !== undefined ||
@@ -454,7 +485,8 @@ export const detectChatExport = (value: unknown): ChatExportKind | undefined => 
     messages.some(
       (message) =>
         isRecord(message) &&
-        asText(message["date"]) !== undefined &&
+        // Telegram writes an ISO date, but a converted export can carry epoch seconds.
+        (asText(message["date"]) !== undefined || typeof message["date"] === "number") &&
         (asText(message["from"]) !== undefined || asText(message["from_id"]) !== undefined),
     )
   ) {
@@ -494,6 +526,7 @@ export const renderChatExport = (
   let messageCount = 0;
   let conversationCount = 0;
   let truncated = 0;
+  let droppedParticipants = 0;
   for (const conversation of read.conversations) {
     if (bytes >= limits.maximumOutputBytes) {
       truncated += 1;
@@ -522,14 +555,20 @@ export const renderChatExport = (
       lines.push(rendered);
       bytes += renderedBytes;
       messageCount += 1;
-      if (!participants.includes(message.speaker) && participants.length < 32) {
-        participants.push(message.speaker);
+      if (!participants.includes(message.speaker)) {
+        if (participants.length < MAXIMUM_PARTICIPANTS) participants.push(message.speaker);
+        else droppedParticipants += 1;
       }
     }
   }
   if (truncated > 0) {
     warnings.push(
       `${String(truncated)} conversation(s) or message(s) were left out to stay within the output limit.`,
+    );
+  }
+  if (droppedParticipants > 0) {
+    warnings.push(
+      `${String(droppedParticipants)} further speaker(s) were not recorded because a material carries at most ${String(MAXIMUM_PARTICIPANTS)} participants.`,
     );
   }
   return {
@@ -541,6 +580,9 @@ export const renderChatExport = (
     warnings,
   };
 };
+
+/** Most participants one material may carry, matching the engine's own participant bound. */
+const MAXIMUM_PARTICIPANTS = 64;
 
 /** First line written for each recognized export. */
 const HEADERS: Readonly<Record<ChatExportKind, string>> = Object.freeze({

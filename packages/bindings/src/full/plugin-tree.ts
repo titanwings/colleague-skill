@@ -521,7 +521,20 @@ export const installPluginTree = async (
     await rename(staging, options.pluginRoot);
     installed = true;
     await activate?.();
-    if (backedUp) await rm(backup, { recursive: true, force: true });
+    if (backedUp) {
+      // A host that composes state inside its plugin root (DSH writes cordis.yml) keeps that
+      // state across a re-install: copying it back avoids deleting the host's own file.
+      for (const path of existingOwnership?.hostGeneratedPaths ?? []) {
+        const source = join(backup, path);
+        const bytes = await readFile(source).catch(() => undefined);
+        if (bytes === undefined) continue;
+        const destination = join(options.pluginRoot, path);
+        if (!isInside(options.pluginRoot, destination)) continue;
+        await mkdir(dirname(destination), { recursive: true });
+        await writeFile(destination, bytes, { mode: 0o644 });
+      }
+      await rm(backup, { recursive: true, force: true });
+    }
   } catch (error) {
     if (installed) await rm(options.pluginRoot, { recursive: true, force: true });
     if (backedUp) await rename(backup, options.pluginRoot);

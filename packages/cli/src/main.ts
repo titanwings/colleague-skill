@@ -196,9 +196,10 @@ export const resolvePreviewCliEnvironment = async (): Promise<PreviewCliEnvironm
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
       throw error;
     });
+  const configuredDshHome = process.env["DSH_HOME"]?.trim();
   const dshHomeDirectory = resolve(
-    process.env["DSH_HOME"] !== undefined && process.env["DSH_HOME"].trim().length > 0
-      ? process.env["DSH_HOME"]
+    configuredDshHome !== undefined && configuredDshHome.length > 0
+      ? configuredDshHome
       : join(configuredHome, ".dsh"),
   );
   return {
@@ -398,7 +399,14 @@ const ingestFileSelection = async (
       const resolution = await application.distilly.resolve({
         selector: { kind: "query", query: request.displayName ?? "" },
       });
-      if (resolution.kind === "found") {
+      if (
+        resolution.kind === "found" &&
+        resolution.subject.displayName === (request.displayName ?? "") &&
+        // The engine's query also matches aliases, locators, and subjects in other spaces. Only
+        // an exact display-name match in the default people space is the same person; anything
+        // else must fall through to the create path, whose conflict handling refuses a merge.
+        resolution.subject.space.kind === "people"
+      ) {
         subjectId = resolution.subject.id;
         say(
           `${resolution.subject.displayName} (${resolution.subject.id}) already exists in ${resolution.subject.space.displayName}, so this material is added to it.\n`,
@@ -1121,7 +1129,7 @@ const runDiff = async (
 /**
  * Restores an earlier version as a new current version, keeping every version immutable.
  *
- * @param args - Subject, --host, --to, and optional --reason.
+ * @param args - Subject, --host, --to, optional --reason and --json.
  * @param environment - Resolved Preview CLI environment.
  * @param io - Command output streams.
  */
@@ -1154,7 +1162,7 @@ const runRollback = async (
  * Reads one path plus host, subject, and limit options for the legacy import command.
  *
  * @param args - Legacy directory plus options.
- * @returns Parsed options.
+ * @returns Parsed options, including whether the caller asked for JSON output.
  */
 const importOptions = (
   args: readonly string[],
@@ -1227,12 +1235,13 @@ const importOptions = (
  * @param args - Legacy directory plus host and subject options.
  * @param environment - Resolved Preview CLI environment.
  * @param io - Command output streams.
+ * @returns The process exit code: 1 when any person could not be imported.
  */
 const runImport = async (
   args: readonly string[],
   environment: PreviewCliEnvironment,
   io: PreviewCliIo,
-): Promise<void> => {
+): Promise<number> => {
   const options = importOptions(args);
   const people = await listLegacyPeople(options.directory);
   if (people.length === 0) {
@@ -1288,6 +1297,11 @@ const runImport = async (
       continue;
     }
     try {
+      if (personSubjectId !== undefined && personAliases.length > 0) {
+        note(
+          `  Note: ${personSubjectId} was chosen with --subject, so the legacy alias ${personAliases.map((alias) => `"${alias}"`).join(", ")} was not added to it.`,
+        );
+      }
       const outcome = await ingestFileSelection(
         {
           command: "import",
@@ -1320,8 +1334,8 @@ const runImport = async (
   }
   if (options.asJson) {
     io.stdout.write(`${JSON.stringify({ people: outcomes, failures, log }, undefined, 2)}\n`);
-    if (failures.length > 0) process.exitCode = 1;
-    return;
+    // The dispatcher owns the exit code; setting process.exitCode here would be overwritten.
+    return failures.length > 0 ? 1 : 0;
   }
   io.stdout.write(
     `\nImported ${String(outcomes.length)} of ${String(people.length)} legacy person(s).\n`,
@@ -1339,6 +1353,7 @@ const runImport = async (
       `${String(failures.length)} of ${String(people.length)} legacy person(s) could not be imported:\n${failures.join("\n")}`,
     );
   }
+  return 0;
 };
 
 const help = `Distilly Developer Preview
@@ -1352,7 +1367,7 @@ Usage:
                   [--sensitivity private|shareable] [--limit <n>] [--force] [--json]
   distilly versions <subject-id|display-name> --host <host> [--limit <n>] [--cursor <cursor>] [--json]
   distilly diff <subject-id|display-name> --host <host> --from <version> --to <version> [--json]
-  distilly rollback <subject-id|display-name> --host <host> --to <version> [--reason <text>]
+  distilly rollback <subject-id|display-name> --host <host> --to <version> [--reason <text>] [--json]
   distilly personas --host <host> [--json]
   distilly remove <subject-id|display-name> --host <host>
   distilly uninstall --host <host>
@@ -1438,8 +1453,7 @@ export const runPreviewCli = async (
     return 0;
   }
   if (command === "import") {
-    await runImport(args, environment, io);
-    return 0;
+    return await runImport(args, environment, io);
   }
   if (command === "versions") {
     await runVersions(args, environment, io);

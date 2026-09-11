@@ -83,6 +83,7 @@ describe("version history rendering", () => {
     const historical = version("b", "historical", 1, "2026-09-10T22:40:04.437Z");
     const lines = describeVersions({ items: [suspended, historical] }, "Ada");
     expect(lines.join("\n")).toContain("No version is current right now");
+    expect(lines.join("\n")).toContain("awaiting review");
   });
 
   it("says a subject has no version yet instead of printing an empty table", () => {
@@ -126,6 +127,20 @@ describe("profile diff rendering", () => {
     expect(text).toContain("Changed facets: identity");
     expect(text).toContain("Claims: 1 -> 2 active");
     expect(text).toContain("+ [identity] Also asks what breaks second before shipping.");
+  });
+
+  it("names the status change when a changed claim keeps the same text", () => {
+    const before = { ...claim("Has lived in Berlin since 2019."), status: "active" } as Claim;
+    const after = {
+      ...claim("Has lived in Berlin since 2019."),
+      status: "contested",
+      strength: "contested",
+    } as Claim;
+    const text = describeProfileDiff(
+      diff({ added: [], removed: [], changed: [{ before, after }] }),
+    ).join("\n");
+    expect(text).toContain("status active -> contested");
+    expect(text).toContain("Has lived in Berlin since 2019.");
   });
 
   it("shows removed and changed claims with both texts", () => {

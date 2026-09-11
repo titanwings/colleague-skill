@@ -51,7 +51,7 @@ export const describeVersions = (page: VersionPage, subjectName: string): readon
   if (current === undefined) {
     lines.push(
       "",
-      "No version is current right now: every listed version is historical or rejected, which happens while a candidate waits for review.",
+      "No version is current right now: the versions listed are historical, rejected, or a candidate awaiting review, which happens while a candidate waits for review.",
     );
   }
   if (page.nextCursor !== undefined) {
@@ -114,6 +114,14 @@ export const describeProfileDiff = (diff: ProfileDiff): readonly string[] => {
   if (diff.changed.length > 0) {
     lines.push("", "Changed claims:");
     for (const change of diff.changed) {
+      if (change.before.text === change.after.text) {
+        // The engine reports a status change (contested, superseded) as a changed claim with the
+        // same text, so the difference has to be named or the line reads as a no-op.
+        lines.push(
+          `  ~ [${change.after.facet}] status ${change.before.status} -> ${change.after.status}, strength ${change.before.strength} -> ${change.after.strength}: ${change.after.text}`,
+        );
+        continue;
+      }
       lines.push(`  ~ [${change.after.facet}] ${change.before.text}`);
       lines.push(`      -> ${change.after.text}`);
     }

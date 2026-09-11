@@ -157,8 +157,25 @@ describe("chat export detection", () => {
     expect(detectChatExport({ items: [{ id: 1 }] })).toBeUndefined();
     expect(detectChatExport([{ id: 1, name: "x" }])).toBeUndefined();
     expect(detectChatExport({ messages: [{ text: "no speaker" }] })).toBeUndefined();
+    // An application event log carries ts/user/text but is not a Slack conversation.
+    expect(
+      detectChatExport({
+        messages: [{ ts: "1714564800.5", user: "worker-1", text: "JOB_STARTED" }],
+      }),
+    ).toBeUndefined();
+    // An object with a mapping key is not a ChatGPT export without message nodes.
+    expect(detectChatExport([{ mapping: { a: 1 }, title: "de" }])).toBeUndefined();
     expect(detectChatExport("string")).toBeUndefined();
     expect(detectChatExport(undefined)).toBeUndefined();
+  });
+
+  it("recognizes an export whose dates are epoch numbers", () => {
+    expect(
+      detectChatExport({
+        name: "converted",
+        messages: [{ type: "message", from: "Ada", date: 1_772_000_000, text: "Ship it." }],
+      }),
+    ).toBe("telegram");
   });
 });
 
@@ -258,7 +275,22 @@ describe("json parser integration", () => {
 
   it("stores an export with no message text as unparsed with a warning", async () => {
     const parsed = await parser.parse(
-      raw([{ title: "empty", mapping: {}, current_node: "x" }]),
+      raw([
+        {
+          title: "empty",
+          current_node: "n1",
+          mapping: {
+            n1: {
+              id: "n1",
+              parent: null,
+              message: {
+                author: { role: "user" },
+                content: { content_type: "text", parts: [] },
+              },
+            },
+          },
+        },
+      ]),
       context,
     );
     expect(parsed.material).toBeUndefined();

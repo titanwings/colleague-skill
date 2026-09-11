@@ -22,6 +22,8 @@ const expectPartsOfCanonicalText = (text: string, parts: readonly string[]): voi
     expect(bytes(part)).toBeLessThanOrEqual(maximumBytes);
     // A part is stored unchanged only when it already equals its own canonical form.
     expect(canonicalize(part) === part).toBe(true);
+    // The engine refuses a material that is only whitespace, so no part may be.
+    expect(/[^\p{White_Space}]/u.test(part)).toBe(true);
   }
 };
 
@@ -196,7 +198,7 @@ describe("parsed text splitting", () => {
       "\n".repeat(maximumBytes + 1),
     ]) {
       expect(() => splitParsedText(text, maximumBytes)).toThrowError(
-        /whitespace longer than one material/u,
+        /whitespace at least as long as one material/u,
       );
     }
   });
@@ -214,6 +216,43 @@ describe("parsed text splitting", () => {
       const last = previous.codePointAt(previous.length - 1) ?? 0;
       expect(/^\p{M}$/u.test(String.fromCodePoint(last))).toBe(true);
     }
+  });
+
+  it("never leaves a part that is only whitespace", () => {
+    // A trailing newline, a blank line between two full parts, or a run that ends on a cut used
+    // to produce a whitespace-only part, which made the engine refuse the whole ingest call.
+    const full = "a".repeat(maximumBytes);
+    const trailing = splitParsedText(`${full}\n`, maximumBytes);
+    expect(trailing).toHaveLength(2);
+    expectPartsOfCanonicalText(`${full}\n`, trailing);
+
+    const blank = splitParsedText(
+      `${"a".repeat(524_288)}\n${"b".repeat(524_288)}\n\n${"c".repeat(10)}`,
+      maximumBytes,
+    );
+    expectPartsOfCanonicalText(
+      `${"a".repeat(524_288)}\n${"b".repeat(524_288)}\n\n${"c".repeat(10)}`,
+      blank,
+    );
+
+    const tiny = splitParsedText("aaaa\n", 4);
+    expect(tiny).toHaveLength(2);
+    for (const part of tiny) expect(/[^\p{White_Space}]/u.test(part)).toBe(true);
+    expect(tiny.join("")).toBe("aaaa\n");
+  });
+
+  it("refuses a whitespace run as long as one material instead of emitting a blank part", () => {
+    // A run of exactly the limit cannot be cut into parts that all carry content, and the
+    // engine refuses a whitespace-only material, so the file is refused with one warning.
+    expect(() => splitParsedText(`a${" ".repeat(maximumBytes)}b`, maximumBytes)).toThrowError(
+      /whitespace at least as long as one material/u,
+    );
+    expect(() => splitParsedText("a    b", 4)).toThrowError(/whitespace at least as long/u);
+    expect(() => splitParsedText("a\u00a0\u00a0", 4)).toThrowError(/whitespace at least as long/u);
+    // Text that canonicalization turns into nothing is not a refusal: the loader keeps the raw
+    // file with a warning, which is covered by the runtime test below.
+    expect(splitParsedText(" ".repeat(64), 32)).toEqual([]);
+    expect(() => splitParsedText("\n".repeat(32), 32)).toThrowError(/whitespace at least as long/u);
   });
 
   it("returns no parts for empty text", () => {

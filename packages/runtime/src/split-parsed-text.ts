@@ -74,7 +74,85 @@ export const splitParsedText = (text: string, maximumBytes: number): readonly st
     partBytes = 0;
   }
   if (partBytes > 0) parts.push(canonical.slice(partStart));
-  return parts;
+  return withoutWhitespaceOnlyParts(canonical, parts, maximumBytes);
+};
+
+/**
+ * Repairs parts that would be refused as whitespace-only material.
+ *
+ * A trailing newline, a blank line between two full parts, or a run that ends exactly on a cut
+ * can leave a part made only of whitespace, and the engine refuses that material outright. Each
+ * such part takes the next non-whitespace code point when the byte ceiling allows it, the last
+ * part may take bytes back from the part before it, and text where neither is possible is
+ * refused as one file.
+ *
+ * @param text - Canonical text the parts were cut from.
+ * @param parts - Parts produced by the cut.
+ * @param maximumBytes - Largest UTF-8 byte length one part may have.
+ * @returns Parts that each contain at least one non-whitespace code point.
+ */
+const withoutWhitespaceOnlyParts = (
+  text: string,
+  parts: readonly string[],
+  maximumBytes: number,
+): readonly string[] => {
+  const ranges: { start: number; end: number }[] = [];
+  let offset = 0;
+  for (const part of parts) {
+    ranges.push({ start: offset, end: offset + part.length });
+    offset += part.length;
+  }
+  for (let index = 0; index < ranges.length; index += 1) {
+    const range = ranges[index];
+    if (range === undefined) continue;
+    if (!isWhitespaceOnly(text, range.start, range.end)) continue;
+    // Take the next part's code points until this part holds something that is not whitespace.
+    while (index + 1 < ranges.length && isWhitespaceOnly(text, range.start, range.end)) {
+      const next = ranges[index + 1];
+      if (next === undefined) break;
+      const codePoint = text.codePointAt(next.start) ?? 0;
+      const grown = range.end + (codePoint > 0xffff ? 2 : 1);
+      if (utf8BytesIn(text, range.start, grown) > maximumBytes) break;
+      range.end = grown;
+      next.start = grown;
+      if (next.start >= next.end) ranges.splice(index + 1, 1);
+    }
+    // The final part can instead take bytes back from the part before it.
+    while (
+      index === ranges.length - 1 &&
+      isWhitespaceOnly(text, range.start, range.end) &&
+      index > 0
+    ) {
+      const previous = ranges[index - 1];
+      if (previous === undefined || previous.end - previous.start <= 1) break;
+      const codePointStart = previousCodePointStart(text, previous.end, previous.start);
+      if (codePointStart <= previous.start) break;
+      range.start = codePointStart;
+      previous.end = codePointStart;
+    }
+    if (isWhitespaceOnly(text, range.start, range.end)) {
+      throw unusableWhitespace(maximumBytes, utf8BytesIn(text, range.start, range.end));
+    }
+  }
+  return ranges.map((range) => text.slice(range.start, range.end));
+};
+
+/**
+ * Reports whether a slice of the canonical text holds no non-whitespace code point.
+ *
+ * @param text - Canonical text.
+ * @param start - First UTF-16 index of the slice.
+ * @param end - Exclusive end of the slice.
+ * @returns True when every code point in the slice is whitespace.
+ */
+const isWhitespaceOnly = (text: string, start: number, end: number): boolean => {
+  let index = start;
+  while (index < end) {
+    const codePoint = text.codePointAt(index) ?? 0;
+    if (!isEngineWhitespace(codePoint)) return false;
+    index += codePoint > 0xffff ? 2 : 1;
+  }
+  return true;
 };
 
 /** Matches one combining mark, which must not be separated from the base it modifies. */
@@ -118,29 +196,45 @@ const isHorizontalWhitespace = (code: number): boolean => code === 0x20 || code 
  * @param maximumBytes - Largest UTF-8 byte length one part may have.
  */
 const assertNoOversizedWhitespaceRun = (text: string, maximumBytes: number): void => {
+  if (text.length === 0) return;
   let runBytes = 0;
   let index = 0;
+  let hasContent = false;
   while (index < text.length) {
     const codePoint = text.codePointAt(index) ?? 0;
     if (isEngineWhitespace(codePoint)) {
       runBytes += utf8Width(codePoint);
-      if (runBytes > maximumBytes) {
-        throw new DistillyError({
-          code: "context_too_large",
-          message:
-            "Parsed text contains a run of whitespace longer than one material, which cannot be split into legal parts.",
-          retryable: false,
-          fieldPath: "material.content",
-          remediation: "Narrow the selected file and try again.",
-          details: { maximumBytes, whitespaceRunBytes: runBytes },
-        });
+      // A run of exactly one material can only be cut into whitespace-only parts, which the
+      // engine refuses, so it is refused here as one file instead of failing the whole call.
+      if (runBytes >= maximumBytes) {
+        throw unusableWhitespace(maximumBytes, runBytes);
       }
     } else {
+      hasContent = true;
       runBytes = 0;
     }
     index += codePoint > 0xffff ? 2 : 1;
   }
+  if (!hasContent) throw unusableWhitespace(maximumBytes, runBytes);
 };
+
+/**
+ * Builds the typed refusal for text that cannot become legal parts.
+ *
+ * @param maximumBytes - Largest UTF-8 byte length one part may have.
+ * @param whitespaceRunBytes - Bytes in the run that made the text unusable.
+ * @returns The error the loader turns into a per-file warning.
+ */
+const unusableWhitespace = (maximumBytes: number, whitespaceRunBytes: number): DistillyError =>
+  new DistillyError({
+    code: "context_too_large",
+    message:
+      "Parsed text contains a run of whitespace at least as long as one material, which cannot be split into legal parts.",
+    retryable: false,
+    fieldPath: "material.content",
+    remediation: "Narrow the selected file and try again.",
+    details: { maximumBytes, whitespaceRunBytes },
+  });
 
 /**
  * Moves a line-boundary cut forward over combining marks that begin the next line.

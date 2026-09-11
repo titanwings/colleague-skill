@@ -709,7 +709,9 @@ describe("unsplittable parsed text", () => {
     );
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.kind).toBe("unparsed");
-    expect(result.items[0]?.warnings.join(" ")).toContain("whitespace longer than one material");
+    expect(result.items[0]?.warnings.join(" ")).toContain(
+      "whitespace at least as long as one material",
+    );
   });
 });
 

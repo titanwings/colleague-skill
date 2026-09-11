@@ -239,6 +239,19 @@ const createLocalFileLoader = () => {
                 ],
               };
             }
+            if (parts.length === 0) {
+              // Canonicalization removed everything (the text was only trailing whitespace), so
+              // there is no legal material here; keep the raw bytes and say why.
+              return {
+                pathLabel,
+                mediaType,
+                bytes,
+                source,
+                warnings: [
+                  "Parsed text is only whitespace after canonicalization; it was stored as an unparsed file.",
+                ],
+              };
+            }
             if (parts.length > WIRE_LIMITS.ingestMaterials) {
               // More parts than one ingest call can carry: refuse rather than drop any.
               return {

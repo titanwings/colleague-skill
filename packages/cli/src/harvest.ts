@@ -48,6 +48,8 @@ export interface HarvestSelection {
     readonly relativePath: string;
     readonly reason: HarvestSkipReason;
   }[];
+  /** True when more paths were skipped than `skippedEntries` could keep. */
+  readonly skippedEntriesTruncated: boolean;
   readonly directoriesVisited: number;
   /** True when the selection cap stopped the walk before every entry was considered. */
   readonly truncated: boolean;
@@ -143,6 +145,7 @@ export const selectHarvestFiles = async (
   const maximumFiles = options.maximumFiles ?? DEFAULT_MAXIMUM_FILES;
   const skipped: Partial<Record<HarvestSkipReason, number>> = {};
   const skippedEntries: { relativePath: string; reason: HarvestSkipReason }[] = [];
+  let skippedEntriesTruncated = false;
   const files: HarvestFile[] = [];
   const labels = new Set<string>();
   let directoriesVisited = 0;
@@ -150,8 +153,11 @@ export const selectHarvestFiles = async (
 
   const skip = (reason: HarvestSkipReason, relativePath?: string): void => {
     skipped[reason] = (skipped[reason] ?? 0) + 1;
-    if (relativePath !== undefined && skippedEntries.length < MAXIMUM_SKIP_DETAILS) {
+    if (relativePath === undefined) return;
+    if (skippedEntries.length < MAXIMUM_SKIP_DETAILS) {
       skippedEntries.push({ relativePath, reason });
+    } else {
+      skippedEntriesTruncated = true;
     }
   };
 
@@ -218,25 +224,37 @@ export const selectHarvestFiles = async (
   // The walk already emits entries in order, but a directory boundary can interleave a
   // deeper path before a sibling file, so the final order is fixed explicitly.
   files.sort((left, right) => compareUtf8(left.relativePath, right.relativePath));
-  return { files, skipped, skippedEntries, directoriesVisited, truncated };
+  return {
+    files,
+    skipped,
+    skippedEntries,
+    skippedEntriesTruncated,
+    directoriesVisited,
+    truncated,
+  };
 };
 
 /**
  * Renders the individual files a selection left out, so lost evidence is visible by name.
  *
  * @param selection - Result of one directory selection.
- * @param limit - Largest number of entries to render.
+ * @param limit - Largest number of entries to render; defaults to every collected entry.
  * @returns One line per skipped path, plus a count when more were left out.
  */
 export const describeSkippedEntries = (
   selection: HarvestSelection,
-  limit = 20,
+  limit = selection.skippedEntries.length,
 ): readonly string[] => {
   const lines = selection.skippedEntries
     .slice(0, limit)
     .map((entry) => `  skipped ${entry.relativePath}: ${entry.reason}`);
   const remaining = selection.skippedEntries.length - lines.length;
   if (remaining > 0) lines.push(`  ... and ${String(remaining)} more skipped entry(ies).`);
+  if (selection.skippedEntriesTruncated) {
+    lines.push(
+      `  ... and more than ${String(selection.skippedEntries.length)} skipped entries in total; only the first were listed.`,
+    );
+  }
   return lines;
 };
 
