@@ -34,3 +34,7 @@ knowledge/
 # OS
 .DS_Store
 Thumbs.db
+
+# 本地证据（截图/回执/diff），不入库
+dst-evidence/
+*.evidence.local
