@@ -11,11 +11,11 @@ allowed-tools: Read, Write, Edit, Bash
 >
 > 本 Skill 支持中英文。根据用户第一条消息的语言，全程使用同一语言回复。下方提供了两种语言的指令，按用户语言选择对应版本执行。
 
-> **Skill Root / Skill 根目录**: Before reading a bundled prompt or running a bundled script, resolve the absolute directory of the `SKILL.md` that the host actually loaded. In the instructions below, `{distilly_skill_root}` means that exact directory. Claude Code exposes it as `${CLAUDE_SKILL_DIR}`; on every other host, use the loaded-skill path supplied by that host's discovery context. Do not assume the shell's current working directory is the Skill root, and do not guess or hard-code an install path. If the host does not expose the loaded path or more than one Distilly installation is ambiguous, ask the user to identify the active installation before running code.
+> **Skill Root / Skill 根目录**: Before reading a bundled prompt or running a bundled command, resolve the absolute directory of the `SKILL.md` that the host actually loaded. In the instructions below, `{distilly_skill_root}` means that exact directory. Claude Code exposes it as `${CLAUDE_SKILL_DIR}`; on every other host, use the loaded-skill path supplied by that host's discovery context. Do not assume the shell's current working directory is the Skill root, and do not guess or hard-code an install path. If the host does not expose the loaded path or more than one Distilly installation is ambiguous, ask the user to identify the active installation before running code.
 >
-> Keep the shell in the user's current workspace so relative output paths such as `./skills/...` remain project-local. Resolve every `tools/...` and `prompts/...` resource against `{distilly_skill_root}`. For example, execute the bundled `tools/example.py` as `python3 "{distilly_skill_root}/tools/example.py"`; replace the placeholder with the resolved absolute path in the actual tool call.
+> Keep the shell in the user's current workspace so relative output paths such as `./skills/...` remain project-local. Resolve every `prompts/...` resource against `{distilly_skill_root}`. The only supported entrypoint is the `distilly` CLI; do not call the bundled Python tools directly (they are deprecated, see the migration table below).
 >
-> 在读取内置 prompt 或运行脚本前，先取得宿主实际加载的这份 `SKILL.md` 所在绝对目录；下文以 `{distilly_skill_root}` 表示。Claude Code 可用 `${CLAUDE_SKILL_DIR}`，其他宿主使用其 Skill discovery 上下文提供的实际路径。不要假定 shell 当前目录就是 Skill 目录，也不要猜测或硬编码安装路径。shell 应继续停留在用户工作区，使 `./skills/...` 等输出仍写入当前项目；所有 `tools/...`、`prompts/...` 都必须从 `{distilly_skill_root}` 解析。
+> 在读取内置 prompt 或执行内置命令前，先取得宿主实际加载的这份 `SKILL.md` 所在绝对目录；下文以 `{distilly_skill_root}` 表示。Claude Code 可用 `${CLAUDE_SKILL_DIR}`，其他宿主使用其 Skill discovery 上下文提供的实际路径。不要假定 shell 当前目录就是 Skill 目录，也不要猜测或硬编码安装路径。shell 应继续停留在用户工作区，使 `./skills/...` 等输出仍写入当前项目；所有 `prompts/...` 都必须从 `{distilly_skill_root}` 解析。唯一受支持的入口是 `distilly` CLI，不要直接调用仓库里的 Python 工具（它们已废弃，见下方迁移对照表）。
 
 # Distilly 创建器
 
@@ -52,42 +52,165 @@ Grok Bot 可以把流程保存为 private Skill，但目前没有官方的本地
 兼容更新别名：
 - `/update-colleague {slug}`
 
-当用户要求查看已生成的 Skill 时，执行下方“管理操作”里的列出命令。
+当用户要求查看已生成的 Skill 时，执行下方"管理操作"里的列出命令。
 
 ---
 
-## 工具使用规则
+## 命令契约（唯一入口）
 
-本 Skill 运行在任意兼容宿主中，只要求宿主能够读取本地文件并执行 Bash / Python 命令。使用以下工具约定：
+所有采集、派生、渲染都走 `distilly`。命令名与 `docs/v2/CONTRACT.md` §1 的命令表逐字一致；不要发明子命令或字段。
 
-| 任务 | 使用工具 |
-|------|---------|
-| 读取 PDF 文档 | `Read` 工具（原生支持 PDF） |
-| 读取图片截图 | `Read` 工具（原生支持图片） |
-| 读取 MD/TXT 文件 | `Read` 工具 |
-| 解析飞书消息 JSON 导出 | `Bash` → `python3 "{distilly_skill_root}/tools/feishu_parser.py"` |
-| 飞书全自动采集（推荐） | `Bash` → `python3 "{distilly_skill_root}/tools/feishu_auto_collector.py"` |
-| 飞书文档（浏览器登录态） | `Bash` → `python3 "{distilly_skill_root}/tools/feishu_browser.py"` |
-| 飞书文档（MCP App Token） | `Bash` → `python3 "{distilly_skill_root}/tools/feishu_mcp_client.py"` |
-| 钉钉全自动采集 | `Bash` → `python3 "{distilly_skill_root}/tools/dingtalk_auto_collector.py"` |
-| 采集公开 X 帖子候选证据 | `Bash` → `python3 "{distilly_skill_root}/tools/research/xquik_public_posts.py"` |
-| 解析邮件 .eml/.mbox | `Bash` → `python3 "{distilly_skill_root}/tools/email_parser.py"` |
-| 写入/更新 Skill 文件 | `Write` / `Edit` 工具 |
-| 版本管理 | `Bash` → `python3 "{distilly_skill_root}/tools/version_manager.py"` |
-| 列出已有 Skill | `Bash` → `python3 "{distilly_skill_root}/tools/skill_writer.py" --action list` |
+| 任务 | 命令 |
+|------|------|
+| 零凭据：目录/文件 → `knowledge/` | `distilly harvest <dir\|file>` |
+| 解析 ChatGPT / Claude / Slack / Telegram / Discord 导出 | `distilly parse-chat <export.json>` |
+| 解析邮件 | `distilly parse-email <x.eml\|.mbox>` |
+| 解析字幕 | `distilly parse-subtitle <x.srt\|.vtt>` |
+| 解析文档 | `distilly parse-doc <x.docx\|xlsx\|pdf>` |
+| 解析归档（X 官方归档 / Takeout / 社交平台导出） | `distilly parse-archive <x.zip\|dir>` |
+| 纯派生 → `evidence/derived/*.json` | `distilly retrospect` |
+| 需要 key / OAuth 的渠道采集 | `distilly collect <feishu\|slack\|dingtalk\|x\|discord\|reddit\|notion\|gmail>` |
+| 浏览器 computer use（必须带同意 token） | `distilly collect x --mode browser --consent <token>` |
+| 音视频转写（可选后端） | `distilly transcribe <audio\|video>` |
+| 把 LLM 自己读到的内容登记进账本 | `distilly note --from <file\|->` |
+| 同意授权管理 | `distilly consent <grant\|list\|revoke>` |
+| 视图检查与渲染 | `distilly view check`；`distilly view render [--shareable]` |
+| 证据体检 | `distilly doctor` |
+| 生成 Skill 的创建/更新/列出/版本 | `distilly skill <create\|update\|list\|version>` |
+| 宿主安装 | `distilly install <host>`；`distilly uninstall` |
 
-**基础目录**：
-- `colleague` → `./skills/colleague/{slug}/`
-- `relationship` → `./skills/relationship/{slug}/`
-- `celebrity` → `./skills/celebrity/{slug}/`
+- 所有子命令支持 `--json` 回执；`--help` 有中文/英文两段。
+- 需要 key / OAuth 的渠道：先向用户说明将读取哪个渠道、可拿到什么，拿到同意后才运行 `distilly collect`。
+- computer-use 类命令必须带 `--consent <token>`；没有 token 时命令以 `exit 2` 结束并在回执里写"等待用户同意"。
+- 密钥只从 `~/.distilly/*_config.json` 或环境变量读取；回执、日志、对话里只出现配置文件名，永不出现值。
 
-如需改为全局路径，用 `--base-dir` 指向对应 character family 的根目录。
+### 迁移对照表（旧写法一律 deprecated）
+
+| 旧写法（deprecated） | 新写法 |
+|----------------------|--------|
+| `tools/feishu_parser.py`（deprecated） | `distilly parse-chat` |
+| `tools/feishu_auto_collector.py`（deprecated） | `distilly collect feishu` |
+| `tools/feishu_browser.py`（deprecated） | `distilly collect feishu --mode browser --consent <token>` |
+| `tools/feishu_mcp_client.py`（deprecated） | `distilly collect feishu` |
+| `tools/dingtalk_auto_collector.py`（deprecated） | `distilly collect dingtalk` |
+| `tools/email_parser.py`（deprecated） | `distilly parse-email` |
+| `tools/research/xquik_public_posts.py`（deprecated） | `distilly collect x` |
+| `tools/research/transcribe_audio.py`（deprecated） | `distilly transcribe` |
+| `tools/research/srt_to_transcript.py`（deprecated） | `distilly parse-subtitle` |
+| `tools/skill_writer.py`（deprecated） | `distilly skill create` / `distilly skill update` / `distilly skill list` |
+| `tools/version_manager.py`（deprecated） | `distilly skill version` |
+| `tools/install_generated_skill.py`（deprecated） | `distilly install <host>` |
+| `tools/research/quality_check.py`（deprecated） | `distilly doctor` |
+| `tools/research/merge_research.py`（deprecated） | 暂无契约替代：只做派生，走 `distilly retrospect`，研究笔记合并细节见已知缺口 |
+| `tools/research/download_subtitles.sh`（deprecated） | 暂无契约替代：先让用户提供本地字幕文件，再走 `distilly parse-subtitle` |
+
+迁移期允许两者并存，但新写法优先；只要 Python 工具还在被引用，就必须保留 `deprecated` 标注。
 
 ---
 
-## 主流程：创建新 Skill
+## 磁盘契约（LLM 只能写这些）
 
-### Step 0：确认 character family
+```
+skills/<family>/<slug>/
+  SKILL.md work.md persona.md work_skill.md persona_skill.md manifest.json meta.json
+  knowledge/{docs,messages,emails}/
+  knowledge/raw/<source>/...      # 原样字节，只增不改
+  knowledge/text/<source>.md      # 归一化正文，段落锚点 [k0012] / [k0012:t3]
+  knowledge/index.json            # 账本 {id,kind,origin,fetched_at,bytes,sha256,credentialed,method,warnings[]}
+  evidence/derived/*.json         # retrospect 派生，每条结论带 evidence 锚点
+  views/<slug>.view.json          # LLM 只写章节/顺序/强调（不含事实）
+  views/<slug>.html               # render 产物：单文件、离线、双主题
+  evidence/renders/receipt.json   # render 回执（sha256 + 字节数 + 内联来源）
+```
+
+- LLM 可以写：`views/<slug>.view.json`（只写章节、顺序、强调）、临时工作文件、以及通过 `distilly note --from <file|->` 登记的"model-read"来源。
+- LLM 不可以写：`knowledge/raw/**`（原样字节，只增不改）、`knowledge/index.json`、`evidence/derived/*.json`（由 `distilly retrospect` 生成）、`evidence/renders/receipt.json`。
+- 截图、回执图、diff 图不入库（`.gitignore` 已含 `dst-evidence/`）；本地产物放 `/tmp/dst-evidence/<pr>/`。
+- 锚点格式统一为 `[k00NN]`（4 位补零）或 `[k00NN:tM]`（带轮次）。任何结论必须带 `文件 + 锚点`，没有证据就写 `unknown`。
+
+---
+
+## 五步主线
+
+创建、追加、纠正都走同一条主线：**Collect → Derive → Read → Distill → Render**。
+
+| 步骤 | 必须存在的产物 | 计数判据 | sha256 从哪来 | 失败怎么办 |
+|------|----------------|----------|---------------|------------|
+| 1 Collect | `knowledge/raw/<source>/**`、`knowledge/text/<source>.md`、`knowledge/index.json` | 每个落地来源 1 条账本条目；每个 text 文件 ≥1 个锚点 | `distilly <cmd> --json` 回执的 `outputs[].sha256`，与 `knowledge/index.json` 的 `sha256` 逐字节一致 | 非零退出：记录命令、stderr、补救步骤；0 条落地来源时停下，不得进入 Derive |
+| 2 Derive | `evidence/derived/*.json` | 每条派生结论带 evidence 锚点；连跑两次字节相同 | 回执 `outputs[].sha256`；两次运行 sha256 相同 | 非零退出：先修 `knowledge/index.json` 完整性；不得手写派生 JSON |
+| 3 Read | 无新文件，产出"读了什么"的复述 | 按文件列出：文件 → 条数 → 锚点数 | 引用 `knowledge/index.json` 的 `sha256`，不自算 | 文件缺失或锚点为 0：回到 Step 1 补齐，不得凭记忆写结论 |
+| 4 Distill | `work.md`、`persona.md`，celebrity 另有 research/audit/synthesis/validation | 每个维度有锚点或 `unknown`；celebrity 有明确 `PASS/FAIL` | 引用被引用的来源 sha256（来自账本） | 证据不足：标 `（原材料不足）` / candidate，并说明需要补什么材料 |
+| 5 Render | `views/<slug>.view.json`、`views/<slug>.html`、`evidence/renders/receipt.json` | 回执 sha256 与 html 实际 sha256 一致；`distilly doctor` 锚点回指率可查 | `evidence/renders/receipt.json` 的 sha256 | 渲染失败：保留 view.json，不发布，报告错误 |
+
+任何一步的失败都不允许"静默降级"：要么修好，要么把失败写进对用户的汇报和回执的 `warnings[]` / `unavailable[]`。
+
+### Step 1：Collect（采集）
+
+1. 先读 `prompts/collectors.md`，按"什么时候用哪条命令"选路。
+2. 零凭据来源（本地文件、导出包、字幕、文档、归档）直接走 `distilly harvest`、`distilly parse-chat`、`distilly parse-email`、`distilly parse-subtitle`、`distilly parse-doc`、`distilly parse-archive`。
+3. 需要 key / OAuth 的渠道（飞书、Slack、钉钉、X、Discord、Reddit、Notion、Gmail）先征求用户同意，再走 `distilly collect <channel>`；同意范围用 `distilly consent <grant|list|revoke>` 管理。
+4. 浏览器 computer use 必须按 `prompts/computer-use.md` 执行：先问再动、只读白名单、默认 ≤20 屏 / ≤10 分钟 / 每分钟 ≤6 次滚动、每屏落盘原文 + URL + 时间 + 截图（截图只放本地）、可中断；`distilly collect x --mode browser --consent <token>` 没有 token 就直接退出，不要绕过。
+5. 用户只能"贴文字/截图"时，用 `distilly note --from <file|->` 登记来源（`method:"model-read"`），不要假装它是采集来的。
+6. 音视频先 `distilly transcribe`，再解析字幕；不要把整段 transcript 抄进仓库。
+
+**完成判据**：`knowledge/index.json` 里每个落地来源一条账本条目（含 `id`、`kind`、`origin`、`fetched_at`、`bytes`、`sha256`、`credentialed`、`method`、`warnings[]`）；每个 `knowledge/text/<source>.md` 至少 1 个锚点；回执 `inputs[]`/`outputs[]` 的 sha256 与账本一致；不可用渠道进 `unavailable[]`。
+**失败怎么办**：命令非零退出时，把命令原文、stderr、补救步骤（例如缺凭据要配置哪个 `~/.distilly/*_config.json`）告诉用户，然后停下等指示；如果 0 条来源落地，不要进入 Step 2。
+
+### Step 2：Derive（派生）
+
+1. 派生之前不要读 `evidence/derived/*`——先跑 `distilly retrospect`。
+2. `distilly retrospect` 只做纯派生：输入是 `knowledge/**`，输出是 `evidence/derived/*.json`，每条结论带 evidence 锚点。
+3. 为验证确定性，连跑两次；同一输入两次的 sha256 必须相同。
+
+**完成判据**：`evidence/derived/*.json` 存在；回执给出 `anchors.total` / `anchors.cited`；两次运行 `outputs[].sha256` 相同。
+**失败怎么办**：非零退出说明输入侧有问题——回到 Step 1 检查账本与 text 锚点；绝不手写、手改派生 JSON 来"跑通"。
+
+### Step 3：Read（阅读）
+
+1. 读的顺序：`knowledge/index.json` → `knowledge/text/*.md` → `evidence/derived/*.json`。
+2. 先向用户复述"读了哪些文件、各多少条、多少锚点"，再写结论。
+3. 每条结论后面跟 `文件 + 锚点`（例如 `knowledge/text/feishu.md [k0042]`）。
+4. 找不到证据的结论写 `unknown`，并说明缺什么材料可以补上。
+5. 事实与候选分开：有具体锚点支撑的才算事实；派生文件里的模式、倾向、推断一律按候选处理，候选不能升级为结论。
+6. 全文细节规范见 `prompts/retrospection.md`。
+
+**完成判据**：复述清单里的每个文件都能在账本里回指；被引用的锚点都真实存在于 `knowledge/text/**`；没有无锚点的结论。
+**失败怎么办**：文件缺失或锚点为 0 时回到 Step 1 补齐；不要凭记忆或常识补写内容。
+
+### Step 4：Distill（蒸馏）
+
+先用第 0 步确认的 family 解析执行矩阵：
+
+| character | intake | persona analyzer | persona builder | merger | storage root |
+|-----------|--------|------------------|-----------------|--------|--------------|
+| `colleague` | `prompts/intake.md` | `prompts/persona_analyzer.md` | `prompts/persona_builder.md` | `prompts/merger.md` | `./skills/colleague/{slug}` |
+| `relationship` | `prompts/relationship/intake.md` | `prompts/relationship/persona_analyzer.md` | `prompts/relationship/persona_builder.md` | `prompts/relationship/merger.md` | `./skills/relationship/{slug}` |
+| `celebrity` | `prompts/celebrity/intake.md` | `prompts/celebrity/persona_analyzer.md` | `prompts/celebrity/persona_builder.md` | `prompts/celebrity/merger.md` | `./skills/celebrity/{slug}` |
+
+所有 family 共用：Work analyzer `prompts/work_analyzer.md`、Work builder `prompts/work_builder.md`、Correction handler `prompts/correction_handler.md`。
+
+两条线：
+
+- **线路 A（Work Skill）**：参考 `prompts/work_analyzer.md`，提取负责系统、技术规范、工作流程、输出偏好、经验知识；celebrity 场景下 `work` 更偏方法论、判断框架、决策习惯。
+- **线路 B（Persona）**：用当前 family 的 persona analyzer；`celebrity` + `research_profile=budget-unfriendly` 时改用 `prompts/celebrity/budget_unfriendly/persona_analyzer.md`。把用户填的标签翻译为具体行为规则，并从材料里提取表达风格、决策模式、人际行为。
+
+写文件时不要手工拼 `skills/{family}/{slug}` 文件树，统一走 writer：把 `meta.json` / `work.md` / `persona.md` 写到临时文件，再调 `distilly skill create`（或 `distilly skill update`）。人物 Skill 的安装走 `distilly install <host>`。
+
+**完成判据**：每个维度都有锚点或明确的 `（原材料不足）`；每条行为规则具体可执行；celebrity 的 audit / validation 给出明确 `PASS` 或 `FAIL`；`distilly doctor` 能报告证据覆盖率、不可用渠道、锚点回指率。celebrity 场景下的 research 门槛见下方子流程。
+**失败怎么办**：证据不足的维度标 `（原材料不足，建议追加相关文档）` 并降级为 candidate；`source_grounding` 不达标时保留 `FAIL` 并说明还缺什么，绝不用泛化链接刷过检查。
+
+### Step 5：Render（渲染）
+
+1. 先 `distilly view check`，确认锚点都能回指到 `knowledge/index.json`。
+2. 写 `views/<slug>.view.json`：只写章节、顺序、强调，不写事实。
+3. `distilly view render` 生成单文件、离线、双主题的 `views/<slug>.html`，并写 `evidence/renders/receipt.json`（sha256 + 字节数 + 内联来源）。
+4. 对外分享时才用 `distilly view render --shareable`，并先让用户确认。
+5. 用 `distilly doctor` 复核证据覆盖率、不可用渠道、锚点回指率、computer-use 占比。
+
+**完成判据**：`views/<slug>.html` 与 `evidence/renders/receipt.json` 同时存在；回执 sha256 与 html 实际 sha256 一致；内部链接 0 坏链。
+**失败怎么办**：渲染失败时保留 `views/<slug>.view.json`，不发布 HTML，把错误与缺失来源报告给用户。
+
+### 第 0 步（前置）：确认 family 与 intake
 
 如果用户使用的是 `/distilly`，先确认本次要蒸馏的是哪一类：
 
@@ -104,16 +227,7 @@ Grok Bot 可以把流程保存为 private Skill，但目前没有官方的本地
 
 默认使用 `budget-friendly`。只有当用户明确要求更深研究、更高置信度、或者愿意接受更慢更贵的蒸馏流程时，才切到 `budget-unfriendly`。
 
-### Step 1：基础信息录入
-
-根据 character family 选择对应 intake prompt：
-
-- `colleague` → `prompts/intake.md`
-- `relationship` → `prompts/relationship/intake.md`
-- `celebrity` → `prompts/celebrity/intake.md`
-
-`colleague` 和 `relationship` 只问 3 个问题。
-`celebrity` 按 `prompts/celebrity/intake.md` 问 4 个问题，其中第 4 个问题必须确认 `research_profile`。
+根据 family 选择 intake prompt：`colleague` → `prompts/intake.md`；`relationship` → `prompts/relationship/intake.md`；`celebrity` → `prompts/celebrity/intake.md`。`colleague` 和 `relationship` 只问 3 个问题；`celebrity` 问 4 个问题，其中第 4 个必须确认 `research_profile`。
 
 默认的 3 个基础问题：
 
@@ -123,542 +237,35 @@ Grok Bot 可以把流程保存为 private Skill，但目前没有官方的本地
 3. **性格画像**（一句话：MBTI、星座、个性标签、企业文化、印象）
    - 示例：`INTJ 摩羯座 甩锅高手 字节范 CR很严格但从来不解释原因`
 
-除姓名外均可跳过。收集完后汇总确认，再进入下一步。
-
-### Step 2：原材料导入
-
-询问用户提供原材料，展示四种方式供选择：
-
-```
-原材料怎么提供？
-
-  [A] 飞书自动采集（推荐）
-      输入姓名，自动拉取消息记录 + 文档 + 多维表格
-
-  [B] 钉钉自动采集
-      输入姓名，自动拉取文档 + 多维表格
-      消息记录通过浏览器采集（钉钉 API 不支持历史消息）
-
-  [C] 飞书链接
-      直接给文档/Wiki 链接（浏览器登录态 或 MCP）
-
-  [D] 上传文件
-      PDF / 图片 / 导出 JSON / 邮件 .eml
-
-  [E] 直接粘贴内容
-      把文字复制进来
-
-可以混用，也可以跳过（仅凭手动信息生成）。
-```
+除姓名外均可跳过。收集完后汇总确认，再进入 Collect。
 
 ---
 
-#### 方式 A：飞书自动采集（推荐）
+## celebrity research 子流程（在 Step 2/3 之间）
 
-首次使用需配置：
-```bash
-python3 "{distilly_skill_root}/tools/feishu_auto_collector.py" --setup
-```
+### budget-friendly
 
-**群聊采集**（使用 tenant_access_token，需 bot 在群内）：
-```bash
-python3 "{distilly_skill_root}/tools/feishu_auto_collector.py" \
-  --name "{name}" \
-  --output-dir ./knowledge/{slug} \
-  --msg-limit 1000 \
-  --doc-limit 20
-```
-
-**私聊采集**（需要 user_access_token + 私聊 chat_id）：
-
-私聊消息只能通过用户身份（user_access_token）获取，应用身份无权访问私聊。
-
-**前置条件**：
-
-用户需要提供以下信息：
-1. **飞书应用凭证**：`app_id` 和 `app_secret`（在飞书开放平台创建自建应用获取）
-2. **用户权限**：应用需开通以下用户权限（scope）：
-   - `im:message` — 以用户身份读取/发送消息
-   - `im:chat` — 以用户身份读取会话列表
-3. **OAuth 授权码（code）**：用户在浏览器中完成 OAuth 授权后，从回调 URL 中获取
-
-如果用户缺少以上任何信息，引导他们完成配置。不要假设用户已经配好了。
-
-**获取 user_access_token 的完整流程**：
-
-当用户提供了 app_id、app_secret，并确认已开通用户权限后：
-
-1. 帮用户生成 OAuth 授权链接：
-   ```
-   https://open.feishu.cn/open-apis/authen/v1/authorize?app_id={APP_ID}&redirect_uri=http://www.example.com&scope=im:message%20im:chat
-   ```
-   > ⚠️ 注意：`redirect_uri` 需要在飞书应用的「安全设置 → 重定向 URL」中添加 `http://www.example.com`
-   
-2. 用户在浏览器打开链接，登录并授权
-3. 页面会跳转到 `http://www.example.com?code=xxx`，用户复制 code 给你
-4. 用 code 换取 token：
-   ```bash
-   python3 "{distilly_skill_root}/tools/feishu_auto_collector.py" --exchange-code {CODE}
-   ```
-   或者你自己写 Python 脚本调飞书 API 换取：
-   ```python
-   # 1. 获取 app_access_token
-   POST https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal
-   Body: {"app_id": "xxx", "app_secret": "xxx"}
-   
-   # 2. 用 code 换 user_access_token
-   POST https://open.feishu.cn/open-apis/authen/v1/oidc/access_token
-   Header: Authorization: Bearer {app_access_token}
-   Body: {"grant_type": "authorization_code", "code": "xxx"}
-   ```
-
-**获取私聊 chat_id**：
-
-用户通常不知道 chat_id。当用户有了 user_access_token 但没有 chat_id 时，你应该**自己写 Python 脚本**来获取：
-
-- **方法**：用 user_access_token 向对方的 open_id 发一条消息，返回值中会包含 chat_id
-  ```python
-  POST https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id
-  Header: Authorization: Bearer {user_access_token}
-  Body: {"receive_id": "{对方open_id}", "msg_type": "text", "content": "{\"text\":\"你好\"}"}
-  # 返回值中的 chat_id 就是私聊会话 ID
-  ```
-- **注意**：`GET /im/v1/chats` 不会返回私聊会话，这是飞书 API 的限制，不是权限问题，不要尝试用这个接口找私聊
-- 如果用户不知道对方的 open_id，可以用 tenant_access_token 调通讯录 API 搜索：
-  ```python
-  GET https://open.feishu.cn/open-apis/contact/v3/scopes
-  # 返回应用可见范围内所有用户的 open_id
-  ```
-
-**执行采集**：
-
-拿到 user_access_token 和 chat_id 后：
-```bash
-python3 "{distilly_skill_root}/tools/feishu_auto_collector.py" \
-  --open-id {对方open_id} \
-  --p2p-chat-id {chat_id} \
-  --user-token {user_access_token} \
-  --name "{name}" \
-  --output-dir ./knowledge/{slug} \
-  --msg-limit 1000
-```
-
-**灵活性原则**：以上 API 调用不一定要用 collector 脚本，如果脚本跑不通或者场景不匹配，你可以直接写 Python 脚本调飞书 API 完成任务。核心 API 参考：
-- 获取 token：`POST /auth/v3/app_access_token/internal`、`POST /authen/v1/oidc/access_token`
-- 发消息（获取 chat_id）：`POST /im/v1/messages?receive_id_type=open_id`
-- 拉消息：`GET /im/v1/messages?container_id_type=chat&container_id={chat_id}`
-- 查通讯录：`GET /contact/v3/scopes`、`GET /contact/v3/users/{user_id}`
-
-自动采集内容：
-- 群聊：所有与他共同群聊中他发出的消息（过滤系统消息、表情包）
-- 私聊：与他的私聊完整对话（含双方消息，用于理解对话语境）
-- 他创建/编辑的飞书文档和 Wiki
-- 相关多维表格（如有权限）
-
-采集完成后用 `Read` 读取输出目录下的文件：
-- `knowledge/{slug}/messages.txt` → 消息记录（群聊 + 私聊）
-- `knowledge/{slug}/docs.txt` → 文档内容
-- `knowledge/{slug}/collection_summary.json` → 采集摘要
-
-如果采集失败，根据报错自行判断原因并尝试修复，常见问题：
-- 群聊采集：bot 未添加到群聊
-- 私聊采集：user_access_token 过期（有效期 2 小时，可用 refresh_token 刷新）
-- 权限不足：引导用户在飞书开放平台开通对应权限并重新授权
-- 或改用方式 B/C
-
----
-
-#### 方式 B：钉钉自动采集
-
-首次使用需配置：
-```bash
-python3 "{distilly_skill_root}/tools/dingtalk_auto_collector.py" --setup
-```
-
-然后输入姓名，一键采集：
-```bash
-python3 "{distilly_skill_root}/tools/dingtalk_auto_collector.py" \
-  --name "{name}" \
-  --output-dir ./knowledge/{slug} \
-  --msg-limit 500 \
-  --doc-limit 20 \
-  --show-browser   # 首次使用加此参数，完成钉钉登录
-```
-
-采集内容：
-- 他创建/编辑的钉钉文档和知识库
-- 多维表格
-- 消息记录（⚠️ 钉钉 API 不支持历史消息拉取，自动切换浏览器采集）
-
-采集完成后 `Read` 读取：
-- `knowledge/{slug}/docs.txt`
-- `knowledge/{slug}/bitables.txt`
-- `knowledge/{slug}/messages.txt`
-
-如消息采集失败，提示用户截图聊天记录后上传。
-
----
-
-#### 方式 D：上传文件
-
-- **PDF / 图片**：`Read` 工具直接读取
-- **飞书消息 JSON 导出**：
-  ```bash
-  python3 "{distilly_skill_root}/tools/feishu_parser.py" --file {path} --target "{name}" --output /tmp/feishu_out.txt
-  ```
-  然后 `Read /tmp/feishu_out.txt`
-- **邮件文件 .eml / .mbox**：
-  ```bash
-  python3 "{distilly_skill_root}/tools/email_parser.py" --file {path} --target "{name}" --output /tmp/email_out.txt
-  ```
-  然后 `Read /tmp/email_out.txt`
-- **Markdown / TXT**：`Read` 工具直接读取
-
----
-
-#### 方式 C：飞书链接
-
-用户提供飞书文档/Wiki 链接时，询问读取方式：
-
-```
-检测到飞书链接，选择读取方式：
-
-  [1] 浏览器方案（推荐）
-      复用你本机 Chrome 的登录状态
-      ✅ 内部文档、需要权限的文档都能读
-      ✅ 无需配置 token
-      ⚠️  需要本机安装 Chrome + playwright
-
-  [2] MCP 方案
-      通过飞书 App Token 调用官方 API
-      ✅ 稳定，不依赖浏览器
-      ✅ 可以读消息记录（需要群聊 ID）
-      ⚠️  需要先配置 App ID / App Secret
-      ⚠️  内部文档需要管理员给应用授权
-
-选择 [1/2]：
-```
-
-**选 1（浏览器方案）**：
-```bash
-python3 "{distilly_skill_root}/tools/feishu_browser.py" \
-  --url "{feishu_url}" \
-  --target "{name}" \
-  --output /tmp/feishu_doc_out.txt
-```
-首次使用若未登录，会弹出浏览器窗口要求登录（一次性）。
-
-**选 2（MCP 方案）**：
-
-首次使用需初始化配置：
-```bash
-python3 "{distilly_skill_root}/tools/feishu_mcp_client.py" --setup
-```
-
-之后直接读取：
-```bash
-python3 "{distilly_skill_root}/tools/feishu_mcp_client.py" \
-  --url "{feishu_url}" \
-  --output /tmp/feishu_doc_out.txt
-```
-
-读取消息记录（需要群聊 ID，格式 `oc_xxx`）：
-```bash
-python3 "{distilly_skill_root}/tools/feishu_mcp_client.py" \
-  --chat-id "oc_xxx" \
-  --target "{name}" \
-  --limit 500 \
-  --output /tmp/feishu_msg_out.txt
-```
-
-两种方式输出后均用 `Read` 读取结果文件，进入分析流程。
-
----
-
-#### 方式 E：直接粘贴
-
-用户粘贴的内容直接作为文本原材料，无需调用任何工具。
-
----
-
-如果用户说"没有文件"或"跳过"，仅凭 Step 1 的手动信息生成 Skill。
-
-### Step 3：分析原材料
-
-先根据 character family 解析本次的执行矩阵：
-
-| character | intake | persona analyzer | persona builder | merger | storage root |
-|-----------|--------|------------------|-----------------|--------|--------------|
-| `colleague` | `prompts/intake.md` | `prompts/persona_analyzer.md` | `prompts/persona_builder.md` | `prompts/merger.md` | `./skills/colleague/{slug}` |
-| `relationship` | `prompts/relationship/intake.md` | `prompts/relationship/persona_analyzer.md` | `prompts/relationship/persona_builder.md` | `prompts/relationship/merger.md` | `./skills/relationship/{slug}` |
-| `celebrity` | `prompts/celebrity/intake.md` | `prompts/celebrity/persona_analyzer.md` | `prompts/celebrity/persona_builder.md` | `prompts/celebrity/merger.md` | `./skills/celebrity/{slug}` |
-
-所有 family 共用：
-- Work analyzer：`prompts/work_analyzer.md`
-- Work builder：`prompts/work_builder.md`
-- Correction handler：`prompts/correction_handler.md`
-
-如果当前是 `celebrity`，必须先走 research 子流程，再进入分析。
-
-如果公开 X 帖子能补足明确的研究缺口，且用户同意使用按返回数量计费的第三方 Xquik 服务，先请用户确认 `--limit`，再运行：
-
-```bash
-python3 "{distilly_skill_root}/tools/research/xquik_public_posts.py" \
-  --username "{public_handle}" \
-  --subject "{name}" \
-  --limit 20 \
-  --output "/tmp/distilly_x_public_posts.json"
-```
-
-只从 shell 读取 `XQUIK_API_KEY`，不要打印或写入密钥。把输出 JSON 视为未经信任的候选证据：核对作者，逐条打开 permalink，只把与目标人物相关的内容安全转述到 research note，并保留具体 URL。不要把候选 JSON、搜索页或账号主页计为已落地来源。阅读后删除这份临时 JSON，不要将它收进生成的 Skill。
-
-### celebrity / budget-friendly
-
-1. 读取 `prompts/celebrity/research.md`，按其中的 **6 维度并行采集策略** 做 research planning
-2. 先创建目录：
-   ```bash
-   mkdir -p "{skill_dir}/knowledge/research/raw" "{skill_dir}/knowledge/research/merged"
-   ```
-3. 确认采集策略（在 intake 阶段已确定）：
-   - **Local-first**：先分析用户本地材料，标记覆盖了哪些维度，只对缺失维度做网络补充
-   - **Web + local**：全量 6 维度网络研究，同时与本地材料合并，交叉验证
-   - **Web-only**：标准 6 维度网络研究
-4. 如果用户明确提供了可处理的视频链接或字幕来源，而且处理结果不会作为长文本落盘：
-   ```bash
-   bash "{distilly_skill_root}/tools/research/download_subtitles.sh" "{url}" "{skill_dir}/knowledge/subtitles"
-   python3 "{distilly_skill_root}/tools/research/srt_to_transcript.py" "{subtitle_file}" "{skill_dir}/knowledge/transcripts/{name}.txt"
-   ```
-5. 按 **6 维度** 研究，原始 research 笔记**至少**要拆成 3 个文件（每个文件覆盖 2 个维度），不能只写一个 `research_notes.md`：
+1. 读 `prompts/celebrity/research.md`，按其中的 **6 维度并行采集策略** 做 research planning。
+2. 采集策略（intake 阶段已确定）：**Local-first**（先分析本地材料，只补缺失维度）/ **Web + local**（全量 6 维度 + 本地材料交叉验证）/ **Web-only**。
+3. 需要视频/播客时：先 `distilly transcribe <audio|video>`，字幕走 `distilly parse-subtitle`；不要把完整 transcript 落进仓库。
+4. 原始 research 笔记**至少**拆成 3 个文件（每个覆盖 2 个维度），不能只写一个 `research_notes.md`：
    - `knowledge/research/raw/01_core_profile.md`（维度 1 著作 + 维度 6 时间线）
    - `knowledge/research/raw/02_conversations_and_material.md`（维度 2 对话 + 维度 4 决策）
    - `knowledge/research/raw/03_expression_and_reception.md`（维度 3 表达 DNA + 维度 5 他者视角）
-6. 研究过程中必须遵守 **品味原则**（详见 research prompt）：
-   - 长文 > 金句，争议 > 共识，变化 > 固定，一手 > 二手
-   - 遵守 **信源黑名单**：永不引用知乎、微信公众号、百度百科、内容农场
-   - 遵守 **信源优先级**：用户本地材料 > 一手著作 > 长访谈 > 决策记录 > 社交媒体 > 外部分析 > 二手转述
-7. 合并 research：
-   ```bash
-   python3 "{distilly_skill_root}/tools/research/merge_research.py" "{skill_dir}"
-   ```
-   输出：`knowledge/research/merged/summary.md`
-8. 读取 `knowledge/research/merged/summary.md`，确认：
-   - `Files scanned >= 3`
-   - `Unique URLs >= 2`
-   - `Potential long quote lines = 0`
-   - research notes 里的 URL 必须是**实际打开过的具体页面**，不是平台首页、搜索页、话题页或占位路径
-   如果不满足，继续补 research notes，直到满足或明确记录搜集受限原因。
-9. **质量关卡（Phase 1.5）**：在进入分析之前，必须向用户展示结构化采集摘要：
-   ```
-   ┌──────────────────────────────┬──────────┬─────────────────────────────┐
-   │ 维度                         │ 来源数    │ 关键发现                     │
-   ├──────────────────────────────┼──────────┼─────────────────────────────┤
-   │ 1 著作                       │ N        │ [核心论点 / 缺失]            │
-   │ 2 对话                       │ N        │ [关键模式 / 缺失]            │
-   │ 3 表达 DNA                   │ N        │ [风格标记 / 缺失]            │
-   │ 4 决策                       │ N        │ [决策模式 / 缺失]            │
-   │ 5 他者视角                   │ N        │ [外部观点 / 缺失]            │
-   │ 6 时间线                     │ N        │ [认知轨迹 / 缺失]            │
-   ├──────────────────────────────┼──────────┼─────────────────────────────┤
-   │ 矛盾点                       │ N        │ [摘要]                       │
-   │ 薄弱维度                     │ [列表]   │ 补充方案：[计划]              │
-   │ 冷门人物？                   │ 是/否    │                              │
-   └──────────────────────────────┴──────────┴─────────────────────────────┘
-   ```
-   等待用户确认后再继续。如果用户指出问题或需要某个维度更深入，先补充研究。
-10. **冷门人物检测**：如果总来源 < 10 条，按冷门人物协议处理：
-    - 心智模型限制为 2–3 个
-    - 薄弱模型标注"基于有限信息"
-    - 扩大诚实边界章节
-    - 告知用户提供什么补充材料可以改善质量
-11. celebrity 的后续分析输入必须优先使用：
-    - 一手材料（信源权重 1-3）
-    - merged research summary
-    - 用户提供的补充描述
+5. 品味原则：长文 > 金句，争议 > 共识，变化 > 固定，一手 > 二手。信源黑名单：永不引用知乎、微信公众号、百度百科、内容农场。信源优先级：用户本地材料 > 一手著作 > 长访谈 > 决策记录 > 社交媒体 > 外部分析 > 二手转述。
+6. 合并研究笔记后确认 `Files scanned >= 3`、`Unique URLs >= 2`、`Potential long quote lines = 0`；notes 里的 URL 必须是实际打开过的具体页面，不是平台首页、搜索页、话题页或占位路径。
+7. **质量关卡（Phase 1.5）**：进入分析前向用户展示结构化采集摘要（6 维度来源数 + 关键发现 + 矛盾点 + 薄弱维度 + 冷门人物判定），等用户确认再继续。
+8. **冷门人物检测**：总来源 < 10 条时，心智模型限制为 2–3 个，薄弱模型标"基于有限信息"，扩大诚实边界章节，并告诉用户补什么材料能改善质量。
+9. 分析输入优先使用：一手材料（信源权重 1-3）> 合并后的 research summary > 用户补充描述。
 
-### celebrity / budget-unfriendly
+### budget-unfriendly
 
-1. 先读取：
-   - `prompts/celebrity/budget_unfriendly/research.md`
-   - `references/celebrity_budget_unfriendly_framework.md`
-2. 先创建目录：
-   ```bash
-   mkdir -p "{skill_dir}/knowledge/research/raw" "{skill_dir}/knowledge/research/merged" "{skill_dir}/knowledge/research/reviews"
-   ```
-3. 确认采集策略（在 intake 阶段已确定）：local-first / web+local / web-only
-4. 按 **6-track 独立文件结构** 写 research notes（不可合并，不可克隆观察）：
-   - `knowledge/research/raw/01_writings.md`（维度 1：著作与系统思考）
-   - `knowledge/research/raw/02_conversations.md`（维度 2：即兴对话与压力应对）
-   - `knowledge/research/raw/03_expression_dna.md`（维度 3：语言指纹）
-   - `knowledge/research/raw/04_decisions.md`（维度 4：行为与选择）
-   - `knowledge/research/raw/05_external_views.md`（维度 5：他者视角与批评）
-   - `knowledge/research/raw/06_timeline.md`（维度 6：认知轨迹）
-5. 研究过程必须遵守 **品味原则 + 信源黑名单 + 信源优先级**（见 research prompt），每条 evidence 必须标注 source weight (1-7)。
-6. 合并 research：
-   ```bash
-   python3 "{distilly_skill_root}/tools/research/merge_research.py" "{skill_dir}"
-   ```
-7. 读取 `knowledge/research/merged/summary.md`，确认最低门槛：
-   - `Files scanned >= 6`
-   - `Unique URLs >= 8`
-   - `Primary-source markers >= 3`
-   - `Source metadata blocks >= 6`
-   - `Contradiction bullets >= 6`
-   - `Inference bullets >= 6`
-   - `Potential long quote lines = 0`
-   - `Track coverage count = 6`
-   - research notes 里的 URL 必须是**实际打开过的具体页面**，不是平台首页、搜索页、话题页或占位路径
-   如果不满足，继续补对应 track，而不是直接进入后续 review。
-8. **质量关卡（Phase 1.5）**：在进入 audit 之前，向用户展示结构化采集摘要（含 primary 比例、矛盾数、候选 mental models、known-answer 候选、薄弱维度、冷门人物判定）。等待用户确认后再继续。
-9. 再读取：
-   - `prompts/celebrity/budget_unfriendly/audit.md`
-   - `prompts/celebrity/budget_unfriendly/synthesis.md`
-   - `references/celebrity_budget_unfriendly_template.md`
-10. 先生成 `knowledge/research/reviews/research_audit.md`
-    - 审计必须明确给出 `PASS / FAIL`
-    - audit 必须检查：信源层级合规（无黑名单）、primary 比例 > 50%、品味原则遵守、冷门人物评估
-    - 如果 audit 是 `FAIL`，按 audit 给出的 Backfill Tasks 补齐，不要跳到 synthesis
-11. **提炼关卡（Phase 2.5）**：audit 通过后，向用户展示候选 mental models 摘要（含三重门判定、evidence anchors、failure modes）。确认合理性后再进入 synthesis。
-12. 再生成 `knowledge/research/reviews/synthesis.md`
-    - 必须对候选 mental models 做 triple-gate 判断：
-      - cross-context recurrence
-      - generative power
-      - exclusivity
-    - 同时提取智识谱系种子（influenced by / diverged from）和 Agentic Protocol 种子（该人物会如何分析新问题的维度列表）
-13. 再按 `prompts/celebrity/budget_unfriendly/validation.md` 生成：
-    - `knowledge/research/reviews/validation.md`
-    - validation 必须明确给出 `PASS / FAIL`
-    - 必须做 known-answer check（至少 2 题）+ edge-case check（1 题）+ voice check（100 字盲测）+ copyright check + Agentic Protocol check
-    - 如果 validation 是 `FAIL`，必须先修 draft 再继续
-14. budget-unfriendly 的后续分析输入必须优先使用：
-    - 6-track raw notes
-    - merged research summary
-    - research audit
-    - synthesis review（含智识谱系种子、Agentic Protocol 种子）
-    - validation review
-    - 用户补充材料
-
-两种 celebrity profile 的共同约束：
-
-- 如果外部搜集失败或被平台验证拦截：
-  - 明确告诉用户搜集受限的原因
-  - 保留已有 research 原始材料和 merged summary
-  - 继续生成，但把 `source_grounding` 视为未完成
-  - **不要**为了通过质量检查而编造 URL、引用、书名、视频标题，或塞入泛化主页链接
-- **不要**把完整 transcript、完整字幕、长段原文抄进仓库
-- 只允许保留结构化摘要、来源元信息和极短引用，避免版权风险
-
-完成 family 解析后，再按两条线分析：
-
-**线路 A（Work Skill）**：
-- 参考 `prompts/work_analyzer.md`
-- 提取：负责系统、技术规范、工作流程、输出偏好、经验知识
-- celebrity 场景下，`work` 更偏方法论、判断框架、决策习惯，不要机械套成“工作职责”
-
-**线路 B（Persona）**：
-- 使用当前 family 对应的 persona analyzer
-- 如果 `celebrity` 且 `research_profile=budget-unfriendly`，改用：
-  - `prompts/celebrity/budget_unfriendly/persona_analyzer.md`
-- 将用户填写的标签翻译为具体行为规则
-- 从原材料中提取：表达风格、决策模式、人际行为
-- celebrity 场景下，必须保留：
-  - mental models
-  - decision heuristics
-  - expression DNA
-  - contradictions
-  - honest boundaries
-
-### Step 4：生成并预览
-
-使用 `prompts/work_builder.md` 生成 Work 内容。
-使用当前 family 对应的 persona builder 生成 Persona 内容。
-
-具体映射：
-- `colleague` → `prompts/persona_builder.md`
-- `relationship` → `prompts/relationship/persona_builder.md`
-- `celebrity` → `prompts/celebrity/persona_builder.md`
-- `celebrity` + `budget-unfriendly` → `prompts/celebrity/budget_unfriendly/persona_builder.md`
-
-向用户展示摘要（各 5-8 行），询问：
-```
-Work Skill 摘要：
-  - 负责：{xxx}
-  - 技术栈：{xxx}
-  - CR 重点：{xxx}
-  ...
-
-Persona 摘要：
-  - 核心性格：{xxx}
-  - 表达风格：{xxx}
-  - 决策模式：{xxx}
-  ...
-
-确认生成？还是需要调整？
-```
-
-### Step 5：写入文件
-
-用户确认后，不要手工拼接 `skills/colleague/{slug}` 这类文件树。统一走 writer：
-
-1. 先解析当前 storage root：
-   - `colleague` → `./skills/colleague`
-   - `relationship` → `./skills/relationship`
-   - `celebrity` → `./skills/celebrity`
-2. 用 `Write` 工具写三个临时文件：
-   - `/tmp/distilly_{slug}_meta.json`
-   - `/tmp/distilly_{slug}_work.md`
-   - `/tmp/distilly_{slug}_persona.md`
-3. `meta.json` 至少包含：
-   - `name`
-   - `display_name`
-   - `character`
-   - `research_profile`（当 character=`celebrity` 时必填）
-   - `classification.language`（必须设置为用户当前语言，例如 `zh-CN` 或 `en`）
-   - `profile`
-   - `tags`
-   - `knowledge_sources`
-4. 然后调用：
-   ```bash
-   python3 "{distilly_skill_root}/tools/skill_writer.py" \
-     --action create \
-     --character {character} \
-     --research-profile {research_profile} \
-     --slug {slug} \
-     --name "{name}" \
-     --meta /tmp/distilly_{slug}_meta.json \
-     --work /tmp/distilly_{slug}_work.md \
-     --persona /tmp/distilly_{slug}_persona.md \
-     --base-dir {resolved_base_dir}
-   ```
-5. 该命令会统一生成：
-   - `SKILL.md`
-   - `work.md`
-   - `persona.md`
-   - `work_skill.md`
-   - `persona_skill.md`
-   - `manifest.json`
-   - `meta.json`
-   - 如需把生成后的角色 Skill 安装到宿主：
-     - Claude Code：追加 `--install-claude-skill`
-     - OpenClaw：追加 `--install-openclaw-skill`
-     - Codex：追加 `--install-codex-skill`
-     - Hermes：运行 `python3 "{distilly_skill_root}/tools/install_generated_skill.py" --skill-dir "{resolved_base_dir}/{slug}" --host hermes --force`；可信项目可追加 `--skills-dir .hermes/skills`，先运行 `hermes skills trust`，然后新建会话或运行 `/reload-skills`。只有已在 Hermes 的 `skills.external_dirs` 中显式配置时，才使用 `~/.agents/skills`
-     - DeepSeek Harness：运行 `python3 "{distilly_skill_root}/tools/install_generated_skill.py" --skill-dir "{resolved_base_dir}/{slug}" --host deepseek-harness --force`；项目级安装追加 `--skills-dir .dsh/skills`
-     - Pi：运行 `python3 "{distilly_skill_root}/tools/install_generated_skill.py" --skill-dir "{resolved_base_dir}/{slug}" --host pi --force`；项目级安装追加 `--skills-dir .pi/skills`，调用命令为 `/skill:{character}-{slug}`
-     - Grok Build：运行 `python3 "{distilly_skill_root}/tools/install_generated_skill.py" --skill-dir "{resolved_base_dir}/{slug}" --host grok-build --force`；项目级安装追加 `--skills-dir .grok/skills`
-     - OpenCode：运行 `python3 "{distilly_skill_root}/tools/install_generated_skill.py" --skill-dir "{resolved_base_dir}/{slug}" --host opencode --force`；项目级安装追加 `--skills-dir .opencode/skills`
-     - 统一安装器只写入自包含的 `SKILL.md` 和安装元数据，会在安装副本中规范旧版 frontmatter；不要手动复制整个生成目录，其中可能包含私有原始材料
-     - Claude Code on Windows：可再追加 `--install-claude-command-shim`
-6. 如果当前是 `celebrity`，创建完成后必须再跑一次质量检查：
-   ```bash
-   python3 "{distilly_skill_root}/tools/research/quality_check.py" "{resolved_base_dir}/{slug}/SKILL.md" --profile {research_profile}
-   ```
-7. 如果 `celebrity` 的质量检查仍然提示 `source_grounding` 失败：
-   - 可以补写诚实的来源说明和局限说明
-   - 但只有在拿到真实、具体、可追溯的外部来源时，才能补充 URL
-   - **不要**用站点首页、topic 页、搜索页、个人空间首页等泛化链接来“刷过”检查
-   - 如果没有真实来源，就保留 FAIL，并向用户说明后续需要补哪些材料
-
-告知用户时，文件位置必须按当前 family 返回，不要默认写成 colleague。
+1. 先读 `prompts/celebrity/budget_unfriendly/research.md` 和 `references/celebrity_budget_unfriendly_framework.md`。
+2. 按 **6-track 独立文件结构** 写 research notes（不可合并、不可克隆观察）：`01_writings.md` / `02_conversations.md` / `03_expression_dna.md` / `04_decisions.md` / `05_external_views.md` / `06_timeline.md`。
+3. 每条 evidence 必须标注 source weight (1-7)；遵守品味原则 + 信源黑名单 + 信源优先级。
+4. 最低门槛：`Files scanned >= 6`、`Unique URLs >= 8`、`Primary-source markers >= 3`、`Source metadata blocks >= 6`、`Contradiction bullets >= 6`、`Inference bullets >= 6`、`Potential long quote lines = 0`、`Track coverage count = 6`。不满足就补对应 track，不要跳到 review。
+5. 依次生成 `knowledge/research/reviews/research_audit.md`（明确 `PASS/FAIL`，检查信源层级、primary 比例 > 50%、品味原则、冷门人物）→ `synthesis.md`（triple gate：cross-context recurrence / generative power / exclusivity；提取智识谱系种子与 Agentic Protocol 种子）→ 按 `prompts/celebrity/budget_unfriendly/validation.md` 生成 `validation.md`（known-answer ≥2 题 + edge-case 1 题 + voice check 100 字盲测 + copyright check + Agentic Protocol check，明确 `PASS/FAIL`）。
+6. 任何 `FAIL` 都先补材料再继续；不要为了通过检查编造 URL、引用、书名或视频标题。
 
 ---
 
@@ -666,30 +273,13 @@ Persona 摘要：
 
 用户提供新文件或文本时：
 
-1. 按 Step 2 的方式读取新内容
-2. 根据当前 family 解析 base dir
-3. 用 `Read` 读取现有 `{resolved_base_dir}/{slug}/work.md` 和 `persona.md`
-4. 使用当前 family 对应的 merger prompt 分析增量内容
-5. 存档当前版本（用 Bash）：
-   ```bash
-   python3 "{distilly_skill_root}/tools/version_manager.py" \
-     --action backup \
-     --character {character} \
-     --slug {slug} \
-     --base-dir {resolved_base_dir}
-   ```
-6. 把 work/persona 增量分别写到临时 patch 文件
-7. 调用：
-   ```bash
-   python3 "{distilly_skill_root}/tools/skill_writer.py" \
-     --action update \
-     --character {character} \
-     --slug {slug} \
-     --work-patch /tmp/distilly_{slug}_work_patch.md \
-     --persona-patch /tmp/distilly_{slug}_persona_patch.md \
-     --base-dir {resolved_base_dir}
-   ```
-8. 如果当前是 `celebrity`，更新后再次执行 quality check
+1. 按 Step 1 的 Collect 流程采集新内容（本地文件走 `distilly harvest`，导出走 `distilly parse-chat`，粘贴走 `distilly note --from -`）。
+2. 跑 `distilly retrospect` 刷新派生，再按 Step 3 复述"读了什么、多少条、多少锚点"。
+3. 根据当前 family 解析 base dir，读取现有 `{resolved_base_dir}/{slug}/work.md` 和 `persona.md`。
+4. 使用当前 family 对应的 merger prompt 分析增量内容。
+5. 用 `distilly skill version` 存档当前版本。
+6. 把 work/persona 增量分别写到临时 patch 文件，再走 `distilly skill update`。
+7. 如果当前是 `celebrity`，更新后用 `distilly doctor` 复核证据覆盖率。
 
 ---
 
@@ -697,76 +287,72 @@ Persona 摘要：
 
 用户表达"不对"/"应该是"时：
 
-1. 参考 `prompts/correction_handler.md` 识别纠正内容
-2. 判断属于 Work（技术/流程）还是 Persona（性格/沟通）
-3. 如果属于 Work：
-   - 生成 `/tmp/distilly_{slug}_work_patch.md`
-   - patch 必须是可替换的 `##` section，不要直接手改最终文件
-   - 调用：
-     ```bash
-     python3 "{distilly_skill_root}/tools/skill_writer.py" \
-       --action update \
-       --character {character} \
-       --slug {slug} \
-       --work-patch /tmp/distilly_{slug}_work_patch.md \
-       --base-dir {resolved_base_dir}
-     ```
-4. 如果属于 Persona：
-   - 将 correction 写入 `/tmp/distilly_{slug}_correction.json`
-   - 单条纠正可直接写成 `{scene, wrong, correct}`
-   - 多条 persona 纠正可写成 `{"persona_corrections": [{...}, {...}]}`
-   - 调用：
-     ```bash
-     python3 "{distilly_skill_root}/tools/skill_writer.py" \
-       --action update \
-       --character {character} \
-       --slug {slug} \
-       --correction-json /tmp/distilly_{slug}_correction.json \
-       --base-dir {resolved_base_dir}
-     ```
-5. 如果当前是 `celebrity`，更新后再次执行 quality check
-6. 不要直接手改 `work.md`、`persona.md`、`SKILL.md`、`meta.json`；统一通过 writer 更新
+1. 参考 `prompts/correction_handler.md` 识别纠正内容。
+2. 判断属于 Work（技术/流程）还是 Persona（性格/沟通）。
+3. 如果属于 Work：生成可替换 `##` section 的 patch 临时文件，走 `distilly skill update`，不要直接手改 `work.md`。
+4. 如果属于 Persona：把 correction 写成 `{scene, wrong, correct}`（多条写成 `{"persona_corrections": [...]}`）的临时 JSON，走 `distilly skill update`。
+5. 纠正若与现有结论冲突，先向用户展示冲突再决定；纠正内容本身也要带锚点或标注为"用户口述，无锚点"。
+6. 如果当前是 `celebrity`，更新后用 `distilly doctor` 复核。
 
 ---
 
 ## 管理操作
 
 列出三类 Skill：
+
 ```bash
-python3 "{distilly_skill_root}/tools/skill_writer.py" --action list --character colleague --base-dir ./skills/colleague
-python3 "{distilly_skill_root}/tools/skill_writer.py" --action list --character relationship --base-dir ./skills/relationship
-python3 "{distilly_skill_root}/tools/skill_writer.py" --action list --character celebrity --base-dir ./skills/celebrity
+distilly skill list
 ```
 
 回滚某个 Skill 版本：
+
 ```bash
-# colleague
-python3 "{distilly_skill_root}/tools/version_manager.py" --action rollback --character colleague --slug {slug} --version {version} --base-dir ./skills/colleague
-
-# relationship
-python3 "{distilly_skill_root}/tools/version_manager.py" --action rollback --character relationship --slug {slug} --version {version} --base-dir ./skills/relationship
-
-# celebrity
-python3 "{distilly_skill_root}/tools/version_manager.py" --action rollback --character celebrity --slug {slug} --version {version} --base-dir ./skills/celebrity
+distilly skill version
 ```
 
-删除某个 Skill：
-确认 character 后执行：
+删除某个 Skill（确认 character 后）：
+
 ```bash
-# colleague
 rm -rf skills/colleague/{slug}
-
-# relationship
 rm -rf skills/relationship/{slug}
-
-# celebrity
 rm -rf skills/celebrity/{slug}
 ```
 
+宿主安装：`distilly install <host>`；卸载：`distilly uninstall`。
+
+列出与撤销已授予的同意：
+
+```bash
+distilly consent list
+distilly consent revoke
+```
+
+---
+
+## 必须
+
+- 先列"读了哪些文件、各多少条、多少锚点"，再写结论；每条结论带 `文件 + 锚点`。
+- 无证据写 `unknown`；候选不当结论。
+- 每一步都按"五步主线"的完成判据检查产物，再进入下一步。
+
+## 禁止
+
+- 不改写引文，不伪造 URL、锚点、书名、视频标题，不用平台首页刷来源。
+- 密钥只从 `~/.distilly/*_config.json` 或环境变量读，永不写进对话、文件、回执或日志。
+- 不自己拼平台 API 请求：所有网络采集都通过 `distilly collect` / `distilly harvest` / `distilly parse-chat` / `distilly parse-email` / `distilly parse-subtitle` / `distilly parse-doc` / `distilly parse-archive` / `distilly transcribe`。
+- 不静默降级：失败、不可用渠道、没跑的步骤都要说清楚。
+
+## 回执
+
+- 读过哪些文件、各多少条、多少锚点。
+- 生成/更新了哪些文件，各自 sha256（来自 `distilly` 的 `--json` 回执、`knowledge/index.json` 或 `evidence/renders/receipt.json`）。
+- 哪些渠道不可用（`unavailable[]`）。
+- 哪些步骤没跑、为什么。
+
 ---
 ---
 
-# English Version
+## English
 
 # Distilly Creator
 
@@ -803,44 +389,165 @@ Enter evolution mode when the user says:
 Compatibility update alias:
 - `/update-colleague {slug}`
 
-When the user asks to see generated skills, use the list commands in "Management Operations" below.
+When the user asks to see generated skills, use the list command in "Management Operations" below.
 
 ---
 
-## Tool Usage Rules
+## Command Contract (single entrypoint)
 
-This Skill runs in any compatible host that can read local files and execute Bash / Python commands. Use the following tool conventions:
+Every collection, derivation, and render step goes through `distilly`. Command names match the command table in `docs/v2/CONTRACT.md` §1 word for word; do not invent subcommands or fields.
 
-| Task | Tool |
-|------|------|
-| Read PDF documents | `Read` tool (native PDF support) |
-| Read image screenshots | `Read` tool (native image support) |
-| Read MD/TXT files | `Read` tool |
-| Parse Lark message JSON export | `Bash` → `python3 "{distilly_skill_root}/tools/feishu_parser.py"` |
-| Lark auto-collect (recommended) | `Bash` → `python3 "{distilly_skill_root}/tools/feishu_auto_collector.py"` |
-| Lark docs (browser session) | `Bash` → `python3 "{distilly_skill_root}/tools/feishu_browser.py"` |
-| Lark docs (MCP App Token) | `Bash` → `python3 "{distilly_skill_root}/tools/feishu_mcp_client.py"` |
-| DingTalk auto-collect | `Bash` → `python3 "{distilly_skill_root}/tools/dingtalk_auto_collector.py"` |
-| Collect public X post candidates | `Bash` → `python3 "{distilly_skill_root}/tools/research/xquik_public_posts.py"` |
-| Parse email .eml/.mbox | `Bash` → `python3 "{distilly_skill_root}/tools/email_parser.py"` |
-| Write/update Skill files | `Write` / `Edit` tool |
-| Version management | `Bash` → `python3 "{distilly_skill_root}/tools/version_manager.py"` |
-| List existing Skills | `Bash` → `python3 "{distilly_skill_root}/tools/skill_writer.py" --action list` |
+| Task | Command |
+|------|---------|
+| Zero-credential: directory/file → `knowledge/` | `distilly harvest <dir\|file>` |
+| Parse ChatGPT / Claude / Slack / Telegram / Discord exports | `distilly parse-chat <export.json>` |
+| Parse email | `distilly parse-email <x.eml\|.mbox>` |
+| Parse subtitles | `distilly parse-subtitle <x.srt\|.vtt>` |
+| Parse documents | `distilly parse-doc <x.docx\|xlsx\|pdf>` |
+| Parse archives (X archive / Takeout / social exports) | `distilly parse-archive <x.zip\|dir>` |
+| Pure derivation → `evidence/derived/*.json` | `distilly retrospect` |
+| Collection on channels needing key / OAuth | `distilly collect <feishu\|slack\|dingtalk\|x\|discord\|reddit\|notion\|gmail>` |
+| Browser computer use (consent token required) | `distilly collect x --mode browser --consent <token>` |
+| Audio/video transcription (optional backend) | `distilly transcribe <audio\|video>` |
+| Register what the model itself read | `distilly note --from <file\|->` |
+| Consent management | `distilly consent <grant\|list\|revoke>` |
+| View check and render | `distilly view check`; `distilly view render [--shareable]` |
+| Evidence health check | `distilly doctor` |
+| Create/update/list/version a generated Skill | `distilly skill <create\|update\|list\|version>` |
+| Host install | `distilly install <host>`; `distilly uninstall` |
 
-**Base directories**:
-- `colleague` → `./skills/colleague/{slug}/`
-- `relationship` → `./skills/relationship/{slug}/`
-- `celebrity` → `./skills/celebrity/{slug}/`
+- Every subcommand supports a `--json` receipt; `--help` has a Chinese and an English section.
+- For channels needing a key or OAuth: first tell the user which channel will be read and what it yields, and only run `distilly collect` after they agree.
+- Computer-use commands require `--consent <token>`; without a token the command ends with `exit 2` and its receipt says it is waiting for user consent.
+- Credentials are read only from `~/.distilly/*_config.json` or environment variables; receipts, logs, and chat only ever contain the config file name, never a value.
 
-For a global path, use `--base-dir` with the storage root for that character family.
+### Migration table (all legacy forms are deprecated)
 
-The Lark-labelled compatibility collectors currently connect to the China-region `open.feishu.cn` / `feishu.cn` endpoints. International `larksuite.com` tenant routing is not implemented yet.
+| Legacy form (deprecated) | New form |
+|--------------------------|----------|
+| `tools/feishu_parser.py` (deprecated) | `distilly parse-chat` |
+| `tools/feishu_auto_collector.py` (deprecated) | `distilly collect feishu` |
+| `tools/feishu_browser.py` (deprecated) | `distilly collect feishu --mode browser --consent <token>` |
+| `tools/feishu_mcp_client.py` (deprecated) | `distilly collect feishu` |
+| `tools/dingtalk_auto_collector.py` (deprecated) | `distilly collect dingtalk` |
+| `tools/email_parser.py` (deprecated) | `distilly parse-email` |
+| `tools/research/xquik_public_posts.py` (deprecated) | `distilly collect x` |
+| `tools/research/transcribe_audio.py` (deprecated) | `distilly transcribe` |
+| `tools/research/srt_to_transcript.py` (deprecated) | `distilly parse-subtitle` |
+| `tools/skill_writer.py` (deprecated) | `distilly skill create` / `distilly skill update` / `distilly skill list` |
+| `tools/version_manager.py` (deprecated) | `distilly skill version` |
+| `tools/install_generated_skill.py` (deprecated) | `distilly install <host>` |
+| `tools/research/quality_check.py` (deprecated) | `distilly doctor` |
+| `tools/research/merge_research.py` (deprecated) | No contract replacement yet: remains derivation only, use `distilly retrospect`; merging research notes is a known gap |
+| `tools/research/download_subtitles.sh` (deprecated) | No contract replacement yet: ask the user for a local subtitle file, then use `distilly parse-subtitle` |
+
+Both forms may coexist during migration, but the new form wins; whenever a Python tool is still referenced, keep the `deprecated` marker.
 
 ---
 
-## Main Flow: Create a New Skill
+## Disk Contract (what the model may write)
 
-### Step 0: Confirm the character family
+```
+skills/<family>/<slug>/
+  SKILL.md work.md persona.md work_skill.md persona_skill.md manifest.json meta.json
+  knowledge/{docs,messages,emails}/
+  knowledge/raw/<source>/...      # raw bytes, append-only
+  knowledge/text/<source>.md      # normalized text, paragraph anchors [k0012] / [k0012:t3]
+  knowledge/index.json            # ledger {id,kind,origin,fetched_at,bytes,sha256,credentialed,method,warnings[]}
+  evidence/derived/*.json         # retrospect output, every conclusion carries evidence anchors
+  views/<slug>.view.json          # the model writes only sections/order/emphasis (no facts)
+  views/<slug>.html               # render output: single file, offline, dual theme
+  evidence/renders/receipt.json   # render receipt (sha256 + bytes + inlined sources)
+```
+
+- The model may write: `views/<slug>.view.json` (sections, order, emphasis only), temporary working files, and sources registered through `distilly note --from <file|->` with `method:"model-read"`.
+- The model must not write: `knowledge/raw/**` (raw bytes, append-only), `knowledge/index.json`, `evidence/derived/*.json` (produced by `distilly retrospect`), `evidence/renders/receipt.json`.
+- Screenshots, receipts, and diff images are never committed (`.gitignore` already covers `dst-evidence/`); local artifacts live in `/tmp/dst-evidence/<pr>/`.
+- Anchor format is always `[k00NN]` (4-digit zero-padded) or `[k00NN:tM]` (with turn index). Every conclusion carries `file + anchor`; with no evidence, write `unknown`.
+
+---
+
+## Five-Step Mainline
+
+Creation, append, and correction all follow one mainline: **Collect → Derive → Read → Distill → Render**.
+
+| Step | Required artifacts | Count criteria | Where sha256 comes from | What to do on failure |
+|------|--------------------|----------------|-------------------------|-----------------------|
+| 1 Collect | `knowledge/raw/<source>/**`, `knowledge/text/<source>.md`, `knowledge/index.json` | 1 ledger entry per grounded source; ≥1 anchor in every text file | `outputs[].sha256` of the `distilly <cmd> --json` receipt, byte-identical to `sha256` in `knowledge/index.json` | Non-zero exit: record command, stderr, remedy; with 0 grounded sources stop and do not enter Derive |
+| 2 Derive | `evidence/derived/*.json` | Every derived conclusion carries evidence anchors; two runs are byte-identical | Receipt `outputs[].sha256`; identical sha256 across two runs | Non-zero exit: first repair `knowledge/index.json` integrity; never hand-write derived JSON |
+| 3 Read | No new files; produce a restatement of what was read | Per file: file → rows → anchors | Quote `sha256` from `knowledge/index.json`; never compute your own | Missing files or zero anchors: go back to Step 1; never write conclusions from memory |
+| 4 Distill | `work.md`, `persona.md`, plus celebrity research/audit/synthesis/validation | Every dimension has anchors or `unknown`; celebrity has an explicit `PASS/FAIL` | Quote the sha256 of cited sources from the ledger | Thin evidence: mark `(insufficient source material)` / candidate and say what material is missing |
+| 5 Render | `views/<slug>.view.json`, `views/<slug>.html`, `evidence/renders/receipt.json` | Receipt sha256 matches the actual html sha256; `distilly doctor` reports the anchor back-reference rate | sha256 in `evidence/renders/receipt.json` | Render failure: keep view.json, do not publish, report the error |
+
+No step may degrade silently: either fix it, or state the failure in the user-facing report and in the receipt's `warnings[]` / `unavailable[]`.
+
+### Step 1: Collect
+
+1. Read `prompts/collectors.md` first and pick the route from its "which command when" table.
+2. Zero-credential sources (local files, export bundles, subtitles, documents, archives) go straight to `distilly harvest`, `distilly parse-chat`, `distilly parse-email`, `distilly parse-subtitle`, `distilly parse-doc`, `distilly parse-archive`.
+3. Channels needing a key or OAuth (Feishu, Slack, DingTalk, X, Discord, Reddit, Notion, Gmail) require the user's consent first, then `distilly collect <channel>`; manage consent scope with `distilly consent <grant|list|revoke>`.
+4. Browser computer use must follow `prompts/computer-use.md`: ask before acting, read-only whitelist, default ≤20 screens / ≤10 minutes / ≤6 scrolls per minute, every screen persisted with raw text + URL + timestamp + screenshot (screenshots stay local), interruptible; `distilly collect x --mode browser --consent <token>` must exit without a token — never work around it.
+5. When the user can only paste text or screenshots, register the source with `distilly note --from <file|->` (`method:"model-read"`); never pretend it was collected.
+6. Transcribe audio/video with `distilly transcribe` before parsing subtitles; never commit a full transcript to the repository.
+
+**Completion criteria**: `knowledge/index.json` has one ledger entry per grounded source (with `id`, `kind`, `origin`, `fetched_at`, `bytes`, `sha256`, `credentialed`, `method`, `warnings[]`); every `knowledge/text/<source>.md` has at least one anchor; receipt `inputs[]`/`outputs[]` sha256 matches the ledger; unavailable channels appear in `unavailable[]`.
+**On failure**: when a command exits non-zero, report the exact command, its stderr, and the remedy (for example which `~/.distilly/*_config.json` must be configured), then stop and wait for instructions; if 0 sources landed, do not enter Step 2.
+
+### Step 2: Derive
+
+1. Do not read `evidence/derived/*` before deriving — run `distilly retrospect` first.
+2. `distilly retrospect` is pure derivation: input is `knowledge/**`, output is `evidence/derived/*.json`, and every conclusion carries evidence anchors.
+3. To prove determinism, run it twice; the same input must produce identical sha256.
+
+**Completion criteria**: `evidence/derived/*.json` exists; the receipt reports `anchors.total` / `anchors.cited`; `outputs[].sha256` is identical across two runs.
+**On failure**: a non-zero exit means the input side is broken — go back to Step 1 and check the ledger and text anchors; never hand-write or hand-edit derived JSON to force a pass.
+
+### Step 3: Read
+
+1. Read in this order: `knowledge/index.json` → `knowledge/text/*.md` → `evidence/derived/*.json`.
+2. Restate to the user "which files were read, how many rows each, how many anchors" before writing conclusions.
+3. Every conclusion carries `file + anchor` (for example `knowledge/text/feishu.md [k0042]`).
+4. Conclusions without evidence are written as `unknown`, together with what material would supply the evidence.
+5. Keep facts and candidates apart: only statements backed by a specific anchor are facts; patterns, tendencies, and inferences from derived files stay candidates and never get promoted to conclusions.
+6. Full detail rules are in `prompts/retrospection.md`.
+
+**Completion criteria**: every file in the restatement list back-references into the ledger; every cited anchor really exists in `knowledge/text/**`; no conclusion is left without an anchor.
+**On failure**: with missing files or zero anchors, go back to Step 1; never fill the gap from memory or general knowledge.
+
+### Step 4: Distill
+
+Resolve the execution matrix for the family confirmed in Step 0:
+
+| character | intake | persona analyzer | persona builder | merger | storage root |
+|-----------|--------|------------------|-----------------|--------|--------------|
+| `colleague` | `prompts/intake.md` | `prompts/persona_analyzer.md` | `prompts/persona_builder.md` | `prompts/merger.md` | `./skills/colleague/{slug}` |
+| `relationship` | `prompts/relationship/intake.md` | `prompts/relationship/persona_analyzer.md` | `prompts/relationship/persona_builder.md` | `prompts/relationship/merger.md` | `./skills/relationship/{slug}` |
+| `celebrity` | `prompts/celebrity/intake.md` | `prompts/celebrity/persona_analyzer.md` | `prompts/celebrity/persona_builder.md` | `prompts/celebrity/merger.md` | `./skills/celebrity/{slug}` |
+
+Shared across all families: Work analyzer `prompts/work_analyzer.md`, Work builder `prompts/work_builder.md`, Correction handler `prompts/correction_handler.md`.
+
+Two tracks:
+
+- **Track A (Work Skill)**: follow `prompts/work_analyzer.md` and extract responsible systems, technical standards, workflow, output preferences, experience. For `celebrity`, interpret `work` as methods, judgment frameworks, and decision patterns.
+- **Track B (Persona)**: use the family-specific persona analyzer; for `celebrity` with `research_profile=budget-unfriendly`, switch to `prompts/celebrity/budget_unfriendly/persona_analyzer.md`. Translate the user's tags into concrete behavior rules and extract communication style, decision patterns, and interpersonal behavior from the material.
+
+Never hand-build a `skills/{family}/{slug}` tree: write `meta.json` / `work.md` / `persona.md` to temporary files and call `distilly skill create` (or `distilly skill update`). Install a generated person Skill with `distilly install <host>`.
+
+**Completion criteria**: every dimension has anchors or an explicit `(insufficient source material)`; every behavior rule is concrete and executable; celebrity audit / validation returns an explicit `PASS` or `FAIL`; `distilly doctor` can report evidence coverage, unavailable channels, and the anchor back-reference rate. Celebrity research thresholds are in the subflow below.
+**On failure**: mark thin dimensions `(insufficient source material, add related documents)` and downgrade them to candidates; when `source_grounding` fails, keep the `FAIL` and explain what is missing instead of padding with generic links.
+
+### Step 5: Render
+
+1. Run `distilly view check` first to confirm every anchor back-references to `knowledge/index.json`.
+2. Write `views/<slug>.view.json`: sections, order, and emphasis only — no facts.
+3. `distilly view render` produces the single-file, offline, dual-theme `views/<slug>.html` and writes `evidence/renders/receipt.json` (sha256 + bytes + inlined sources).
+4. Use `distilly view render --shareable` only for external sharing, and confirm with the user first.
+5. Re-check evidence coverage, unavailable channels, anchor back-reference rate, and computer-use share with `distilly doctor`.
+
+**Completion criteria**: both `views/<slug>.html` and `evidence/renders/receipt.json` exist; the receipt sha256 matches the actual html sha256; zero broken internal links.
+**On failure**: when rendering fails, keep `views/<slug>.view.json`, do not publish the HTML, and report the error and the missing sources to the user.
+
+### Step 0 (prerequisite): Confirm the family and run intake
 
 If the user entered `/distilly`, first confirm which family should be distilled:
 
@@ -857,18 +564,9 @@ If the current family is `celebrity`, also confirm the research profile:
 
 Default to `budget-friendly`. Only switch to `budget-unfriendly` when the user explicitly wants deeper research, higher confidence, or accepts a slower and more expensive distillation pass.
 
-### Step 1: Basic Info Collection
+Choose the intake prompt by family: `colleague` → `prompts/intake.md`; `relationship` → `prompts/relationship/intake.md`; `celebrity` → `prompts/celebrity/intake.md`. `colleague` and `relationship` ask only 3 questions; `celebrity` asks 4, and the fourth must confirm `research_profile`.
 
-Choose the intake prompt by character family:
-
-- `colleague` → `prompts/intake.md`
-- `relationship` → `prompts/relationship/intake.md`
-- `celebrity` → `prompts/celebrity/intake.md`
-
-For `colleague` and `relationship`, ask only 3 questions.
-For `celebrity`, use the 4-question intake in `prompts/celebrity/intake.md`; the fourth question must confirm `research_profile`.
-
-The default 3 base questions are:
+The default 3 base questions:
 
 1. **Alias / Codename** (required)
 2. **Basic info** (one sentence: company, level, role, gender — say whatever comes to mind)
@@ -876,643 +574,114 @@ The default 3 base questions are:
 3. **Personality profile** (one sentence: MBTI, zodiac, traits, corporate culture, impressions)
    - Example: `INTJ Capricorn blame-shifter ByteDance-style strict in CR but never explains why`
 
-Everything except the alias can be skipped. Summarize and confirm before moving to the next step.
-
-### Step 2: Source Material Import
-
-Ask the user how they'd like to provide materials:
-
-```
-How would you like to provide source materials?
-
-  [A] Lark Auto-Collect (recommended)
-      Enter name, auto-pull messages + docs + spreadsheets
-
-  [B] DingTalk Auto-Collect
-      Enter name, auto-pull docs + spreadsheets
-      Messages collected via browser (DingTalk API doesn't support message history)
-
-  [C] Lark Link
-      Provide doc/Wiki link (browser session or MCP)
-
-  [D] Upload Files
-      PDF / images / exported JSON / email .eml
-
-  [E] Paste Text
-      Copy-paste text directly
-
-Can mix and match, or skip entirely (generate from manual info only).
-```
+Everything except the alias can be skipped. Summarize and confirm before entering Collect.
 
 ---
 
-#### Option A: Lark Auto-Collect (Recommended)
-
-First-time setup:
-```bash
-python3 "{distilly_skill_root}/tools/feishu_auto_collector.py" --setup
-```
-
-**Group chat collection** (uses tenant_access_token, bot must be in the group):
-```bash
-python3 "{distilly_skill_root}/tools/feishu_auto_collector.py" \
-  --name "{name}" \
-  --output-dir ./knowledge/{slug} \
-  --msg-limit 1000 \
-  --doc-limit 20
-```
-
-**Private chat (P2P) collection** (requires user_access_token + p2p chat_id):
-
-Private messages can only be accessed via user identity (user_access_token). App identity cannot access private chats.
-
-**Prerequisites**:
-
-The user needs to provide:
-1. **Lark app credentials**: `app_id` and `app_secret` (from the Open Platform)
-2. **User scopes**: The app must have these user scopes enabled:
-   - `im:message` — read/send messages as user
-   - `im:chat` — read chat list as user
-3. **OAuth authorization code**: obtained after user completes OAuth in browser
-
-If the user is missing any of these, guide them through setup. Don't assume anything is pre-configured.
-
-**Getting user_access_token**:
-
-Once the user provides app_id, app_secret, and confirms scopes are enabled:
-
-1. Generate the OAuth URL for them:
-   ```
-   https://open.feishu.cn/open-apis/authen/v1/authorize?app_id={APP_ID}&redirect_uri=http://www.example.com&scope=im:message%20im:chat
-   ```
-   > ⚠️ The redirect_uri must be added in the app's "Security Settings → Redirect URLs"
-
-2. User opens URL, logs in, authorizes
-3. Page redirects to `http://www.example.com?code=xxx`, user copies the code
-4. Exchange code for token:
-   ```bash
-   python3 "{distilly_skill_root}/tools/feishu_auto_collector.py" --exchange-code {CODE}
-   ```
-   Or write a Python script to call the same API directly:
-   ```python
-   # 1. Get app_access_token
-   POST https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal
-   Body: {"app_id": "xxx", "app_secret": "xxx"}
-   
-   # 2. Exchange code for user_access_token
-   POST https://open.feishu.cn/open-apis/authen/v1/oidc/access_token
-   Header: Authorization: Bearer {app_access_token}
-   Body: {"grant_type": "authorization_code", "code": "xxx"}
-   ```
-
-**Getting the p2p chat_id**:
-
-Users typically don't know their chat_id. When the user has a user_access_token but no chat_id, **write a Python script yourself** to obtain it:
-
-- **Method**: Send a message to the other user's open_id — the response includes the chat_id
-  ```python
-  POST https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id
-  Header: Authorization: Bearer {user_access_token}
-  Body: {"receive_id": "{target_open_id}", "msg_type": "text", "content": "{\"text\":\"hello\"}"}
-  # The chat_id in the response is the p2p chat ID
-  ```
-- **Important**: `GET /im/v1/chats` does NOT return p2p chats — this is an API limitation, not a permission issue. Do not try to use it for finding private chats.
-- If the user doesn't know the target's open_id, use tenant_access_token to search contacts:
-  ```python
-  GET https://open.feishu.cn/open-apis/contact/v3/scopes
-  # Returns open_ids of all users visible to the app
-  ```
-
-**Running collection**:
-
-Once you have user_access_token and chat_id:
-```bash
-python3 "{distilly_skill_root}/tools/feishu_auto_collector.py" \
-  --open-id {target_open_id} \
-  --p2p-chat-id {chat_id} \
-  --user-token {user_access_token} \
-  --name "{name}" \
-  --output-dir ./knowledge/{slug} \
-  --msg-limit 1000
-```
-
-**Flexibility principle**: The above API calls don't have to go through the collector script. If the script doesn't work or doesn't fit the scenario, write Python scripts directly against the same endpoints. Key API reference:
-- Get token: `POST /auth/v3/app_access_token/internal`, `POST /authen/v1/oidc/access_token`
-- Send message (get chat_id): `POST /im/v1/messages?receive_id_type=open_id`
-- Fetch messages: `GET /im/v1/messages?container_id_type=chat&container_id={chat_id}`
-- Search contacts: `GET /contact/v3/scopes`, `GET /contact/v3/users/{user_id}`
-
-Auto-collected content:
-- Group chats: messages sent by them (system messages and stickers filtered)
-- Private chats: full conversation with both parties (for context understanding)
-- Lark docs and Wikis they created/edited
-- Related spreadsheets (if accessible)
-
-After collection, `Read` the output files:
-- `knowledge/{slug}/messages.txt` → messages (group + private)
-- `knowledge/{slug}/docs.txt` → document content
-- `knowledge/{slug}/collection_summary.json` → collection summary
-
-If collection fails, diagnose the error and attempt to fix it. Common issues:
-- Group chat: bot not added to the group
-- Private chat: user_access_token expired (2-hour TTL, refresh with refresh_token)
-- Insufficient permissions: guide user to enable scopes and re-authorize
-- Or switch to Option B/C
-
----
-
-#### Option B: DingTalk Auto-Collect
-
-First-time setup:
-```bash
-python3 "{distilly_skill_root}/tools/dingtalk_auto_collector.py" --setup
-```
-
-Then enter the name:
-```bash
-python3 "{distilly_skill_root}/tools/dingtalk_auto_collector.py" \
-  --name "{name}" \
-  --output-dir ./knowledge/{slug} \
-  --msg-limit 500 \
-  --doc-limit 20 \
-  --show-browser   # add this flag on first use to complete DingTalk login
-```
-
-Collected content:
-- DingTalk docs and knowledge bases they created/edited
-- Spreadsheets
-- Messages (⚠️ DingTalk API doesn't support message history — auto-switches to browser scraping)
-
-After collection, `Read`:
-- `knowledge/{slug}/docs.txt`
-- `knowledge/{slug}/bitables.txt`
-- `knowledge/{slug}/messages.txt`
-
-If message collection fails, prompt user to upload chat screenshots.
-
----
-
-#### Option D: Upload Files
-
-- **PDF / Images**: `Read` tool directly
-- **Lark message JSON export**:
-  ```bash
-  python3 "{distilly_skill_root}/tools/feishu_parser.py" --file {path} --target "{name}" --output /tmp/feishu_out.txt
-  ```
-  Then `Read /tmp/feishu_out.txt`
-- **Email files .eml / .mbox**:
-  ```bash
-  python3 "{distilly_skill_root}/tools/email_parser.py" --file {path} --target "{name}" --output /tmp/email_out.txt
-  ```
-  Then `Read /tmp/email_out.txt`
-- **Markdown / TXT**: `Read` tool directly
-
----
-
-#### Option C: Lark Link
-
-When the user provides a Lark doc/Wiki link, ask which method to use:
-
-```
-Lark link detected. Choose read method:
-
-  [1] Browser Method (recommended)
-      Reuses your local Chrome login session
-      ✅ Works with internal docs requiring permissions
-      ✅ No token configuration needed
-      ⚠️  Requires Chrome + playwright installed locally
-
-  [2] MCP Method
-      Uses a Lark App Token via the official API
-      ✅ Stable, no browser dependency
-      ✅ Can read messages (needs chat ID)
-      ⚠️  Requires App ID / App Secret setup
-      ⚠️  Internal docs need admin authorization for the app
-
-Choose [1/2]:
-```
-
-**Option 1 (Browser)**:
-```bash
-python3 "{distilly_skill_root}/tools/feishu_browser.py" \
-  --url "{feishu_url}" \
-  --target "{name}" \
-  --output /tmp/feishu_doc_out.txt
-```
-First use will open a browser window for login (one-time).
-
-**Option 2 (MCP)**:
-
-First-time setup:
-```bash
-python3 "{distilly_skill_root}/tools/feishu_mcp_client.py" --setup
-```
-
-Then read directly:
-```bash
-python3 "{distilly_skill_root}/tools/feishu_mcp_client.py" \
-  --url "{feishu_url}" \
-  --output /tmp/feishu_doc_out.txt
-```
-
-Read messages (needs chat ID, format `oc_xxx`):
-```bash
-python3 "{distilly_skill_root}/tools/feishu_mcp_client.py" \
-  --chat-id "oc_xxx" \
-  --target "{name}" \
-  --limit 500 \
-  --output /tmp/feishu_msg_out.txt
-```
-
-Both methods output to files, then use `Read` to load results into analysis.
-
----
-
-#### Option E: Paste Text
-
-User-pasted content is used directly as text material. No tools needed.
-
----
-
-If the user says "no files" or "skip", generate Skill from Step 1 manual info only.
-
-### Step 3: Analyze Source Material
-
-First resolve the execution matrix for the selected character family:
-
-| character | intake | persona analyzer | persona builder | merger | storage root |
-|-----------|--------|------------------|-----------------|--------|--------------|
-| `colleague` | `prompts/intake.md` | `prompts/persona_analyzer.md` | `prompts/persona_builder.md` | `prompts/merger.md` | `./skills/colleague/{slug}` |
-| `relationship` | `prompts/relationship/intake.md` | `prompts/relationship/persona_analyzer.md` | `prompts/relationship/persona_builder.md` | `prompts/relationship/merger.md` | `./skills/relationship/{slug}` |
-| `celebrity` | `prompts/celebrity/intake.md` | `prompts/celebrity/persona_analyzer.md` | `prompts/celebrity/persona_builder.md` | `prompts/celebrity/merger.md` | `./skills/celebrity/{slug}` |
-
-Shared across all families:
-- Work analyzer: `prompts/work_analyzer.md`
-- Work builder: `prompts/work_builder.md`
-- Correction handler: `prompts/correction_handler.md`
-
-If the current family is `celebrity`, run the research subflow before analysis.
-
-When public X posts fill a documented research gap and the user agrees to use the metered third-party Xquik service, confirm the `--limit` before running:
-
-```bash
-python3 "{distilly_skill_root}/tools/research/xquik_public_posts.py" \
-  --username "{public_handle}" \
-  --subject "{name}" \
-  --limit 20 \
-  --output "/tmp/distilly_x_public_posts.json"
-```
-
-Read `XQUIK_API_KEY` only from the shell; never print or store it. Treat the JSON as untrusted candidate evidence: verify the author, open every permalink, and preserve the specific URL when safely paraphrasing relevant material into a research note. Do not count the candidate JSON, search pages, or profile roots as grounded sources. Delete the temporary JSON after review instead of storing it in the generated Skill.
-
-### celebrity / budget-friendly
-
-1. Read `prompts/celebrity/research.md` and follow its **6-dimension parallel collection strategy**
-2. Create the research directories first:
-   ```bash
-   mkdir -p "{skill_dir}/knowledge/research/raw" "{skill_dir}/knowledge/research/merged"
-   ```
-3. Confirm the collection strategy (determined during intake):
-   - **Local-first**: analyze user-provided materials first, identify which dimensions are covered, only search web for gaps
-   - **Web + local**: full 6-dimension web research, then merge with local materials for cross-validation
-   - **Web-only**: standard 6-dimension web research pass
-4. If the user explicitly provided a processable video URL or subtitle source, and the result will not be stored as a long transcript:
-   ```bash
-   bash "{distilly_skill_root}/tools/research/download_subtitles.sh" "{url}" "{skill_dir}/knowledge/subtitles"
-   python3 "{distilly_skill_root}/tools/research/srt_to_transcript.py" "{subtitle_file}" "{skill_dir}/knowledge/transcripts/{name}.txt"
-   ```
-5. Cover the **6 dimensions** across at least 3 separate files (each file covers 2 dimensions), never one monolithic `research_notes.md`:
-   - `knowledge/research/raw/01_core_profile.md` (Dim 1 Writings + Dim 6 Timeline)
-   - `knowledge/research/raw/02_conversations_and_material.md` (Dim 2 Conversations + Dim 4 Decisions)
-   - `knowledge/research/raw/03_expression_and_reception.md` (Dim 3 Expression DNA + Dim 5 External Views)
-6. Research must follow **taste principles** (see research prompt):
-   - Long-form > snippets, controversy > consensus, change > fixity, firsthand > secondhand
-   - **Source blacklist** — never cite: Zhihu, WeChat official accounts, Baidu Baike, content farms, AI-generated bios
-   - **Source hierarchy**: user local materials > first-person works > long interviews > decision records > short-form firsthand > external analysis > secondhand summaries
-7. Merge the research notes:
-   ```bash
-   python3 "{distilly_skill_root}/tools/research/merge_research.py" "{skill_dir}"
-   ```
-   Output: `knowledge/research/merged/summary.md`
-8. Read `knowledge/research/merged/summary.md` and confirm:
-   - `Files scanned >= 3`
-   - `Unique URLs >= 2`
-   - `Potential long quote lines = 0`
-   - URLs in notes are actual inspected pages, not platform roots, search/topic pages, or placeholder paths
-   If these do not hold, extend the research notes before continuing or explicitly record the collection limits.
-9. **Quality checkpoint (Phase 1.5)**: before entering analysis, show the user a structured collection summary:
-   ```
-   ┌──────────────────────────────┬──────────┬─────────────────────────────┐
-   │ Dimension                    │ Sources  │ Key Finding                 │
-   ├──────────────────────────────┼──────────┼─────────────────────────────┤
-   │ 1 Writings                   │ N        │ [core thesis / gap]         │
-   │ 2 Conversations              │ N        │ [key pattern / gap]         │
-   │ 3 Expression DNA             │ N        │ [style marker / gap]        │
-   │ 4 Decisions                  │ N        │ [decision pattern / gap]    │
-   │ 5 External Views             │ N        │ [outside view / gap]        │
-   │ 6 Timeline                   │ N        │ [trajectory / gap]          │
-   ├──────────────────────────────┼──────────┼─────────────────────────────┤
-   │ Contradictions               │ N        │ [summary]                   │
-   │ Thin dimensions              │ [list]   │ Backfill plan: [plan]       │
-   │ Cold figure?                 │ yes/no   │                             │
-   └──────────────────────────────┴──────────┴─────────────────────────────┘
-   ```
-   Wait for user confirmation before continuing. If the user flags issues or wants more depth, extend research first.
-10. **Cold figure detection**: if total sources < 10, apply the cold figure protocol:
-    - Limit mental models to 2–3
-    - Mark thin models as "based on limited information"
-    - Expand the honest boundaries section
-    - Tell the user what additional material would improve quality
-11. Celebrity analysis must prioritize:
-    - primary materials (source weight 1-3)
-    - merged research summary
-    - explicit user notes
-
-### celebrity / budget-unfriendly
-
-1. First read:
-   - `prompts/celebrity/budget_unfriendly/research.md`
-   - `references/celebrity_budget_unfriendly_framework.md`
-2. Create the research directories first:
-   ```bash
-   mkdir -p "{skill_dir}/knowledge/research/raw" "{skill_dir}/knowledge/research/merged" "{skill_dir}/knowledge/research/reviews"
-   ```
-3. Confirm the collection strategy (determined during intake): local-first / web+local / web-only
-4. Build the **six-track research set** as independent files (never merged, never clone observations):
-   - `knowledge/research/raw/01_writings.md` (Dim 1: Writings / systematic thought)
-   - `knowledge/research/raw/02_conversations.md` (Dim 2: Conversations under pressure)
-   - `knowledge/research/raw/03_expression_dna.md` (Dim 3: Linguistic fingerprint)
-   - `knowledge/research/raw/04_decisions.md` (Dim 4: Behavior and choices)
-   - `knowledge/research/raw/05_external_views.md` (Dim 5: External views and criticism)
-   - `knowledge/research/raw/06_timeline.md` (Dim 6: Cognitive trajectory)
-5. Research must follow **taste principles + source blacklist + source hierarchy** (see research prompt). Every evidence item must carry a source weight (1-7) annotation.
-6. Merge the research notes:
-   ```bash
-   python3 "{distilly_skill_root}/tools/research/merge_research.py" "{skill_dir}"
-   ```
-7. Read `knowledge/research/merged/summary.md` and confirm the minimum floor:
-   - `Files scanned >= 6`
-   - `Unique URLs >= 8`
-   - `Primary-source markers >= 3`
-   - `Source metadata blocks >= 6`
-   - `Contradiction bullets >= 6`
-   - `Inference bullets >= 6`
-   - `Potential long quote lines = 0`
-   - `Track coverage count = 6`
-   - URLs in notes are actual inspected pages, not platform roots, search/topic pages, or placeholder paths
-   If these do not hold, keep filling the weak tracks before continuing to any review stage.
-8. **Quality checkpoint (Phase 1.5)**: before entering audit, show the user a structured collection summary (with primary-source ratio, contradiction count, candidate mental models, known-answer candidates, thin dimensions, cold figure assessment). Wait for user confirmation before continuing.
-9. Then read:
-   - `prompts/celebrity/budget_unfriendly/audit.md`
-   - `prompts/celebrity/budget_unfriendly/synthesis.md`
-   - `references/celebrity_budget_unfriendly_template.md`
-10. First write `knowledge/research/reviews/research_audit.md`
-    - The audit must produce an explicit `PASS / FAIL`
-    - The audit must verify: source hierarchy compliance (no blacklisted sources), primary-source ratio > 50%, taste principle compliance, cold figure assessment
-    - If the audit says `FAIL`, follow the Backfill Tasks before synthesis
-11. **Extraction checkpoint (Phase 2.5)**: after audit PASS, show the user a summary of candidate mental models (with triple-gate verdict, evidence anchors, failure modes). Confirm reasonableness before synthesis.
-12. Then write `knowledge/research/reviews/synthesis.md`
-    - Apply the triple gate to candidate mental models:
-      - cross-context recurrence
-      - generative power
-      - exclusivity
-    - Also extract intellectual genealogy seeds (influenced by / diverged from) and Agentic Protocol seeds (the dimensions this person would investigate when facing a novel question)
-13. Then use `prompts/celebrity/budget_unfriendly/validation.md` to write:
-    - `knowledge/research/reviews/validation.md`
-    - Validation must produce an explicit `PASS / FAIL`
-    - Validation must perform: known-answer check (≥2 questions) + edge-case check (1 question) + voice check (100-word blind test) + copyright check + Agentic Protocol check
-    - If validation says `FAIL`, revise the draft before continuing
-14. Budget-unfriendly celebrity analysis must prioritize:
-    - six-track raw notes
-    - merged research summary
-    - research audit
-    - synthesis review (with genealogy + Agentic Protocol seeds)
-    - validation review
-    - explicit user notes
-
-Shared rules for both celebrity profiles:
-
-- If external collection fails or a platform blocks access:
-  - tell the user exactly what was blocked
-  - preserve the raw research notes and merged summary
-  - continue generation with the available materials
-  - treat `source_grounding` as incomplete
-  - **never** invent URLs, quotes, titles, or generic homepage links just to satisfy the checker
-- **Do not** store full transcripts, full subtitles, or long verbatim source passages in the repository
-- Keep the stored notes paraphrased, structured, and copyright-safe
-
-Once the family is resolved, analyze along two tracks:
-
-**Track A (Work Skill)**:
-- Refer to `prompts/work_analyzer.md`
-- Extract: responsible systems, technical standards, workflow, output preferences, experience
-- For `celebrity`, interpret `work` as methods, judgment frameworks, and decision patterns rather than literal job scope
-
-**Track B (Persona)**:
-- Use the family-specific persona analyzer
-- If `celebrity` with `research_profile=budget-unfriendly`, use:
-  - `prompts/celebrity/budget_unfriendly/persona_analyzer.md`
-- Translate user-provided tags into concrete behavior rules
-- Extract from materials: communication style, decision patterns, interpersonal behavior
-- For `celebrity`, retain:
-  - mental models
-  - decision heuristics
-  - expression DNA
-  - contradictions
-  - honest boundaries
-
-### Step 4: Generate and Preview
-
-Use `prompts/work_builder.md` to generate Work content.
-Use the family-specific persona builder to generate Persona content.
-
-Mapping:
-- `colleague` → `prompts/persona_builder.md`
-- `relationship` → `prompts/relationship/persona_builder.md`
-- `celebrity` → `prompts/celebrity/persona_builder.md`
-- `celebrity` + `budget-unfriendly` → `prompts/celebrity/budget_unfriendly/persona_builder.md`
-
-Show the user a summary (5-8 lines each), ask:
-```
-Work Skill Summary:
-  - Responsible for: {xxx}
-  - Tech stack: {xxx}
-  - CR focus: {xxx}
-  ...
-
-Persona Summary:
-  - Core personality: {xxx}
-  - Communication style: {xxx}
-  - Decision pattern: {xxx}
-  ...
-
-Confirm generation? Or need adjustments?
-```
-
-### Step 5: Write Files
-
-After user confirmation, do not hand-build a `skills/colleague/{slug}`-style tree. Always go through the writer:
-
-1. Resolve the current storage root:
-   - `colleague` → `./skills/colleague`
-   - `relationship` → `./skills/relationship`
-   - `celebrity` → `./skills/celebrity`
-2. Use the `Write` tool to create three temporary files:
-   - `/tmp/distilly_{slug}_meta.json`
-   - `/tmp/distilly_{slug}_work.md`
-   - `/tmp/distilly_{slug}_persona.md`
-3. The temporary meta file must include at least:
-   - `name`
-   - `display_name`
-   - `character`
-   - `research_profile` (required when `character=celebrity`)
-   - `classification.language` (must match the user's language, for example `zh-CN` or `en`)
-   - `profile`
-   - `tags`
-   - `knowledge_sources`
-4. Then call:
-   ```bash
-   python3 "{distilly_skill_root}/tools/skill_writer.py" \
-     --action create \
-     --character {character} \
-     --research-profile {research_profile} \
-     --slug {slug} \
-     --name "{name}" \
-     --meta /tmp/distilly_{slug}_meta.json \
-     --work /tmp/distilly_{slug}_work.md \
-     --persona /tmp/distilly_{slug}_persona.md \
-     --base-dir {resolved_base_dir}
-   ```
-5. This command will generate:
-   - `SKILL.md`
-   - `work.md`
-   - `persona.md`
-   - `work_skill.md`
-   - `persona_skill.md`
-   - `manifest.json`
-   - `meta.json`
-   - To install the generated role skill into a host, append the relevant flag:
-     - Claude Code: `--install-claude-skill`
-     - OpenClaw: `--install-openclaw-skill`
-     - Codex: `--install-codex-skill`
-     - Hermes: run `python3 "{distilly_skill_root}/tools/install_generated_skill.py" --skill-dir "{resolved_base_dir}/{slug}" --host hermes --force`; for a trusted project, append `--skills-dir .hermes/skills`, run `hermes skills trust`, then start a new session or run `/reload-skills`. Use `~/.agents/skills` only when it is explicitly configured in Hermes `skills.external_dirs`
-     - DeepSeek Harness: run `python3 "{distilly_skill_root}/tools/install_generated_skill.py" --skill-dir "{resolved_base_dir}/{slug}" --host deepseek-harness --force`; append `--skills-dir .dsh/skills` for a project install
-     - Pi: run `python3 "{distilly_skill_root}/tools/install_generated_skill.py" --skill-dir "{resolved_base_dir}/{slug}" --host pi --force`; append `--skills-dir .pi/skills` for a project install, then invoke it with `/skill:{character}-{slug}`
-     - Grok Build: run `python3 "{distilly_skill_root}/tools/install_generated_skill.py" --skill-dir "{resolved_base_dir}/{slug}" --host grok-build --force`; append `--skills-dir .grok/skills` for a project install
-     - OpenCode: run `python3 "{distilly_skill_root}/tools/install_generated_skill.py" --skill-dir "{resolved_base_dir}/{slug}" --host opencode --force`; append `--skills-dir .opencode/skills` for a project install
-     - The shared installer writes only the self-contained `SKILL.md` and install metadata and normalizes legacy frontmatter in the installed copy. Do not manually copy the whole generated directory; it may contain private source material
-     - Claude Code on Windows: optionally add `--install-claude-command-shim`
-6. If the current family is `celebrity`, run a quality check after creation:
-   ```bash
-   python3 "{distilly_skill_root}/tools/research/quality_check.py" "{resolved_base_dir}/{slug}/SKILL.md" --profile {research_profile}
-   ```
-7. If `source_grounding` still fails for a `celebrity` skill:
-   - you may add honest limitation notes and a grounded source summary
-   - only add URLs when they are real, specific, and traceable sources
-   - **never** use site roots, topic pages, search pages, or other generic links as fake grounding
-   - if no verified external sources exist, keep the FAIL state and explain what source material is still missing
-
-When reporting success, return the correct family-specific location instead of assuming colleague storage.
+## Celebrity research subflow (between Step 2 and Step 3)
+
+### budget-friendly
+
+1. Read `prompts/celebrity/research.md` and follow its **6-dimension parallel collection strategy**.
+2. Collection strategy (fixed during intake): **Local-first** (analyze local material first, search only the gaps) / **Web + local** (full 6-dimension web research cross-validated with local material) / **Web-only**.
+3. For video or podcasts: `distilly transcribe <audio|video>` first, then `distilly parse-subtitle`; never commit a full transcript.
+4. Split the raw research notes across **at least 3 files** (2 dimensions each), never one monolithic `research_notes.md`:
+   - `knowledge/research/raw/01_core_profile.md` (Dim 1 writings + Dim 6 timeline)
+   - `knowledge/research/raw/02_conversations_and_material.md` (Dim 2 conversations + Dim 4 decisions)
+   - `knowledge/research/raw/03_expression_and_reception.md` (Dim 3 expression DNA + Dim 5 external views)
+5. Taste principles: long-form > snippets, controversy > consensus, change > fixity, firsthand > secondhand. Source blacklist: never cite Zhihu, WeChat official accounts, Baidu Baike, content farms. Source hierarchy: user local material > first-person works > long interviews > decision records > social media > external analysis > secondhand summaries.
+6. Confirm `Files scanned >= 3`, `Unique URLs >= 2`, `Potential long quote lines = 0`; every URL must be a specific page actually opened, not a platform root, search page, topic page, or placeholder.
+7. **Quality checkpoint (Phase 1.5)**: show the user a structured collection summary (sources per dimension + key findings + contradictions + thin dimensions + cold-figure verdict) and wait for confirmation.
+8. **Cold figure detection**: below 10 total sources, limit mental models to 2–3, mark thin models "based on limited information", expand the honest boundaries section, and tell the user what material would improve quality.
+9. Analysis input priority: primary material (source weight 1-3) > merged research summary > explicit user notes.
+
+### budget-unfriendly
+
+1. Read `prompts/celebrity/budget_unfriendly/research.md` and `references/celebrity_budget_unfriendly_framework.md` first.
+2. Write the **six-track research set** as independent files (never merged, never cloned): `01_writings.md` / `02_conversations.md` / `03_expression_dna.md` / `04_decisions.md` / `05_external_views.md` / `06_timeline.md`.
+3. Every evidence item carries a source weight (1-7); follow taste principles + source blacklist + source hierarchy.
+4. Minimum floor: `Files scanned >= 6`, `Unique URLs >= 8`, `Primary-source markers >= 3`, `Source metadata blocks >= 6`, `Contradiction bullets >= 6`, `Inference bullets >= 6`, `Potential long quote lines = 0`, `Track coverage count = 6`. If short, fill the weak track instead of skipping to review.
+5. Write, in order: `knowledge/research/reviews/research_audit.md` (explicit `PASS/FAIL`; checks source hierarchy, primary ratio > 50%, taste principles, cold figure) → `synthesis.md` (triple gate: cross-context recurrence / generative power / exclusivity; extract intellectual genealogy and Agentic Protocol seeds) → `validation.md` per `prompts/celebrity/budget_unfriendly/validation.md` (known-answer ≥2 questions + 1 edge case + 100-word voice check + copyright check + Agentic Protocol check, explicit `PASS/FAIL`).
+6. Any `FAIL` means backfill first; never invent URLs, quotes, book titles, or video titles to pass a check.
 
 ---
 
 ## Evolution Mode: Append Files
 
-When user provides new files or text:
+When the user provides new files or text:
 
-1. Read new content using Step 2 methods
-2. Resolve the base dir for the current family
-3. `Read` existing `{resolved_base_dir}/{slug}/work.md` and `persona.md`
-4. Use the family-specific merger prompt for incremental analysis
-5. Archive current version (Bash):
-   ```bash
-   python3 "{distilly_skill_root}/tools/version_manager.py" \
-     --action backup \
-     --character {character} \
-     --slug {slug} \
-     --base-dir {resolved_base_dir}
-   ```
-6. Write work/persona delta into temporary patch files
-7. Call:
-   ```bash
-   python3 "{distilly_skill_root}/tools/skill_writer.py" \
-     --action update \
-     --character {character} \
-     --slug {slug} \
-     --work-patch /tmp/distilly_{slug}_work_patch.md \
-     --persona-patch /tmp/distilly_{slug}_persona_patch.md \
-     --base-dir {resolved_base_dir}
-   ```
-8. If the current family is `celebrity`, run the quality check again after the update
+1. Collect the new material with the Step 1 flow (`distilly harvest` for local files, `distilly parse-chat` for exports, `distilly note --from -` for pasted text).
+2. Run `distilly retrospect` to refresh derivations, then restate "what was read, how many rows, how many anchors" per Step 3.
+3. Resolve the base dir for the current family and read the existing `{resolved_base_dir}/{slug}/work.md` and `persona.md`.
+4. Analyze the delta with the family-specific merger prompt.
+5. Archive the current version with `distilly skill version`.
+6. Write the work/persona deltas to temporary patch files and apply them with `distilly skill update`.
+7. For `celebrity`, re-check evidence coverage with `distilly doctor` after the update.
 
 ---
 
 ## Evolution Mode: Conversation Correction
 
-When user expresses "that's wrong" / "he should be":
+When the user says "that's wrong" / "he should be":
 
-1. Refer to `prompts/correction_handler.md` to identify correction content
-2. Determine if it belongs to Work (technical/workflow) or Persona (personality/communication)
-3. If it belongs to Work:
-   - Generate `/tmp/distilly_{slug}_work_patch.md`
-   - The patch must be one or more replaceable `##` sections
-   - Call:
-     ```bash
-     python3 "{distilly_skill_root}/tools/skill_writer.py" \
-       --action update \
-       --character {character} \
-       --slug {slug} \
-       --work-patch /tmp/distilly_{slug}_work_patch.md \
-       --base-dir {resolved_base_dir}
-     ```
-4. If it belongs to Persona:
-   - Write the correction record to `/tmp/distilly_{slug}_correction.json`
-   - For a single correction, write `{scene, wrong, correct}`
-   - For multiple persona corrections, write `{"persona_corrections": [{...}, {...}]}`
-   - Call:
-     ```bash
-     python3 "{distilly_skill_root}/tools/skill_writer.py" \
-       --action update \
-       --character {character} \
-       --slug {slug} \
-       --correction-json /tmp/distilly_{slug}_correction.json \
-       --base-dir {resolved_base_dir}
-     ```
-5. If the current family is `celebrity`, run the quality check again after the update
-6. Do not hand-edit `work.md`, `persona.md`, `SKILL.md`, or `meta.json`; always update through `skill_writer.py`
+1. Identify the correction with `prompts/correction_handler.md`.
+2. Decide whether it belongs to Work (technical/workflow) or Persona (personality/communication).
+3. Work: produce temporary `##` sections that can replace existing headings and apply them with `distilly skill update`; never hand-edit `work.md`.
+4. Persona: write `{scene, wrong, correct}` (or `{"persona_corrections": [...]}` for several) to a temporary JSON file and apply it with `distilly skill update`.
+5. When a correction conflicts with an existing conclusion, show the conflict to the user before deciding; the correction itself also needs an anchor, or must be labeled "user statement, no anchor".
+6. For `celebrity`, re-check with `distilly doctor` after the update.
 
 ---
 
 ## Management Operations
 
 List skills across the three families:
+
 ```bash
-python3 "{distilly_skill_root}/tools/skill_writer.py" --action list --character colleague --base-dir ./skills/colleague
-python3 "{distilly_skill_root}/tools/skill_writer.py" --action list --character relationship --base-dir ./skills/relationship
-python3 "{distilly_skill_root}/tools/skill_writer.py" --action list --character celebrity --base-dir ./skills/celebrity
+distilly skill list
 ```
 
 Roll back a specific skill version:
+
 ```bash
-# colleague
-python3 "{distilly_skill_root}/tools/version_manager.py" --action rollback --character colleague --slug {slug} --version {version} --base-dir ./skills/colleague
-
-# relationship
-python3 "{distilly_skill_root}/tools/version_manager.py" --action rollback --character relationship --slug {slug} --version {version} --base-dir ./skills/relationship
-
-# celebrity
-python3 "{distilly_skill_root}/tools/version_manager.py" --action rollback --character celebrity --slug {slug} --version {version} --base-dir ./skills/celebrity
+distilly skill version
 ```
 
-Delete a specific skill:
-After confirming the character family:
+Delete a specific skill (after confirming the character family):
+
 ```bash
-# colleague
 rm -rf skills/colleague/{slug}
-
-# relationship
 rm -rf skills/relationship/{slug}
-
-# celebrity
 rm -rf skills/celebrity/{slug}
 ```
+
+Install into a host: `distilly install <host>`; uninstall: `distilly uninstall`.
+
+List and revoke granted consent:
+
+```bash
+distilly consent list
+distilly consent revoke
+```
+
+---
+
+## MUST
+
+- First list "which files were read, how many rows each, how many anchors", then write conclusions; every conclusion carries `file + anchor`.
+- With no evidence write `unknown`; candidates never become conclusions.
+- Check every step against the completion criteria of the five-step mainline before moving on.
+
+## MUST NOT
+
+- Never rewrite quotes; never fabricate URLs, anchors, book titles, or video titles; never pad sources with platform roots.
+- Credentials are read only from `~/.distilly/*_config.json` or environment variables and never appear in chat, files, receipts, or logs.
+- Never hand-craft platform API calls: all network collection goes through `distilly collect` / `distilly harvest` / `distilly parse-chat` / `distilly parse-email` / `distilly parse-subtitle` / `distilly parse-doc` / `distilly parse-archive` / `distilly transcribe`.
+- Never degrade silently: failures, unavailable channels, and skipped steps are all stated.
+
+## RECEIPT
+
+- Which files were read, how many rows each, how many anchors.
+- Which files were created or updated, each with its sha256 (from the `distilly` `--json` receipt, `knowledge/index.json`, or `evidence/renders/receipt.json`).
+- Which channels were unavailable (`unavailable[]`).
+- Which steps were skipped, and why.
