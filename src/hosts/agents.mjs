@@ -11,6 +11,12 @@
  *   1. the AgentSkills CLI — `npx skills add <repo> --agent <id>`
  *   2. a direct clone into the directory the host scans
  *
+ * Every `cliId` below was checked against the upstream `skills` CLI registry
+ * (v1.5.26) rather than inferred from the host's display name: `grok` and
+ * `hermes-agent` are the registry names for Grok Build and Hermes, `pi` is a
+ * target, and there is **no** DeepSeek Harness / DSH target at all — which is
+ * why that host is clone-only. Re-check with `npx skills ls -a <id>`.
+ *
  * `capability: 'full'` means the host can read files and run shell commands, so
  * the whole collect → derive → read → distill → render workflow applies.
  */
@@ -22,7 +28,8 @@ export const SKILL_NAME = 'distilly';
  * @typedef {object} CodingAgent
  * @property {string} id            host id, also the `install <host>` argument
  * @property {string} label         display name
- * @property {string} [cliId]       `--agent` target, only when confirmed
+ * @property {string} [cliId]       `--agent` target, verified against the upstream
+ *                                  AgentSkills CLI registry (see the header note)
  * @property {string} globalPath    directory the host scans for global skills
  * @property {string} [projectPath] project-local directory, when documented
  * @property {'full'|'prompt-only'} capability
@@ -81,7 +88,7 @@ export const AGENTS = [
   {
     id: 'hermes',
     label: 'Hermes',
-    cliId: 'hermes',
+    cliId: 'hermes-agent',
     globalPath: '~/.hermes/skills/openclaw-imports/distilly',
     projectPath: '.hermes/skills/distilly',
     capability: 'full',
@@ -93,19 +100,18 @@ export const AGENTS = [
   {
     id: 'deepseek-harness',
     label: 'DeepSeek Harness',
-    cliId: 'deepseek-harness',
     globalPath: '$DSH_HOME/skills/distilly',
     projectPath: '.dsh/skills/distilly',
     capability: 'full',
     note: {
-      zh: 'DSH_HOME 未设置时等价于 ~/.dsh/skills/distilly；社区集成，非官方 DeepSeek 产品。',
-      en: 'Falls back to ~/.dsh/skills/distilly when DSH_HOME is unset; community integration, not an official DeepSeek product.',
+      zh: 'DSH_HOME 未设置时等价于 ~/.dsh/skills/distilly；社区集成，非官方 DeepSeek 产品。上游 AgentSkills CLI 没有 DSH 目标，所以只提供 clone 路线。',
+      en: 'Falls back to ~/.dsh/skills/distilly when DSH_HOME is unset; community integration, not an official DeepSeek product. The upstream AgentSkills CLI has no DSH target, so only the clone route is offered.',
     },
   },
   {
     id: 'grok-build',
     label: 'Grok Build',
-    cliId: 'grok-build',
+    cliId: 'grok',
     globalPath: '~/.grok/skills/distilly',
     projectPath: '.grok/skills/distilly',
     capability: 'full',
@@ -117,11 +123,13 @@ export const AGENTS = [
   {
     id: 'pi',
     label: 'Pi',
+    cliId: 'pi',
     globalPath: '~/.pi/agent/skills/distilly',
+    projectPath: '.pi/skills/distilly',
     capability: 'full',
     note: {
-      zh: '只确认了全局目录；AgentSkills CLI 的 --agent 目标未确认，因此本工具不输出该命令，用 clone 路线。',
-      en: 'Only the global directory is confirmed; the AgentSkills CLI `--agent` target is not, so no such command is emitted — use the clone route.',
+      zh: '上游 AgentSkills CLI 的合法目标（项目级 .pi/skills、全局 ~/.pi/agent/skills）。',
+      en: 'A valid upstream AgentSkills target (project `.pi/skills`, global `~/.pi/agent/skills`).',
     },
   },
 ];
