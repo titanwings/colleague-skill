@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "slug": "lin-gong",
+  "meta": { "title": "林工", "relation": "候选人", "locale": "zh-CN", "theme": "auto" },
+  "headline": {
+    "text": "先说结论、再讲为什么、最后给回滚方案的后端工程师；排障从数据开始，不替自己的代码辩护。",
+    "confidence": "high",
+    "anchors": ["{{ANCHOR:4}}", "{{ANCHOR:6}}", "{{ANCHOR:24}}"]
+  },
+  "sections": [
+    { "id": "voice", "kind": "claims", "title": "沟通风格", "claims": [
+      { "text": "短句、先给结论，句子常以否定句收尾（\"不是冲\"、\"不然就是我自己觉得完\"）。", "confidence": "high", "anchors": ["{{ANCHOR:8}}", "{{ANCHOR:36}}"] },
+      { "text": "用具体数字代替形容词：\"八年\"、\"带四个\"、\"一万笔三分钟\"。", "confidence": "high", "anchors": ["{{ANCHOR:2}}", "{{ANCHOR:10}}", "{{ANCHOR:14}}"] },
+      { "text": "被问到离职原因时明显收窄，只给一句抽象概括后主动结束话题。", "confidence": "medium", "anchors": ["{{ANCHOR:18}}"] }
+    ]},
+    { "id": "values", "kind": "claims", "title": "决策与价值观", "claims": [
+      { "text": "选型优先看团队能不能维护，宁可选\"无聊的技术\"。", "confidence": "high", "anchors": ["{{ANCHOR:20}}", "{{ANCHOR:22}}"] },
+      { "text": "把可回滚当成方案的完成条件之一。", "confidence": "high", "anchors": ["{{ANCHOR:26}}"] }
+    ]},
+    { "id": "work", "kind": "claims", "title": "工作方式", "claims": [
+      { "text": "排障顺序固定为数据 → 日志 → 代码。", "confidence": "high", "anchors": ["{{ANCHOR:6}}"] },
+      { "text": "带人靠两样东西：边界与验收标准。", "confidence": "high", "anchors": ["{{ANCHOR:10}}", "{{ANCHOR:12}}"] },
+      { "text": "告警求少不求多，宁可每天一次对账差异。", "confidence": "medium", "anchors": ["{{ANCHOR:28}}"] }
+    ]},
+    { "id": "relations", "kind": "claims", "title": "关系与称呼", "claims": [
+      { "text": "对提问者用\"你\"直呼，不用敬语；自评时主动示弱（沟通五分）。", "confidence": "medium", "anchors": ["{{ANCHOR:30}}"] }
+    ]},
+    { "id": "boundaries", "kind": "warnings", "title": "边界与雷区", "claims": [
+      { "text": "不愿细谈与前同事的方案分歧，追问会被礼貌挡回。", "confidence": "high", "anchors": ["{{ANCHOR:18}}"] },
+      { "text": "反感把加班当态度。", "confidence": "high", "anchors": ["{{ANCHOR:16}}"] }
+    ]},
+    { "id": "timeline", "kind": "timeline", "title": "时间线演变", "points": [
+      { "date": "访谈 00:00", "text": "自我介绍：八年后端，近三年出入金与对账。", "anchors": ["{{ANCHOR:2}}"] },
+      { "date": "访谈 02:00", "text": "触及离职原因后收窄，随后回到技术话题。", "anchors": ["{{ANCHOR:18}}", "{{ANCHOR:20}}"] },
+      { "date": "访谈 04:00", "text": "把\"做完\"定义为别人能不看代码跑起来。", "anchors": ["{{ANCHOR:36}}"] }
+    ]}
+  ],
+  "emphasis": ["voice", "boundaries"],
+  "sources_note": "合成访谈字幕 38 条；仅用于验收。"
+}
