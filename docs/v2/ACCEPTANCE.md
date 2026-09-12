@@ -64,6 +64,8 @@ node scripts/acceptance.mjs --keep                # 保留临时 person 目录�
 
 语料放 `tests/fixtures/public-corpus/`（见那里的 `README.md` 与 `LICENSE.md`）。
 
+**脚本自测（防"验收脚本本身是坏的"）**：用一份符合契约的最小实现（只在 `/tmp` 下的临时目录，不入库）跑 `scripts/acceptance.mjs`，结果 **11/11 通过** —— 证明这套断言不是空转、契约是可实现的、以及回执/账本/锚点/view/visual-check 的形状就是脚本期望的那样。任何一项在真实实现上失败，都是实现的问题，不是脚本的。
+
 ## 6. 真实私聊/邮件语料（隐私）
 
 不进仓库、不进 CI。流程同上，但：
