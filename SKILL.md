@@ -100,8 +100,8 @@ Grok Bot 可以把流程保存为 private Skill，但目前没有官方的本地
 | `tools/skill_writer.py`（deprecated） | `distilly skill create` / `distilly skill update` / `distilly skill list` |
 | `tools/version_manager.py`（deprecated） | `distilly skill version` |
 | `tools/install_generated_skill.py`（deprecated） | `distilly install <host>` |
-| `tools/research/quality_check.py`（deprecated） | `distilly doctor` |
-| `tools/research/merge_research.py`（deprecated） | 暂无契约替代：只做派生，走 `distilly retrospect`，研究笔记合并细节见已知缺口 |
+| `tools/research/quality_check.py`（deprecated） | `distilly doctor`（实现归属派生层 `src/derive/quality.mjs`，ds/06） |
+| `tools/research/merge_research.py`（deprecated） | `distilly retrospect`（研究笔记合并并入派生层 `src/derive/merge.mjs`，ds/02；合并后的输出仍走 `evidence/derived/*.json`） |
 | `tools/research/download_subtitles.sh`（deprecated） | 暂无契约替代：先让用户提供本地字幕文件，再走 `distilly parse-subtitle` |
 
 迁移期允许两者并存，但新写法优先；只要 Python 工具还在被引用，就必须保留 `deprecated` 标注。
@@ -437,8 +437,8 @@ Every collection, derivation, and render step goes through `distilly`. Command n
 | `tools/skill_writer.py` (deprecated) | `distilly skill create` / `distilly skill update` / `distilly skill list` |
 | `tools/version_manager.py` (deprecated) | `distilly skill version` |
 | `tools/install_generated_skill.py` (deprecated) | `distilly install <host>` |
-| `tools/research/quality_check.py` (deprecated) | `distilly doctor` |
-| `tools/research/merge_research.py` (deprecated) | No contract replacement yet: remains derivation only, use `distilly retrospect`; merging research notes is a known gap |
+| `tools/research/quality_check.py` (deprecated) | `distilly doctor` (implementation owner: derive layer `src/derive/quality.mjs`, ds/06) |
+| `tools/research/merge_research.py` (deprecated) | `distilly retrospect` (research-note merging folds into the derive layer `src/derive/merge.mjs`, ds/02; its output still lands as `evidence/derived/*.json`) |
 | `tools/research/download_subtitles.sh` (deprecated) | No contract replacement yet: ask the user for a local subtitle file, then use `distilly parse-subtitle` |
 
 Both forms may coexist during migration, but the new form wins; whenever a Python tool is still referenced, keep the `deprecated` marker.

@@ -58,9 +58,10 @@ Sequence:
 
 1. Run the intake / research pipeline for the **new** material only (keep it
    in a dated subfolder under `knowledge/research/raw/` so provenance is clear).
-2. Re-run the research merge step (`tools/research/merge_research.py <skill_dir>`,
-   deprecated — no contract replacement yet, tracked as a known gap), then run
-   `distilly retrospect` to refresh `evidence/derived/*`.
+2. Re-run the research merge step (the legacy
+   `tools/research/merge_research.py <skill_dir>` is deprecated; it folds into
+   the derive layer `src/derive/merge.mjs`, ds/02), then run `distilly retrospect`
+   to refresh `evidence/derived/*`.
 3. Diff the new extraction against the existing `persona.md` before rewriting
    anything. Most material will confirm what is there; only a minority will
    change the shape.
