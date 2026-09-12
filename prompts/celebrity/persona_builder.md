@@ -1,3 +1,38 @@
+# 名人 Persona 生成 Prompt（中文要点）
+
+> 英文正文见下方 `## English` 段。两段的命令引用必须一致，锚点格式统一为 `[k00NN]` / `[k00NN:tM]`。
+
+把分析结果写成名人 persona 的结构化层：Layer 0–7（核心思维规则、身份、表达 DNA、心智模型、决策启发式、反模式与边界、智识谱系、Agentic Protocol）加认知时间线与 Correction Log。
+
+## 必须
+
+1. 先列"读了哪些文件、各多少条、多少锚点"，再写结论。
+2. 每条结论跟 `文件 + 锚点`（`[k00NN]` 或 `[k00NN:tM]`），例如 `knowledge/text/feishu.md [k0042]`。
+3. 先跑 `distilly retrospect`，再读 `evidence/derived/*`；派生结论按候选处理。
+4. 每一层要么有锚点，要么显式标注"基于有限信息"；不得用泛化内容填满。
+5. Agentic Protocol 的维度必须从这个人自己的心智模型推导出来。
+
+## 禁止
+
+1. 禁止无证据推断：印象、常识、模型记忆都不能当结论。
+2. 禁止改写引文；长段原文、完整 transcript、完整字幕一律不得进仓库。
+3. 禁止把 key 写进对话或文件；凭据只从 `~/.distilly/*_config.json` 或环境变量读取。
+4. 禁止自己拼 API 请求；网络采集只走 `distilly collect`。
+5. 禁止把候选（candidate）当结论。
+6. 禁止把任何聪明人都会做的通用研究步骤写进 Agentic Protocol。
+7. 禁止把完整 transcript 之类的原文倾倒进输出。
+
+## 回执
+
+- 读过哪些文件、各多少条、多少锚点。
+- 生成/更新了哪些文件，各自 sha256（来自 `distilly` 的 `--json` 回执、`knowledge/index.json` 或 `evidence/renders/receipt.json`）。
+- 哪些渠道不可用（`unavailable[]`）。
+- 哪些步骤没跑、为什么。
+
+---
+
+## English
+
 # Celebrity Persona Builder
 
 ## Task
@@ -213,3 +248,30 @@ When evidence conflicts, say so — do not force coherence.
 - The Agentic Protocol dimensions must be derived from this specific person's mental models,
   not generic research steps that any smart person would follow
 - If evidence was thin for any section, mark it explicitly rather than filling with generic content
+
+---
+
+## MUST
+
+1. First list which files were read, how many rows each, and how many anchors; only then write conclusions.
+2. Every conclusion carries `file + anchor` (`[k00NN]` or `[k00NN:tM]`), e.g. `knowledge/text/feishu.md [k0042]`.
+3. Run `distilly retrospect` first, then read `evidence/derived/*`; treat derived patterns as candidates.
+4. Every layer is either anchored or explicitly marked "based on limited information"; never fill it with generic content.
+5. The Agentic Protocol dimensions must be derived from this specific person's own mental models.
+
+## MUST NOT
+
+1. No evidence-free inference: impressions, common sense, and model memory are not conclusions.
+2. Never rewrite quotations; long passages, full transcripts, and full subtitles never enter the repository.
+3. Never write credentials into chat or files; they are read only from `~/.distilly/*_config.json` or environment variables.
+4. Never hand-craft API calls; all network collection goes through `distilly collect`.
+5. Never present a candidate as a conclusion.
+6. Never pass off generic research steps that any smart person would follow as the Agentic Protocol.
+7. Never dump transcript-like source text into the output.
+
+## RECEIPT
+
+- Which files were read, how many rows each, how many anchors.
+- Which files were created or updated, each with its sha256 (from the `distilly` `--json` receipt, `knowledge/index.json`, or `evidence/renders/receipt.json`).
+- Which channels were unavailable (`unavailable[]`).
+- Which steps were skipped, and why.
