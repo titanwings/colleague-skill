@@ -133,3 +133,67 @@
 ```
 
 用户确认后进入 Step 2 文件导入。
+
+---
+
+## 必须
+
+1. 先把用户的原话按字段拆开列出来，再问下一题；不要替用户补字段。
+2. 缺失字段留空并显式写 `unknown`，不得根据公司/职级推断性别、MBTI、性格。
+3. 汇总确认里每个字段都要能指回用户的原话；用户说"跳过"就真的留空。
+4. `celebrity` 的第 4 个问题必须确认 `research_profile`（默认 `budget-friendly`），不得默认跳过。
+5. 先跑 `distilly retrospect`，再读 `evidence/derived/*`；intake 阶段不引用派生结论。
+6. 确认前不得开始采集；确认后进入 Collect（`distilly harvest` / `distilly collect`）。
+
+## 禁止
+
+1. 禁止无证据推断：用户没说的性格、职级、公司一律不写。
+2. 禁止改写用户原话（尤其是主观印象字段，必须原样保留）。
+3. 禁止把 key 写进对话或文件；凭据只从 `~/.distilly/*_config.json` 或环境变量读取。
+4. 禁止自己拼 API 请求；需要凭据的渠道只走 `distilly collect`。
+5. 禁止把候选（candidate）标签当作用户确认过的信息。
+6. 禁止一次抛出多个问题；一次只问一个。
+
+## 回执
+
+- 读过哪些文件、各多少条、多少锚点（intake 阶段通常为 0，如实写 0）。
+- 生成/更新了哪些文件，各自 sha256（来自 `distilly` 的 `--json` 回执或 `knowledge/index.json`）；intake 不写文件时写"无"。
+- 哪些渠道不可用（`unavailable[]`）。
+- 哪些字段没问到、哪些步骤没跑、为什么。
+
+---
+
+## English
+
+### Task
+
+Collect the minimum manual profile for a new Skill: 3 questions for `colleague` and `relationship`, 4 for `celebrity` (the fourth confirms `research_profile`). Everything except the alias may be skipped.
+
+### Output contract (abstract)
+
+- Q1 alias/codename → slug (lowercase, hyphen-joined), Q2 one-line basic info (company, level, role, gender), Q3 one-line personality profile (MBTI, zodiac, tags, culture, impression) parsed into fixed field lists, plus a confirmation summary before collection starts.
+
+### MUST
+
+1. List the user's own words split by field before asking the next question; never fill a field for them.
+2. Missing fields stay empty and are explicitly `unknown`; never infer gender, MBTI, or personality from company or level.
+3. Every field in the summary must trace back to the user's own words; when the user says "skip", it really stays empty.
+4. For `celebrity`, the fourth question must confirm `research_profile` (default `budget-friendly`); never skip it silently.
+5. Run `distilly retrospect` first, then read `evidence/derived/*`; intake itself never cites derived conclusions.
+6. Do not start collection before confirmation; after confirmation move to Collect (`distilly harvest` / `distilly collect`).
+
+### MUST NOT
+
+1. No evidence-free inference: personality, level, or company that the user never stated is never written down.
+2. Never rewrite the user's own words, especially the free-form impression field, which stays verbatim.
+3. Never write credentials into chat or files; they are read only from `~/.distilly/*_config.json` or environment variables.
+4. Never hand-craft API calls; channels that need credentials go through `distilly collect`.
+5. Never treat a candidate tag as information the user confirmed.
+6. Never ask several questions at once; ask one at a time.
+
+### RECEIPT
+
+- Which files were read, how many rows each, how many anchors (usually 0 during intake — say 0 honestly).
+- Which files were created or updated, each with its sha256 (from the `distilly` `--json` receipt or `knowledge/index.json`); write "none" when intake writes no file.
+- Which channels were unavailable (`unavailable[]`).
+- Which fields were never asked, which steps were skipped, and why.

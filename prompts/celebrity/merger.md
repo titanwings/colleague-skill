@@ -1,3 +1,38 @@
+# 名人增量合并 Prompt（中文要点）
+
+> 英文正文见下方 `## English` 段。两段的命令引用必须一致，锚点格式统一为 `[k00NN]` / `[k00NN:tM]`。
+
+把新素材或用户纠正并入已校准的名人 persona：Mode A 走新素材研究流程，Mode B 走 Correction Log；只改被触及的层，保留人物的复杂性与时间演化。
+
+## 必须
+
+1. 先列"读了哪些文件、各多少条、多少锚点"，再写结论。
+2. 每条结论跟 `文件 + 锚点`（`[k00NN]` 或 `[k00NN:tM]`），例如 `knowledge/text/feishu.md [k0042]`。
+3. 先跑 `distilly retrospect`，再读 `evidence/derived/*`；派生结论按候选处理。
+4. Mode A 的新素材先登记入库：音视频先 `distilly transcribe`，再更新 `knowledge/research/raw/` 下的 dated 目录。
+5. 合并后用 `distilly doctor` 复核证据覆盖率与锚点回指率，之前通过的检查必须仍然通过。
+6. Mode B 的纠正必须逐字记入 Correction Log，并记录触发它的用户原话与时间。
+
+## 禁止
+
+1. 禁止无证据推断：印象、常识、模型记忆都不能当结论。
+2. 禁止改写引文；长段原文、完整 transcript、完整字幕一律不得进仓库。
+3. 禁止把 key 写进对话或文件；凭据只从 `~/.distilly/*_config.json` 或环境变量读取。
+4. 禁止自己拼 API 请求；网络采集只走 `distilly collect`。
+5. 禁止把候选（candidate）当结论。
+6. 禁止把新证据"顺带"改写进用户没有纠正的层（no cascade edits）。
+
+## 回执
+
+- 读过哪些文件、各多少条、多少锚点。
+- 生成/更新了哪些文件，各自 sha256（来自 `distilly` 的 `--json` 回执、`knowledge/index.json` 或 `evidence/renders/receipt.json`）。
+- 哪些渠道不可用（`unavailable[]`）。
+- 哪些步骤没跑、为什么。
+
+---
+
+## English
+
 # Celebrity Merger
 
 ## Task
@@ -16,14 +51,17 @@ right layer without damaging what is already calibrated.
 ### Mode A — Material-driven update
 
 Triggered when the user supplies fresh research (new interviews, talks,
-writings, subtitles, transcripts via `tools/research/transcribe_audio.py`).
+writings, subtitles, transcripts via `distilly transcribe`; the legacy
+`tools/research/transcribe_audio.py` form is deprecated).
 
 Sequence:
 
 1. Run the intake / research pipeline for the **new** material only (keep it
    in a dated subfolder under `knowledge/research/raw/` so provenance is clear).
-2. Re-run `tools/research/merge_research.py <skill_dir>` to refresh the merged
-   summary with the added files.
+2. Re-run the research merge step (the legacy
+   `tools/research/merge_research.py <skill_dir>` is deprecated; it folds into
+   the derive layer `src/derive/merge.mjs`, ds/02), then run `distilly retrospect`
+   to refresh `evidence/derived/*`.
 3. Diff the new extraction against the existing `persona.md` before rewriting
    anything. Most material will confirm what is there; only a minority will
    change the shape.
@@ -168,8 +206,9 @@ trail.
 - Preserve evolution across time — do not collapse it into the current state.
 - If the new material contradicts an existing anchor, keep both and mark the
   contradiction, unless a Mode-B correction explicitly overrides.
-- Re-run `tools/research/quality_check.py <skill_dir> --profile <profile>`
-  after merging. All previously-passing checks should still pass.
+- Re-run `distilly doctor` after merging (the legacy
+  `tools/research/quality_check.py <skill_dir> --profile <profile>` form is
+  deprecated). All previously-passing checks should still pass.
 
 ---
 
@@ -201,3 +240,30 @@ trail.
 - research_metrics after merge: {paste relevant fields}
 - quality_check.py result: {pass/fail with which checks flipped}
 ```
+
+---
+
+## MUST
+
+1. First list which files were read, how many rows each, and how many anchors; only then write conclusions.
+2. Every conclusion carries `file + anchor` (`[k00NN]` or `[k00NN:tM]`), e.g. `knowledge/text/feishu.md [k0042]`.
+3. Run `distilly retrospect` first, then read `evidence/derived/*`; treat derived patterns as candidates.
+4. Register Mode A material first: run `distilly transcribe` for audio/video, then update the dated folder under `knowledge/research/raw/`.
+5. After merging, re-check evidence coverage and the anchor back-reference rate with `distilly doctor`; previously passing checks must still pass.
+6. Mode B corrections are logged verbatim in the Correction Log together with the triggering user phrase and timestamp.
+
+## MUST NOT
+
+1. No evidence-free inference: impressions, common sense, and model memory are not conclusions.
+2. Never rewrite quotations; long passages, full transcripts, and full subtitles never enter the repository.
+3. Never write credentials into chat or files; they are read only from `~/.distilly/*_config.json` or environment variables.
+4. Never hand-craft API calls; all network collection goes through `distilly collect`.
+5. Never present a candidate as a conclusion.
+6. Never cascade edits into layers the user did not correct.
+
+## RECEIPT
+
+- Which files were read, how many rows each, how many anchors.
+- Which files were created or updated, each with its sha256 (from the `distilly` `--json` receipt, `knowledge/index.json`, or `evidence/renders/receipt.json`).
+- Which channels were unavailable (`unavailable[]`).
+- Which steps were skipped, and why.

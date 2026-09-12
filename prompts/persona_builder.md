@@ -171,3 +171,68 @@
 ```
 （原材料不足，以下内容基于 {标签名} 标签推断，建议追加聊天记录验证）
 ```
+
+---
+
+## 必须
+
+1. 先列"读了哪些文件、各多少条、多少锚点"，再写 persona。
+2. Layer 0 的每条规则都必须写成"在什么情况下 → 做什么"；示例话术必须来自锚点原文，或显式标注为候选。
+3. 每条结论跟 `文件 + 锚点`，例如 `knowledge/text/feishu.md [k0042]`、`knowledge/text/messages.md [k0017:t3]`。
+4. 先跑 `distilly retrospect`，再读 `evidence/derived/*`；派生结论按候选处理，不直接写进 Layer 0。
+5. 少于 2 条原材料支撑的层，必须保留 `（原材料不足…）` 占位，不得用想象补满。
+6. Layer 1 的身份字段只能来自用户手动信息；缺失就省略，不猜。
+
+## 禁止
+
+1. 禁止无证据推断：标签不能自行扩展成新的性格设定。
+2. 禁止改写引文；口头禅、示例话术必须逐字保留并附锚点。
+3. 禁止把 key 写进对话或文件；凭据只从 `~/.distilly/*_config.json` 或环境变量读取。
+4. 禁止自己拼 API 请求；网络采集只走 `distilly collect`。
+5. 禁止把候选（candidate）写成确定行为规则。
+6. 禁止写形容词式的空规则（如"你很强势"），必须落到具体动作。
+
+## 回执
+
+- 读过哪些文件、各多少条、多少锚点。
+- 生成/更新了哪些文件，各自 sha256（来自 `distilly` 的 `--json` 回执或 `knowledge/index.json`）。
+- 哪些渠道不可用（`unavailable[]`）。
+- 哪些层证据不足、哪些步骤没跑、为什么。
+
+---
+
+## English
+
+### Task
+
+Turn the `persona_analyzer.md` output plus the user's manual tags into the `persona.md` body. The file defines the person's character, communication style, and behavior patterns, and it must read like the person actually talking.
+
+### Output contract (abstract)
+
+- Layer 0 core character: user tags translated into concrete behavior rules.
+- Layer 1 identity, Layer 2 expression style with realistic example lines, Layer 3 decisions and judgment, Layer 4 interpersonal behavior, Layer 5 boundaries, a correction log, and the global behavior principles.
+
+### MUST
+
+1. First list which files were read, how many rows each, and how many anchors; only then write the persona.
+2. Every Layer 0 rule is written as "in situation X → do Y"; example lines come from anchored source text or are explicitly labeled candidates.
+3. Every conclusion carries `file + anchor`, e.g. `knowledge/text/feishu.md [k0042]` or `knowledge/text/messages.md [k0017:t3]`.
+4. Run `distilly retrospect` first, then read `evidence/derived/*`; derived patterns stay candidates and never go straight into Layer 0.
+5. Any layer backed by fewer than 2 source items keeps the `(insufficient source material …)` placeholder instead of being filled with invention.
+6. Layer 1 identity fields come only from the user's manual input; drop what is missing, never guess.
+
+### MUST NOT
+
+1. No evidence-free inference: a tag never grows into a brand-new character setting on its own.
+2. Never rewrite quotations; catchphrases and example lines keep their exact wording and carry an anchor.
+3. Never write credentials into chat or files; they are read only from `~/.distilly/*_config.json` or environment variables.
+4. Never hand-craft API calls; all network collection goes through `distilly collect`.
+5. Never present a candidate as a settled behavior rule.
+6. Never ship adjective-only rules such as "you are assertive"; every rule resolves to a concrete action.
+
+### RECEIPT
+
+- Which files were read, how many rows each, how many anchors.
+- Which files were created or updated, each with its sha256 (from the `distilly` `--json` receipt or `knowledge/index.json`).
+- Which channels were unavailable (`unavailable[]`).
+- Which layers are thin, which steps were skipped, and why.

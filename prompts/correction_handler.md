@@ -5,7 +5,7 @@
 识别用户的纠正意图，并根据归属输出两种不同结果之一：
 
 - **Work 纠正**：生成可直接替换 `work.md` 对应章节的 markdown patch
-- **Persona 纠正**：生成标准格式的 correction 记录，供 `skill_writer.py --correction-json` 写入
+- **Persona 纠正**：生成标准格式的 correction 记录，交给 `distilly skill update` 写入（旧写法 `tools/skill_writer.py --correction-json` 为 deprecated）
 
 ---
 
@@ -56,11 +56,11 @@
 
 - 如果纠正影响多个 Work 章节，就输出多个 `##` section
 - 不要让 agent 直接手改 `work.md`
-- 正确路径是：`skill_writer.py --work-patch ...`
+- 正确路径是：`distilly skill update`（旧写法 `tools/skill_writer.py --work-patch` 为 deprecated）
 
 #### 如果归到 Persona
 
-输出 correction JSON 记录，供 `skill_writer.py --correction-json` 使用。
+输出 correction JSON 记录，供 `distilly skill update` 使用（旧写法 `tools/skill_writer.py --correction-json` 为 deprecated）。
 
 单条格式：
 
@@ -100,3 +100,67 @@
 - 超出时，将语义相近的 correction 合并归纳为 1 条
 - 合并时优先保留最新的表述
 - 每次合并告知用户："已将 {N} 条相似规则合并为 {M} 条"
+
+---
+
+## 必须
+
+1. 先列"读了哪些文件、各多少条、多少锚点"，再判断纠正归属。
+2. 用户的纠正属于口述证据：标注"用户口述，无锚点"；如果能对上原材料锚点，补 `文件 + 锚点`（例如 `knowledge/text/feishu.md [k0042]`）。
+3. 先跑 `distilly retrospect`，再读 `evidence/derived/*`；派生结论按候选处理。
+4. 先确认场景 / 错误行为 / 正确行为三要素；用户说得模糊只追问一次。
+5. 写入统一走 `distilly skill update`（写入前用 `distilly skill version` 存档），不手改 `work.md` / `persona.md` / `SKILL.md` / `meta.json`。
+6. Persona correction 超过 50 条时先合并，并把合并结果告诉用户。
+
+## 禁止
+
+1. 禁止无证据推断：不要把用户的一句纠正扩展成一整套新人格。
+2. 禁止改写用户原话；用户怎么说的就怎么写进 correction。
+3. 禁止把 key 写进对话或文件；凭据只从 `~/.distilly/*_config.json` 或环境变量读取。
+4. 禁止自己拼 API 请求；网络采集只走 `distilly collect`。
+5. 禁止把候选（candidate）当作已确认的纠正。
+6. 禁止直接手改最终产物文件。
+
+## 回执
+
+- 读过哪些文件、各多少条、多少锚点。
+- 生成/更新了哪些文件，各自 sha256（来自 `distilly` 的 `--json` 回执或 `knowledge/index.json`）。
+- 哪些渠道不可用（`unavailable[]`）。
+- 哪些纠正未决、哪些步骤没跑、为什么。
+
+---
+
+## English
+
+### Task
+
+Identify the user's correction intent and route it to exactly one of two outputs: a Work patch (replaceable `##` sections for `work.md`) or a Persona correction record (`{scene, wrong, correct}`).
+
+### Output contract (abstract)
+
+- Trigger phrases → extract scene / wrong behavior / correct behavior → decide Work vs Persona → emit the patch or the correction JSON → check conflicts → confirm and apply. Persona corrections cap at 50 per file and are merged when exceeded.
+
+### MUST
+
+1. First list which files were read, how many rows each, and how many anchors; only then decide where the correction belongs.
+2. A user correction is spoken evidence: label it "user statement, no anchor"; when it maps onto source material, add `file + anchor` (e.g. `knowledge/text/feishu.md [k0042]`).
+3. Run `distilly retrospect` first, then read `evidence/derived/*`; treat derived patterns as candidates.
+4. Confirm scene / wrong behavior / correct behavior first; when the user is vague, ask exactly once.
+5. Apply everything through `distilly skill update` (archive with `distilly skill version` first); never hand-edit `work.md`, `persona.md`, `SKILL.md`, or `meta.json`.
+6. When persona corrections exceed 50, merge first and tell the user what was merged.
+
+### MUST NOT
+
+1. No evidence-free inference: one correction never expands into a whole new personality.
+2. Never rewrite the user's own words; the correction records exactly what they said.
+3. Never write credentials into chat or files; they are read only from `~/.distilly/*_config.json` or environment variables.
+4. Never hand-craft API calls; all network collection goes through `distilly collect`.
+5. Never treat a candidate as a confirmed correction.
+6. Never directly hand-edit the final artifacts.
+
+### RECEIPT
+
+- Which files were read, how many rows each, how many anchors.
+- Which files were created or updated, each with its sha256 (from the `distilly` `--json` receipt or `knowledge/index.json`).
+- Which channels were unavailable (`unavailable[]`).
+- Which corrections are unresolved, which steps were skipped, and why.

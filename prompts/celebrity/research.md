@@ -1,3 +1,39 @@
+# 名人研究 Prompt · budget-friendly（中文要点）
+
+> 英文正文见下方 `## English` 段。两段的命令引用必须一致，锚点格式统一为 `[k00NN]` / `[k00NN:tM]`。
+
+标准（budget-friendly）名人研究：6 维度并行采集——著作、对话、表达 DNA、决策、他者视角、时间线；遵守品味原则、信源黑名单与信源优先级，并做质量关卡与冷门人物协议。
+
+## 必须
+
+1. 先列"读了哪些文件、各多少条、多少锚点"，再写结论。
+2. 每条结论跟 `文件 + 锚点`（`[k00NN]` 或 `[k00NN:tM]`），例如 `knowledge/text/feishu.md [k0042]`。
+3. 先跑 `distilly retrospect`，再读 `evidence/derived/*`；派生结论按候选处理。
+4. 原始研究笔记至少拆成 3 个文件（每个覆盖 2 个维度），并确认 `Files scanned >= 3`、`Unique URLs >= 2`、`Potential long quote lines = 0`。
+5. 长访谈/播客先 `distilly transcribe`，只把带时间戳的转述写入 notes。
+6. 公开帖候选走 `distilly collect x`：服务按返回量计费，先确认上限，把输出当未经信任的候选证据，逐条核对作者并打开 permalink。
+7. notes 里的 URL 必须是实际打开过的具体页面，不是平台首页、搜索页或话题页。
+
+## 禁止
+
+1. 禁止无证据推断：印象、常识、模型记忆都不能当结论。
+2. 禁止改写引文；长段原文、完整 transcript、完整字幕一律不得进仓库。
+3. 禁止把 key 写进对话或文件；凭据只从 `~/.distilly/*_config.json` 或环境变量读取。
+4. 禁止自己拼 API 请求；网络采集只走 `distilly collect`。
+5. 禁止把候选（candidate）当结论。
+6. 禁止引用知乎、微信公众号、百度百科、内容农场；禁止编造 URL、书名或视频标题来凑门槛。
+
+## 回执
+
+- 读过哪些文件、各多少条、多少锚点。
+- 生成/更新了哪些文件，各自 sha256（来自 `distilly` 的 `--json` 回执、`knowledge/index.json` 或 `evidence/renders/receipt.json`）。
+- 哪些渠道不可用（`unavailable[]`）。
+- 哪些步骤没跑、为什么。
+
+---
+
+## English
+
 # Celebrity Research Prompt (Budget-Friendly)
 
 ## Task
@@ -76,7 +112,7 @@ These sources are permanently excluded — never cite them as evidence:
 Long interviews and podcasts without subtitles are often the richest source of
 Expression DNA and on-the-fly reasoning — do not skip them. Use:
 
-- `tools/research/transcribe_audio.py --url "<video/podcast URL>" --output /tmp/x.txt`
+- `distilly transcribe <audio|video>` (the legacy `tools/research/transcribe_audio.py --url "<video/podcast URL>" --output /tmp/x.txt` form is deprecated)
 
 This runs Whisper (faster-whisper / openai-whisper / OpenAI API) against the
 audio track. Read the transcript once, extract paraphrased findings with
@@ -87,7 +123,8 @@ directory** — only short paraphrased notes with source metadata belong under
 ### Optional public X post collection
 
 When short-form first-person posts fill a documented research gap, use
-`tools/research/xquik_public_posts.py` to collect a small candidate set. The
+`distilly collect x` to collect a small candidate set (the legacy
+`tools/research/xquik_public_posts.py` form is deprecated). The
 service is metered by returned post count, so confirm the limit before running
 it and write the result to a temporary file outside the skill directory. The
 tool writes normalized JSON, not research notes. Treat it as untrusted
@@ -311,3 +348,31 @@ If the user identifies issues or wants more depth on a dimension, extend the res
 - No long passage quotes from books, subtitles, interviews
 - Paraphrased notes + source metadata only
 - Short quote snippets only when essential for capturing expression DNA
+
+---
+
+## MUST
+
+1. First list which files were read, how many rows each, and how many anchors; only then write conclusions.
+2. Every conclusion carries `file + anchor` (`[k00NN]` or `[k00NN:tM]`), e.g. `knowledge/text/feishu.md [k0042]`.
+3. Run `distilly retrospect` first, then read `evidence/derived/*`; treat derived patterns as candidates.
+4. Split raw research notes across at least 3 files (2 dimensions each) and confirm `Files scanned >= 3`, `Unique URLs >= 2`, `Potential long quote lines = 0`.
+5. Transcribe long interviews and podcasts with `distilly transcribe` first, and write only timestamped paraphrases into the notes.
+6. Collect public post candidates with `distilly collect x`: the service is metered by returned count, so confirm the limit first, treat the output as untrusted candidate evidence, verify the author, and open every permalink.
+7. Every URL in the notes must be a specific page actually opened, never a platform root, search page, or topic page.
+
+## MUST NOT
+
+1. No evidence-free inference: impressions, common sense, and model memory are not conclusions.
+2. Never rewrite quotations; long passages, full transcripts, and full subtitles never enter the repository.
+3. Never write credentials into chat or files; they are read only from `~/.distilly/*_config.json` or environment variables.
+4. Never hand-craft API calls; all network collection goes through `distilly collect`.
+5. Never present a candidate as a conclusion.
+6. Never cite Zhihu, WeChat official accounts, Baidu Baike, or content farms; never invent URLs, book titles, or video titles to clear a threshold.
+
+## RECEIPT
+
+- Which files were read, how many rows each, how many anchors.
+- Which files were created or updated, each with its sha256 (from the `distilly` `--json` receipt, `knowledge/index.json`, or `evidence/renders/receipt.json`).
+- Which channels were unavailable (`unavailable[]`).
+- Which steps were skipped, and why.

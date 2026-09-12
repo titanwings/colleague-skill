@@ -179,3 +179,73 @@
 - 没有信息的维度：标注 `（原材料不足，建议追加相关文档）`
 - 有原文依据的结论：加引号标注原话
 - 输出结果直接用于生成 work.md，要求具体可执行，不要写"可能""倾向于"这类模糊表述
+
+---
+
+## 必须
+
+1. 先列"读了哪些文件、各多少条、多少锚点"，再写结论。
+2. 每条技术结论跟 `文件 + 锚点`，例如 `knowledge/text/docs.md [k0008]`；引用原话时逐字保留。
+3. 先跑 `distilly retrospect`，再读 `evidence/derived/*`；派生结论按候选处理。
+4. 只提取工作相关内容，闲聊、情绪、私人话题一律不进 Work Skill。
+5. 只按 {name} 的实际职位使用对应专项维度，不要把所有职位模板都套一遍。
+6. 没有信息的维度写 `unknown`，并写明建议追加哪类文档。
+
+## 禁止
+
+1. 禁止无证据推断：职位、公司、级别不能推出技术规范。
+2. 禁止改写引文；禁止把总结写成引号内的"原话"。
+3. 禁止把 key 写进对话或文件；凭据只从 `~/.distilly/*_config.json` 或环境变量读取。
+4. 禁止自己拼 API 请求；网络采集只走 `distilly collect`。
+5. 禁止把候选（candidate）当结论。
+6. 禁止用"可能使用""倾向于"这类模糊表述顶替具体规范。
+
+## 回执
+
+- 读过哪些文件、各多少条、多少锚点。
+- 生成/更新了哪些文件，各自 sha256（来自 `distilly` 的 `--json` 回执或 `knowledge/index.json`）。
+- 哪些渠道不可用（`unavailable[]`）。
+- 哪些维度证据不足、哪些步骤没跑、为什么。
+
+---
+
+## English
+
+### Task
+
+Extract **{name}**'s working methods and technical standards from the imported source material so that `work_builder.md` can produce `work.md`.
+
+Principle: work content only, ignore small talk, never infer — write only what is grounded, otherwise mark it as missing.
+
+### Output contract (abstract)
+
+- Responsibility scope: systems, modules, business lines, maintained documents, boundaries.
+- Workflow: how they take a task, structure a design doc, manage deadlines, handle incidents.
+- Output preferences: tables vs lists vs prose, conclusion-first or build-up, level of detail.
+- Experience base: explicit judgments, pitfalls, technical opinions, quoted verbatim.
+- Role-specific dimensions (backend / frontend / ML / PM / design / data) — only the ones matching the actual role.
+
+### MUST
+
+1. First list which files were read, how many rows each, and how many anchors; only then write conclusions.
+2. Every technical conclusion carries `file + anchor`, e.g. `knowledge/text/docs.md [k0008]`; verbatim quotes keep their exact wording.
+3. Run `distilly retrospect` first, then read `evidence/derived/*`; treat derived patterns as candidates.
+4. Extract work content only; chatter, emotions, and private topics never enter the Work Skill.
+5. Use only the role-specific dimension block that matches {name}'s actual role; never run every template.
+6. Dimensions without information are written as `unknown`, together with the kind of document that would fill them.
+
+### MUST NOT
+
+1. No evidence-free inference: a job title, company, or level never implies a technical standard.
+2. Never rewrite quotations, and never present your own summary as a quoted "verbatim" line.
+3. Never write credentials into chat or files; they are read only from `~/.distilly/*_config.json` or environment variables.
+4. Never hand-craft API calls; all network collection goes through `distilly collect`.
+5. Never present a candidate as a conclusion.
+6. Never let "may use" or "tends to" stand in for a concrete standard.
+
+### RECEIPT
+
+- Which files were read, how many rows each, how many anchors.
+- Which files were created or updated, each with its sha256 (from the `distilly` `--json` receipt or `knowledge/index.json`).
+- Which channels were unavailable (`unavailable[]`).
+- Which dimensions are thin, which steps were skipped, and why.
