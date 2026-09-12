@@ -131,3 +131,73 @@ emoji：[无/偶尔/频繁，类型]
 - 原材料不足的维度：标注 `（原材料不足）`
 - 有原文依据的结论：引用原话（加引号）
 - 手动标签与文件分析冲突时：输出两个版本并注明，供 persona_builder 处理
+
+---
+
+## 必须
+
+1. 先列"读了哪些文件、各多少条、多少锚点"，再写结论。
+2. 每个维度（表达风格 / 决策模式 / 人际行为 / 边界与雷区）的每条结论都要跟 `文件 + 锚点`，例如 `knowledge/text/feishu.md [k0042]`、`knowledge/text/email.md [k0017:t3]`。
+3. 先跑 `distilly retrospect`，再读 `evidence/derived/*`；派生结论按候选处理。
+4. 标签翻译必须与用户手动填写的标签一一对应，不得自行新增标签。
+5. 没有证据的维度写 `unknown`，并说明补什么材料能填上。
+6. 手动标签与文件分析冲突时，输出两个版本并注明来源，交给 persona_builder 决定。
+
+## 禁止
+
+1. 禁止无证据推断：印象、常识、MBTI 通识都不能当原材料结论。
+2. 禁止改写引文；引用原话必须逐字保留并附锚点。
+3. 禁止把 key 写进对话或文件；凭据只从 `~/.distilly/*_config.json` 或环境变量读取。
+4. 禁止自己拼 API 请求；网络采集只走 `distilly collect`。
+5. 禁止把候选（candidate）写成结论，尤其是只有一两条锚点的模式。
+6. 禁止用泛化形容词代替可执行的行为规则。
+
+## 回执
+
+- 读过哪些文件、各多少条、多少锚点。
+- 生成/更新了哪些文件，各自 sha256（来自 `distilly` 的 `--json` 回执或 `knowledge/index.json`）。
+- 哪些渠道不可用（`unavailable[]`）。
+- 哪些维度证据不足、哪些步骤没跑、为什么。
+
+---
+
+## English
+
+### Task
+
+Extract **{name}**'s personality traits and behavior patterns from the user's manual tags plus the imported source material, so that `persona_builder.md` can turn them into `persona.md`.
+
+Priority rule: manual tags > file analysis. Conflicts are reported as two labeled versions.
+
+### Output contract (abstract)
+
+- Expression style: catchphrases, high-frequency words, jargon, sentence shape, emoji/punctuation, formality 1-5.
+- Decision pattern: priorities, what makes them push, what makes them stall, how they disagree, how they answer challenges.
+- Interpersonal behavior: toward managers, reports, peers, and under pressure.
+- Boundaries: what they resist, where they draw lines, how they refuse.
+- Every dimension is either anchored or explicitly `unknown`.
+
+### MUST
+
+1. First list which files were read, how many rows each, and how many anchors; only then write conclusions.
+2. Every conclusion in every dimension (expression / decisions / interpersonal / boundaries) carries `file + anchor`, e.g. `knowledge/text/feishu.md [k0042]` or `knowledge/text/email.md [k0017:t3]`.
+3. Run `distilly retrospect` first, then read `evidence/derived/*`; treat derived patterns as candidates.
+4. Tag translation maps one-to-one onto the tags the user actually supplied; never invent new tags.
+5. Dimensions without evidence are written as `unknown`, together with what material would fill them.
+6. When manual tags and file analysis conflict, output both versions with their sources and let `persona_builder.md` decide.
+
+### MUST NOT
+
+1. No evidence-free inference: impressions, common sense, and generic MBTI lore are not source conclusions.
+2. Never rewrite quotations; verbatim quotes keep their exact wording and carry an anchor.
+3. Never write credentials into chat or files; they are read only from `~/.distilly/*_config.json` or environment variables.
+4. Never hand-craft API calls; all network collection goes through `distilly collect`.
+5. Never present a candidate as a conclusion, especially a pattern backed by only one or two anchors.
+6. Never replace an executable behavior rule with a generic adjective.
+
+### RECEIPT
+
+- Which files were read, how many rows each, how many anchors.
+- Which files were created or updated, each with its sha256 (from the `distilly` `--json` receipt or `knowledge/index.json`).
+- Which channels were unavailable (`unavailable[]`).
+- Which dimensions are thin, which steps were skipped, and why.
