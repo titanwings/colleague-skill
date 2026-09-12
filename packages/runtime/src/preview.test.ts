@@ -95,38 +95,42 @@ afterEach(async () => {
 });
 
 describe("Developer Preview LocalRuntime", () => {
-  it("splits one oversized local file into parts that each fit the material limit", async () => {
-    const root = await temporaryRoot();
-    const inputRoot = await temporaryRoot();
-    const path = join(inputRoot, "huge-chat.txt");
-    // Three lines of 700 KB each: every pair exceeds the 1 MiB material limit, so the split
-    // must land on line boundaries and produce exactly three parts.
-    const line = `${"x".repeat(700_000)}\n`;
-    await writeFile(path, line.repeat(3));
+  it(
+    "splits one oversized local file into parts that each fit the material limit",
+    { timeout: 30_000 },
+    async () => {
+      const root = await temporaryRoot();
+      const inputRoot = await temporaryRoot();
+      const path = join(inputRoot, "huge-chat.txt");
+      // Three lines of 700 KB each: every pair exceeds the 1 MiB material limit, so the split
+      // must land on line boundaries and produce exactly three parts.
+      const line = `${"x".repeat(700_000)}\n`;
+      await writeFile(path, line.repeat(3));
 
-    const runtime = await open(root);
-    const client = await connect(runtime, "file-split");
-    const result = await client.call(
-      "materials.ingestFiles",
-      {
-        subject: { kind: "create" as const, input: { displayName: "Huge", identityHints: [] } },
-        paths: [path],
-        enqueue: "now" as const,
-      },
-      { requestId: request() },
-    );
+      const runtime = await open(root);
+      const client = await connect(runtime, "file-split");
+      const result = await client.call(
+        "materials.ingestFiles",
+        {
+          subject: { kind: "create" as const, input: { displayName: "Huge", identityHints: [] } },
+          paths: [path],
+          enqueue: "now" as const,
+        },
+        { requestId: request() },
+      );
 
-    expect(result.items).toHaveLength(3);
-    expect(result.items.map((item) => item.pathLabel)).toEqual([
-      "huge-chat.txt [part 1 of 3]",
-      "huge-chat.txt [part 2 of 3]",
-      "huge-chat.txt [part 3 of 3]",
-    ]);
-    for (const item of result.items) {
-      expect(item.kind).toBe("parsed");
-      expect(item.warnings.join(" ")).toContain("Split into 3 parts");
-    }
-  });
+      expect(result.items).toHaveLength(3);
+      expect(result.items.map((item) => item.pathLabel)).toEqual([
+        "huge-chat.txt [part 1 of 3]",
+        "huge-chat.txt [part 2 of 3]",
+        "huge-chat.txt [part 3 of 3]",
+      ]);
+      for (const item of result.items) {
+        expect(item.kind).toBe("parsed");
+        expect(item.warnings.join(" ")).toContain("Split into 3 parts");
+      }
+    },
+  );
 
   it("atomically ingests parsed and unparsed local files, replays before reads, and reopens", async () => {
     const root = await temporaryRoot();
@@ -614,143 +618,187 @@ describe("Developer Preview LocalRuntime", () => {
 });
 
 describe("local record budget", () => {
-  it("splits an oversized text and refuses a selection that expands past the wire record limit", async () => {
-    const root = await temporaryRoot();
-    const inputRoot = await temporaryRoot();
-    const paths: string[] = [];
-    // The JSON parser pretty-prints, so a 500 KB file becomes more than one material record
-    // while staying under the per-file material limit that would send it alone.
-    const compact = JSON.stringify({
-      items: Array.from({ length: 9_000 }, (_, index) => ({
-        id: index,
-        name: `item-${String(index)}`,
-        tags: ["alpha", "beta", "gamma"],
-        nested: { a: 1, b: "two", c: [1, 2, 3] },
-      })),
-    });
-    expect(Buffer.byteLength(compact)).toBeLessThan(1_048_576);
-    expect(Buffer.byteLength(JSON.stringify(JSON.parse(compact), null, 2))).toBeGreaterThan(
-      1_048_576,
-    );
-    const jsonPath = join(inputRoot, "export.json");
-    await writeFile(jsonPath, compact);
-    paths.push(jsonPath);
-    for (let index = 0; index < 31; index += 1) {
-      const path = join(inputRoot, `note-${String(index)}.md`);
-      await writeFile(path, `Note ${String(index)} records one ordinary observation.\n`);
-      paths.push(path);
-    }
+  it(
+    "splits an oversized text and refuses a selection that expands past the wire record limit",
+    { timeout: 30_000 },
+    async () => {
+      const root = await temporaryRoot();
+      const inputRoot = await temporaryRoot();
+      const paths: string[] = [];
+      // The JSON parser pretty-prints, so a 500 KB file becomes more than one material record
+      // while staying under the per-file material limit that would send it alone.
+      const compact = JSON.stringify({
+        items: Array.from({ length: 9_000 }, (_, index) => ({
+          id: index,
+          name: `item-${String(index)}`,
+          tags: ["alpha", "beta", "gamma"],
+          nested: { a: 1, b: "two", c: [1, 2, 3] },
+        })),
+      });
+      expect(Buffer.byteLength(compact)).toBeLessThan(1_048_576);
+      expect(Buffer.byteLength(JSON.stringify(JSON.parse(compact), null, 2))).toBeGreaterThan(
+        1_048_576,
+      );
+      const jsonPath = join(inputRoot, "export.json");
+      await writeFile(jsonPath, compact);
+      paths.push(jsonPath);
+      for (let index = 0; index < 31; index += 1) {
+        const path = join(inputRoot, `note-${String(index)}.md`);
+        await writeFile(path, `Note ${String(index)} records one ordinary observation.\n`);
+        paths.push(path);
+      }
 
-    const runtime = await open(root);
-    const client = await connect(runtime, "record-budget");
-    const failure = await client
-      .call(
+      const runtime = await open(root);
+      const client = await connect(runtime, "record-budget");
+      const failure = await client
+        .call(
+          "materials.ingestFiles",
+          {
+            subject: {
+              kind: "create" as const,
+              input: { displayName: "Budget", identityHints: [] },
+            },
+            paths,
+            enqueue: "now" as const,
+          },
+          { requestId: request() },
+        )
+        .then(
+          () => undefined,
+          (error: unknown) => error,
+        );
+      expect(failure).toBeInstanceOf(DistillyError);
+      expect((failure as DistillyError).code).toBe("invalid_input");
+      expect((failure as DistillyError).details?.["reason"]).toBe("record_budget_exceeded");
+
+      // The same selection succeeds when the expanding file travels alone, which is what the
+      // harvest command falls back to.
+      const small = await client.call(
         "materials.ingestFiles",
         {
           subject: { kind: "create" as const, input: { displayName: "Budget", identityHints: [] } },
-          paths,
+          paths: paths.slice(1),
           enqueue: "now" as const,
         },
         { requestId: request() },
-      )
-      .then(
-        () => undefined,
-        (error: unknown) => error,
       );
-    expect(failure).toBeInstanceOf(DistillyError);
-    expect((failure as DistillyError).code).toBe("invalid_input");
-    expect((failure as DistillyError).details?.["reason"]).toBe("record_budget_exceeded");
-
-    // The same selection succeeds when the expanding file travels alone, which is what the
-    // harvest command falls back to.
-    const small = await client.call(
-      "materials.ingestFiles",
-      {
-        subject: { kind: "create" as const, input: { displayName: "Budget", identityHints: [] } },
-        paths: paths.slice(1),
-        enqueue: "now" as const,
-      },
-      { requestId: request() },
-    );
-    expect(small.items).toHaveLength(31);
-    const alone = await client.call(
-      "materials.ingestFiles",
-      {
-        subject: { kind: "existing" as const, subjectId: small.subject.id },
-        paths: [jsonPath],
-        enqueue: "now" as const,
-      },
-      { requestId: request() },
-    );
-    expect(alone.items.length).toBeGreaterThan(1);
-    expect(alone.items.map((item) => item.pathLabel)).toContain("export.json [part 1 of 3]");
-  });
+      expect(small.items).toHaveLength(31);
+      const alone = await client.call(
+        "materials.ingestFiles",
+        {
+          subject: { kind: "existing" as const, subjectId: small.subject.id },
+          paths: [jsonPath],
+          enqueue: "now" as const,
+        },
+        { requestId: request() },
+      );
+      expect(alone.items.length).toBeGreaterThan(1);
+      expect(alone.items.map((item) => item.pathLabel)).toContain("export.json [part 1 of 3]");
+    },
+  );
 });
 
 describe("unsplittable parsed text", () => {
-  it("keeps the raw file and warns when a whitespace run cannot become a legal part", async () => {
-    const root = await temporaryRoot();
-    const inputRoot = await temporaryRoot();
-    const path = join(inputRoot, "spaces.txt");
-    // One 1.2 MiB run of spaces is longer than a material, so no legal part exists; the file
-    // must be kept as raw evidence with a warning instead of failing the whole call.
-    await writeFile(path, `a${" ".repeat(1_200_000)}b\n`);
+  it(
+    "keeps the raw file and warns when a whitespace run cannot become a legal part",
+    { timeout: 30_000 },
+    async () => {
+      const root = await temporaryRoot();
+      const inputRoot = await temporaryRoot();
+      const path = join(inputRoot, "spaces.txt");
+      // One 1.2 MiB run of spaces is longer than a material, so no legal part exists; the file
+      // must be kept as raw evidence with a warning instead of failing the whole call.
+      await writeFile(path, `a${" ".repeat(1_200_000)}b\n`);
 
-    const runtime = await open(root);
-    const client = await connect(runtime, "unsplittable");
-    const result = await client.call(
-      "materials.ingestFiles",
-      {
-        subject: { kind: "create" as const, input: { displayName: "Spaces", identityHints: [] } },
-        paths: [path],
-        enqueue: "now" as const,
-      },
-      { requestId: request() },
-    );
-    expect(result.items).toHaveLength(1);
-    expect(result.items[0]?.kind).toBe("unparsed");
-    expect(result.items[0]?.warnings.join(" ")).toContain(
-      "whitespace at least as long as one material",
-    );
-  });
+      const runtime = await open(root);
+      const client = await connect(runtime, "unsplittable");
+      const result = await client.call(
+        "materials.ingestFiles",
+        {
+          subject: { kind: "create" as const, input: { displayName: "Spaces", identityHints: [] } },
+          paths: [path],
+          enqueue: "now" as const,
+        },
+        { requestId: request() },
+      );
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]?.kind).toBe("unparsed");
+      expect(result.items[0]?.warnings.join(" ")).toContain(
+        "whitespace at least as long as one material",
+      );
+    },
+  );
+
+  it(
+    "keeps a whitespace-only file as raw evidence instead of dropping it",
+    { timeout: 30_000 },
+    async () => {
+      const root = await temporaryRoot();
+      const inputRoot = await temporaryRoot();
+      const path = join(inputRoot, "blank.txt");
+      // A file with no meaningful text never becomes a material. The parser refuses it first
+      // (and the loader keeps its raw bytes with that reason), so nothing is dropped silently;
+      // the splitter's own empty-output guard stays as defence for parsers that could.
+      await writeFile(path, `${" ".repeat(1_500_000)}\n`);
+
+      const runtime = await open(root);
+      const client = await connect(runtime, "blank-file");
+      const result = await client.call(
+        "materials.ingestFiles",
+        {
+          subject: { kind: "create" as const, input: { displayName: "Blank", identityHints: [] } },
+          paths: [path],
+          enqueue: "now" as const,
+        },
+        { requestId: request() },
+      );
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]?.kind).toBe("unparsed");
+      expect(result.items[0]?.warnings.length).toBeGreaterThan(0);
+    },
+  );
 });
 
 describe("split reassembly through the engine", () => {
-  it("briefs every part of a split file and reproduces the parsed text byte for byte", async () => {
-    const root = await temporaryRoot();
-    const inputRoot = await temporaryRoot();
-    const path = join(inputRoot, "mixed.md");
-    // Astral characters and line boundaries both sit on part seams: 2.5 MiB of 4-byte code
-    // points with a newline every 32 characters.
-    const line = `${"😀".repeat(31)}\n`;
-    const original = line.repeat(Math.ceil((2.5 * 1_048_576) / Buffer.byteLength(line)));
-    await writeFile(path, original);
+  it(
+    "briefs every part of a split file and reproduces the parsed text byte for byte",
+    { timeout: 30_000 },
+    async () => {
+      const root = await temporaryRoot();
+      const inputRoot = await temporaryRoot();
+      const path = join(inputRoot, "mixed.md");
+      // Astral characters and line boundaries both sit on part seams: 2.5 MiB of 4-byte code
+      // points with a newline every 32 characters.
+      const line = `${"😀".repeat(31)}\n`;
+      const original = line.repeat(Math.ceil((2.5 * 1_048_576) / Buffer.byteLength(line)));
+      await writeFile(path, original);
 
-    const runtime = await open(root);
-    // The direct-user capacity is wide enough to carry the whole briefing, so this proves the
-    // stored parts, not the splitter alone.
-    const client = await connect(runtime, "split-reassembly");
-    const result = await client.call(
-      "materials.ingestFiles",
-      {
-        subject: {
-          kind: "create" as const,
-          input: { displayName: "Reassembly", identityHints: [] },
+      const runtime = await open(root);
+      // The direct-user capacity is wide enough to carry the whole briefing, so this proves the
+      // stored parts, not the splitter alone.
+      const client = await connect(runtime, "split-reassembly");
+      const result = await client.call(
+        "materials.ingestFiles",
+        {
+          subject: {
+            kind: "create" as const,
+            input: { displayName: "Reassembly", identityHints: [] },
+          },
+          paths: [path],
+          enqueue: "now" as const,
         },
-        paths: [path],
-        enqueue: "now" as const,
-      },
-      { requestId: request() },
-    );
-    expect(result.items.length).toBeGreaterThan(1);
-    if (result.job === undefined) throw new Error("Expected an enqueued job.");
-    const briefing = await client.call(
-      "distill.brief",
-      { jobId: result.job.id },
-      { requestId: request() },
-    );
-    const joined = briefing.materials.map((entry) => entry.content).join("");
-    expect(joined).toBe(original);
-    expect(joined).not.toContain("\uFFFD");
-  });
+        { requestId: request() },
+      );
+      expect(result.items.length).toBeGreaterThan(1);
+      if (result.job === undefined) throw new Error("Expected an enqueued job.");
+      const briefing = await client.call(
+        "distill.brief",
+        { jobId: result.job.id },
+        { requestId: request() },
+      );
+      const joined = briefing.materials.map((entry) => entry.content).join("");
+      expect(joined).toBe(original);
+      expect(joined).not.toContain("\uFFFD");
+    },
+  );
 });

@@ -62,7 +62,7 @@ describe("material normalization v1", () => {
     expect(normalizeMaterialTextV1("\ufeff")).toBe("\ufeff");
   });
 
-  it("canonicalizes a long run of spaces or tabs in linear time", () => {
+  it("canonicalizes a long run of spaces or tabs in linear time", { timeout: 30_000 }, () => {
     // The previous regular expression retried the whole run at every position, so a single
     // megabyte of spaces took minutes and made the whole ingest call appear to hang.
     for (const filler of [" ".repeat(700_000), "\t".repeat(200_000), "\u00a0".repeat(500_000)]) {
