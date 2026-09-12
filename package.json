@@ -19,6 +19,7 @@
     "CITATION.cff"
   ],
   "scripts": {
+    "test": "node --test",
     "prepack": "node bin/distilly.mjs --check-package"
   },
   "keywords": [
